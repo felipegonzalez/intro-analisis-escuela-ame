@@ -1,0 +1,115 @@
+# Introducción {#intro}
+
+En esta introducción corta al análisis de datos buscamos
+proveer a principiantes en análisis de datos de: 
+
+- Algunas ideas generales útiles que sirven para hacer mejor análisis de datos.
+- Algunas técnicas particulares que son de uso común.
+
+Distintos analistas, en distintas áreas, pueden poner diferente énfasis
+en el tipo de herramientas y técnicas preferidas. Así que un taller de este
+tipo necesariamente refleja ciertos puntos de vista, experiencias, y 
+opiniones y juicios.
+
+
+## Tukey y análisis de datos {-}
+
+El término *análisis de datos* fue quizá 
+introducido (@huber50, @donoho50) por Tukey en el artículo 
+*The Future of Data Analysis* (@tukeyda) en 
+su sentido más común. 
+
+- La máxima del análisis de datos es, según Tukey: Es mucho más valiosa
+una respuesta aproximada a la pregunta correcta, que usualmente es vaga,
+que una respuesta exacta a la pregunta incorrecta, que siempre puede formularse
+con precisión. El análisis de datos avanza con **respuestas aproximadas a preguntas
+vagas**.
+
+- El análisis de datos se trata de **hacer juicios** de distintos tipos: basados
+en la experiencia del campo particular de interés, en experiencia más amplia
+de resultados en varios campos, y resultados abstractos de propiedades de técnicas
+particulares (pruebas matemáticas y resultados empíricos).
+
+- El análisis de datos se adhiere a **características científicas**: buscamos más 
+alcance y utilidad que seguridad, aceptamos equivocarnos algunas veces para que
+en muchos casos evidencia poco adecuada *sugiera* la respuesta correcta. Los
+argumentos matemáticos (estadística matemática, ciencias de la computación) son 
+guías pero no pueden determinar el proceso.
+
+El analista de datos, entonces, busca hacer aportaciones útiles, y 
+orientar en lo posible el avance de su equipo, que
+como conjunto quiere resolver problemas no triviales. El analista
+de datos a veces resuelve problemas, pero más usualmente crea otros nuevos!
+
+## Preguntas vagas {-}
+
+En esta gráfica [Roger Peng](https://simplystatistics.org/2019/04/17/tukey-design-thinking-and-better-questions/) hay tres caminos: uno es uno ideal que pocas veces sucede,
+otro produce respuestas poco útiles pero es fácil, y otro es tortuoso pero que 
+caracteriza el mejor trabajo de análisis de datos:
+
+
+```{r, echo = FALSE, message = FALSE, fig.cap = "Adaptado de R. Peng: [Tukey, design thinking and better questions.](https://simplystatistics.org/2019/04/17/tukey-design-thinking-and-better-questions/)"}
+library(tidyverse)
+theme_set(theme_bw(base_size = 14))
+
+puntos <- tibble(x = c(0.5, 1.2, 4, 4), y = c(0.5, 4, 0.5, 5),
+                 etiqueta = c("dónde\ncomenzamos\nrealmente", "Análisis de datos \n poco útil, de bajo impacto", 
+                              "dónde creeemos\nque comenzamos", "Nuestra \n Meta "))
+set.seed(211)
+browniano <- tibble(x = 0.5 +  cumsum(c(0,rnorm(50, 0.03, 0.1))) ,
+                    y = 0.5 +  cumsum(c(0, rnorm(50, 0.02, 0.2))))
+puntos <- bind_rows(puntos, tail(browniano, 1) %>% mutate(etiqueta = "Terminamos?!?"))
+flechas <- tibble(x = c(0.5, 4), y = c(0.5, 0.5), xend = c(1.2, 4), yend = c(4, 5))
+
+ggplot(puntos, aes(x = x, y = y)) + 
+    xlab("Calidad de la pregunta") +
+    ylab("Peso de la evidencia") +
+    theme(axis.text.x=element_blank(),
+        axis.text.y=element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+    geom_segment(data = flechas, aes(xend=xend, yend=yend),
+                 arrow = arrow(length = unit(0.3, "inches"))) +
+    geom_path(data = browniano) +
+    geom_point(data = browniano) +
+    geom_point(colour="red", size = 5) +
+    geom_text(aes(label = etiqueta), vjust = -0.5, hjust = 1.1, size = 4.2) +
+    #labs(caption = "Adaptado de R. Peng: Tukey, design thinking and better questions.") +
+    xlim(c(-0.1 , 4)) + ylim(c(0,6))
+    
+```
+
+Ejemplos: Alguien nos pregunta cuáles son las primarias que tienen las mejores calificaciones
+en la prueba Enlace. Podríamos buscar los datos de Enlace, e implementar algún tipo
+de ranqueo tomando en cuenta el tamaño de muesra de cada escuela. ¿Qué significa este
+ordenamiento? ¿Contesta una pregunta útil? ¿Cuál es probablemente una mejor pregunta?
+
+## Principios del diseño analítico {-}
+
+Edward Tufte (@tufte06) propuso seis principios de diseño analítico que caracteriza
+al mejor trabajo de análisis de datos. Aquí están los principios con algunas
+modificaciones ligeras:
+
+1. Muestran claramente **comparaciones**, diferencias y variación.
+2. Tienden a ser **multivariados**: estudian conjuntamente más de 1 o 2 variables.
+3. Muestran **estructura sistemática**, sugieren explicaciones. Cuando es posible,
+aportan evidencia de causalidad.
+4. Datos y procesos están bien **documentados**. El análisis es reproducible y transparente.
+5. Intentan **integrar** la evidencia completa: texto, explicaciones, tablas y
+gráficas.
+6. La calidad, relevancia, e integridad del **contenido** son los que
+al final sostienen al análisis.
+
+## Gráfica de Minard {-}
+
+La ilustración que Tufte usa para mostrar excelencia en diseño analítico es
+una gráfica de Minard que sirve para entender la campaña de Napoleón (1812) 
+en Rusia:
+
+```{r, echo = FALSE, fig.cap = "Marcha de Napoleón de Charles Minard. Tomado de [Wikipedia](https://en.wikipedia.org/wiki/Charles_Joseph_Minard)"}
+knitr::include_graphics("figuras/Minard.png")
+```
+
+
+
+

@@ -1,0 +1,27 @@
+--- 
+title: "Una introducción al Análisis de Datos"
+author: "Felipe González"
+date: "`r Sys.Date()`"
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: [book.bib]
+biblio-style: apalike
+link-citations: yes
+description: "Notas para el taller de intro a análisis de datos de la Escuela AME 2019"
+---
+
+# Temario
+
+Notas y materiales para el taller de intro al análisis de datos de la Escuela
+AME 2019: Ciencia de datos
+
+## Temas
+
+1. Principios de análisis
+2. Inferencia y causalidad
+3. Modelos
+
+
+## Referencias importantes
+
+## Instrucciones
