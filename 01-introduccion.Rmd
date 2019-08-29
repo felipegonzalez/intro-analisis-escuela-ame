@@ -8,7 +8,7 @@ library(kableExtra)
 library(lubridate)
 library(gridExtra)
 theme_set(theme_minimal(base_size = 14))
-cb_paleta <- scale_colour_manual(values = c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
+paleta <- scale_colour_manual(values = c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
 source("R/funciones_auxiliares.R")
 ```
 
@@ -203,7 +203,7 @@ sat$clase <- kmeans(sat %>% select(frac),
 sat <- sat %>% mutate(rank_p = rank(frac, ties= "first") / length(frac))
 ggplot(sat, aes(x = rank_p, y = frac, label = state, colour = factor(clase))) +
   geom_point(size = 2) + geom_text_repel(colour = "gray80") +
-  cb_paleta
+  paleta
 ```
 
 Estos resultados indican que es más probable que buenos alumnos decidan hacer
@@ -219,19 +219,10 @@ ggplot(sat, aes(x = expend, y = math, label=state, colour = factor(clase))) +
   geom_point(size = 3) + 
   geom_smooth(method = "lm", se = FALSE) +
   xlab("Gasto por alumno (miles)") +
-  ylab("Calificación en matemáticas") + cb_paleta +
+  ylab("Calificación en matemáticas") + paleta +
   geom_text_repel(colour = "gray70") 
 ```
 
 Nótese que esto nos muestra que nuestra pregunta original tiene una respuesta
 simple pero poco útil. Podemos pensar en mejores preguntas, pero todas
 son mucho más difíciles de contestar. 
-
-
-
-## Enlace {-}
-
-```{r}
-
-
-```

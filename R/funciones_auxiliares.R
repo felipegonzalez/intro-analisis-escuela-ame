@@ -10,3 +10,10 @@ formatear_tabla <- function(x_tbl, scroll = FALSE){
     if(scroll) tabla <- tabla %>% scroll_box(width = "780px") 
     tabla 
 }
+
+cuantil <- function(x, probs = c(0,0.25, 0.5, 0.75,1), ...){
+    x_quo <- enquo(x)
+    valores <- quantile(x, probs = probs, names = FALSE, ...)
+    cuantil_nom <- probs
+    tibble(cuantil = cuantil_nom, valor = valores) 
+}
