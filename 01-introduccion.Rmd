@@ -143,6 +143,7 @@ enlace_2 <- read_csv("./datos/enlace/escuelas_enlace_nacional_primaria_2.csv", s
 enlace <- bind_rows(enlace_1, enlace_2)
 names(enlace) <- c("estado", "clave", "tipo", "mate_6", "num_evaluados", "num_evaluados_total", "marginacion")
 table(enlace$tipo)
+enlace <- enlace %>% mutate(tipo = ifelse(tipo == "INDêGENA", "INDÍGENA", tipo))
 write_csv(enlace, "datos/enlace.csv")
 #enlace <- enlace %>% 
 #    filter(tipo %in%  c("GENERAL", "PARTICULAR"))
@@ -153,7 +154,8 @@ de la calificación de matemáticas para un alumno es de 0-800. Vemos dispersió
 considerable en las calificaciones de las escuelas, y diferencias considerables 
 entre tipo de escuelas:
 
-```{r}
+```{r, message = FALSE}
+enlace <- read_csv("datos/enlace.csv")
 enlace <- enlace %>%  filter(num_evaluados_total > 0, mate_6 > 0) %>% 
     mutate(tipo = fct_reorder(tipo, mate_6, mean)) %>% 
     mutate(marginacion = fct_reorder(marginacion, mate_6, median))
@@ -216,7 +218,7 @@ enlace_tbl_marg <- enlace %>% group_by(tipo, marginacion) %>%
 
 ```
 
-```{r}
+```{r, fig.width = 10, fig.height = 4}
 g_80_p <- ggplot(enlace_tbl_marg  %>% spread(cuantil, valor), 
                                      aes(x = marginacion, y = `0.5`)) +
     geom_linerange(aes(ymin= `0.05`, ymax = `0.95`), colour = "gray40") +
