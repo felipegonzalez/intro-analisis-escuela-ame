@@ -123,6 +123,122 @@ knitr::include_graphics("figuras/Minard.png")
 
 ¿Cómo satisface los principios del diseño analítico este análisis?
 
+## Enlace 
+
+Consideremos la prueba Enlace (2011) de matemáticas para primarias. Una primera pregunta 
+que alguien podría hacerse es:  ¿qué escuelas son mejores, las privadas o las públicas? 
+
+```{r, message = FALSE, echo = FALSE, include=FALSE, eval = FALSE}
+col_spec <- cols_only(X2 = col_character(), X3 = col_character(),
+                      X6 = col_character(), X24 = col_double(),
+                      X77 = col_integer(),
+                      X82 = col_integer(),
+                      X84 = col_character())
+enlace_1 <- read_csv("./datos/enlace/escuelas_enlace_nacional_primaria_1.csv", skip=3, 
+                     col_names = FALSE, guess_max = 100000, col_type = col_spec,
+                     locale = locale(encoding = "ISO-8859-1"))
+enlace_2 <- read_csv("./datos/enlace/escuelas_enlace_nacional_primaria_2.csv", skip=3, 
+                     col_names = FALSE, guess_max = 100000, col_type = col_spec,
+                     locale = locale(encoding = "ISO-8859-1"))
+enlace <- bind_rows(enlace_1, enlace_2)
+names(enlace) <- c("estado", "clave", "tipo", "mate_6", "num_evaluados", "num_evaluados_total", "marginacion")
+table(enlace$tipo)
+write_csv(enlace, "datos/enlace.csv")
+#enlace <- enlace %>% 
+#    filter(tipo %in%  c("GENERAL", "PARTICULAR"))
+```
+
+Con estos datos a la mano, podemos hacer unos primeros resúmenes de los datos. El rango
+de la calificación de matemáticas para un alumno es de 0-800. Vemos dispersión
+considerable en las calificaciones de las escuelas, y diferencias considerables 
+entre tipo de escuelas:
+
+```{r}
+enlace <- enlace %>%  filter(num_evaluados_total > 0, mate_6 > 0) %>% 
+    mutate(tipo = fct_reorder(tipo, mate_6, mean)) %>% 
+    mutate(marginacion = fct_reorder(marginacion, mate_6, median))
+enlace_tbl <- enlace %>% group_by(tipo) %>% 
+    summarise(
+        n_escuelas = n(),
+        cuantiles = list(cuantil(mate_6, c(0.05, 0.25, 0.5, 0.75, 0.95)))) %>% unnest %>% 
+    mutate(valor = round(valor)) %>% 
+    mutate(tipo = fct_reorder(tipo, valor, mean))
+enlace_tbl %>% spread(cuantil, valor)
+```
+
+Podemos graficar de varias maneras, por ejemplo:
+
+
+
+
+
+```{r, fig.width = 10, fig.height = 6}
+g_medianas <- ggplot(enlace_tbl %>% filter(cuantil == 0.50), aes(x = tipo, y = valor)) +
+    geom_point(colour = "red") + ylim(c(150,880)) + labs(subtitle = "Gráfica 1")
+g_80 <- ggplot(enlace_tbl  %>% spread(cuantil,valor), 
+                                     aes(x = tipo, y = `0.5`)) +
+    geom_linerange(aes(ymin= `0.05`, ymax = `0.95`), colour = "gray40") +
+    geom_point(colour = "red", size = 3) + ylim(c(150,880)) + 
+    labs(subtitle = "Gráfica 1") +
+    ylab("Promedios Matemáticas")
+    
+g_80_p <- ggplot(enlace_tbl  %>% spread(cuantil,valor), 
+                                     aes(x = tipo, y = `0.5`)) +
+    geom_linerange(aes(ymin= `0.05`, ymax = `0.95`), colour = "gray40") +
+    geom_linerange(aes(ymin= `0.25`, ymax = `0.75`), size = 2, colour = "white") +
+    geom_point(colour = "red", size = 3) +
+     ylim(c(150,880)) + labs(subtitle = "Gráfica 2")+
+    ylab("Promedios Matemáticas")
+g_boxplot <- ggplot(enlace  , aes(x = tipo, y = mate_6)) + 
+    geom_boxplot(outlier.size = 0.7) +
+    labs(subtitle = "Gráfica 3")+ ylim(c(150,880))+
+    ylab("Promedios Matemáticas")
+gridExtra::grid.arrange(g_80, g_80_p, g_boxplot, nrow = 2)
+```
+
+En términos de comparaciones, podemos discutir qué tan apropiada es cada gráfica. Graficar más
+cuantiles es más útil para hacer comparaciones. Por ejemplo, en la Gráfica 2 podmos ver que la
+mediana de las escuelas generales está cercano al cuantil 10\% de las escuelas particulares. Por otro
+lado, el diagrama de caja y brazos muestra también valores "atípicos". 
+
+La diferencia es considerable entre tipos de escuela, y el principio 1 funciona bien con 
+estas gráficas. Sin embargo, sabemos que podemos mejorar en las principios 2 y 3. Podemos comenzar
+por agregar, por ejemplo, el nivel del marginación del municipio donde se encuentra la escuela.
+
+```{r}
+enlace_tbl_marg <- enlace %>% group_by(tipo, marginacion) %>% 
+    summarise(
+        n_escuelas = n(),
+        cuantiles = list(cuantil(mate_6, c(0.05, 0.25, 0.5, 0.75, 0.95)))) %>% unnest %>% 
+    mutate(valor = round(valor)) %>% 
+    ungroup %>% 
+    filter( n_escuelas > 30)
+
+```
+
+```{r}
+g_80_p <- ggplot(enlace_tbl_marg  %>% spread(cuantil, valor), 
+                                     aes(x = marginacion, y = `0.5`)) +
+    geom_linerange(aes(ymin= `0.05`, ymax = `0.95`), colour = "gray40") +
+    geom_linerange(aes(ymin= `0.25`, ymax = `0.75`), size = 2, colour = "white") +
+    geom_point(colour = "red", size = 2) +
+    ylab("Promedios Matemáticas") + facet_wrap(~tipo, nrow = 1) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+g_80_p
+```
+
+Esta gráfica nos ayuda a mejorar nuestra pregunta inicial
+
+- Las escuelas en municipios de marginación más baja tienden a tener mejores resultados. 
+- Escuelas particulares en municipios de marginación alta y media tienen resultados
+comparables con escuelas generales en municipios de marginación baja. 
+- Esto *indica* que hay factores asociados al desempeño que no tienen que ver con
+el tipo de "sistema", sino del entorno de las escuelas.
+- Los estudiantes que acuden a escuelas particulares provienen de familias que tienen
+más recursos mejores niveles de bienestar. ¿Qué otras variables nos ayudaría a completar
+este análisis?
+
+
 ## Estados y calificaciones en SAT {-}
 
 ¿Cómo se relaciona el gasto por alumno, a nivel estatal, 
@@ -197,12 +313,13 @@ fracción relativamente baja de los estudiantes toma el examen. La diferencia
 es considerable: 
 
 ```{r}
-logit <- function(x){ log(x/(100-x)) }
+set.seed(991)
 sat$clase <- kmeans(sat %>% select(frac), 
                     centers = 4,  nstart = 100, iter.max = 100)$cluster
 sat <- sat %>% mutate(rank_p = rank(frac, ties= "first") / length(frac))
 ggplot(sat, aes(x = rank_p, y = frac, label = state, colour = factor(clase))) +
-  geom_point(size = 2) + geom_text_repel(colour = "gray80") +
+  geom_point(size = 2) + 
+  #geom_text_repel(colour = "gray80", size = 3) +
   paleta
 ```
 
@@ -226,3 +343,53 @@ ggplot(sat, aes(x = expend, y = math, label=state, colour = factor(clase))) +
 Nótese que esto nos muestra que nuestra pregunta original tiene una respuesta
 simple pero poco útil. Podemos pensar en mejores preguntas, pero todas
 son mucho más difíciles de contestar. 
+
+## Comparaciones multiplicativas
+
+Hay dos maneras de hacer comparaciones:
+
+- En escala **aditivas**: por ejemplo, el grupo A tiene 10 personas más que el grupo B
+- En escala **multiplicativas**: el grupo A tiene 25\% más personas que el grupo B
+
+Hay muchos ejemplos donde preferimos hacer comparaciones multiplicativas:
+
+
+
+
+
+Distintos aspectos del análisis aparecen dependiendo de qué tipo de comparaciones queramos
+hacer, pero muy frecuentemente una tipo comparación es preferible al otro. Por ejemplo,
+si queremos comparar incrementos de precios a lo largo de distintos tipos de productos, es
+natural usar escalas multiplicativas. 
+
+
+
+
+
+
+
+
+
+Veamos el siguiente ejemplo, que es un experimento donde se midió el tiempo
+que tardan distintas personas en fusionar un estereograma para ver una imagen 3D.
+Existen dos condiciones: en una se dio indicaciones de qué figura tenían que
+buscar (VV) y en otra no se dio esa indicación. ¿Las instrucciones verbales
+ayudan a fusionar más rápido el estereograma?
+
+```{r, message = FALSE}
+fusion <- read_delim("./datos/fusion_time.txt", delim = " ", trim_ws = TRUE)
+ggplot(fusion, aes(x = nv.vv, y = time)) + geom_boxplot() + geom_jitter()
+```
+
+
+Lo primero que observamos es que hay una variabilidad grande entre el tiempo que tardan
+en fusionar: los rangos van de menos de 5 segundos hasta 20 - 40 segundos. Esto sugiere dos
+posibilidades:
+
+- Hay personas que son mucho más hábiles que otras para fusionar estereogramas
+- Cada persona puede tardar una cantidad muy variable de tiempo para fusionar un estereograma
+
+En el primer caso, tiene sentido que la ayuda de la información verbal tenga un efecto 
+multiplicativo: por ejemplo
+
+
