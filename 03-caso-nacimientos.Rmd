@@ -1,0 +1,284 @@
+## Ejemplo: nacimientos en México
+
+Este ejemplo sigue es tomado de un análisis de [A. Vehtari y A. Gelman](https://statmodeling.stat.columbia.edu/2016/05/18/birthday-analysis-friday-the-13th-update/)
+
+Usaremos los datos de nacimientos registrados por día en México, desde 1999. Haremos una pregunta
+como ¿cuáles son los cumpleaños más frecuentes?, o ¿Qué mes del año hay más nacimientos?
+
+Una gráfica popular (ver por ejemplo [esta visualización](http://thedailyviz.com/2016/09/17/how-common-is-your-birthday-dailyviz/)):
+
+```{r}
+knitr::include_graphics("./figuras/heatmapbirthdays1.png")
+library(tidyverse)
+library(ggthemes)
+theme_set(theme_minimal(base_size = 14))
+
+```
+
+¿Cómo criticarías este análisis desde el punto de vista de los tres primeros principios del
+diseño analítico? ¿Las comparaciones son útiles? ¿Hay aspectos multivariados? ¿Qué tan bien
+explica o sugiere estructura, mecanismos o causalidad?
+
+
+## Datos de natalidad para México
+
+Agreagmos por día el número de nacimientos registrados.
+
+```{r}
+library(tidyverse)
+library(lubridate)
+natalidad <- readRDS("./datos/natalidad/natalidad.rds") %>% 
+    mutate(dia_semana = weekdays(fecha)) %>% 
+    mutate(dia_año = yday(fecha)) %>% 
+    mutate(año = year(fecha)) %>% 
+    mutate(mes = month(fecha))
+```
+
+Podemos hacer una primera gráfica que no es muy útil
+
+```{r, fig.width = 10, fig.height=3}
+ggplot(natalidad, aes(x = fecha, y = n)) + 
+    geom_line(alpha = 0.2) + geom_point(alpha = 0.5) +
+    ylab("Nacimientos")
+```
+
+Hay varias características que notamos: la tendencia ligeramente decreciente de número de nacimientos
+a lo largo de los años, un patrón anual, dispersión producida por los días de la semana. La comparación
+entre días que esta gráfica muestra es una difícil de interpretar. ¿Cuántos nacimientos hay
+en el viernes 13 de un año dado, por ejemplo? ¿Qué pasa si lo comparamos con otros viernes en otros
+años y en otros meses?
+
+La idea del siguiente análisis es aislar las componentes que observamos en la serie de tiempo. Extraemos
+primero la tendencia, haciendo promedios locales con vecindad grande:
+
+Primero quitamos la tendencia:
+
+```{r}
+mod_1 <- loess(n ~ as.numeric(fecha), data = natalidad, span = 0.3, degree = 2)
+datos_dia <- natalidad %>% ungroup %>% 
+    mutate(ajuste_1 = fitted(mod_1)) %>% 
+    mutate(res_1 = n - ajuste_1)
+ggplot(datos_dia, aes(x = fecha)) +
+    geom_point(aes(y = n), alpha = 0.2, size = 1) +
+    geom_line(aes(y = ajuste_1), colour = "red", size = 1.2) 
+```
+
+Restamos a la serie la tendencia, y así obtenemos mejores comparaciones controlando por tendencia
+(por ejemplo, comparar un día de 2000 y de 2015 tendria más sentido):
+
+```{r}
+mod_anual <- loess(res_1 ~ yday(fecha), data = datos_dia, 
+               degree = 0, family = "symmetric", span = 0.02)
+datos_dia <- datos_dia %>%
+    mutate(ajuste_2 = fitted(mod_anual)) %>% 
+    mutate(res_2 = res_1 - ajuste_2)
+ggplot(datos_dia, aes(x = fecha)) +
+    geom_point(aes(y = res_1), alpha = 0.2, size = 1) +
+    geom_line(aes(y = ajuste_2), colour = "red", size = 1.2) 
+```
+
+Ahora podemos capturar el efecto de día de la semana. Podemos hacer suavizamiento
+loess para cada serie independiente
+
+```{r}
+datos_dia_1 <- datos_dia %>% group_by(dia_semana) %>% nest() %>% 
+    mutate(ajuste_mod = map(data, ~ loess(res_2 ~ as.numeric(fecha), data = .x, 
+                                          span = 0.1, degree = 1, family = "symmetric"))) %>% 
+    mutate(ajuste_3 =  map(ajuste_mod, fitted)) %>% 
+    select(-ajuste_mod) %>% 
+    unnest() %>% 
+    mutate(res_3 = res_2 - ajuste_3) %>% ungroup
+ggplot(datos_dia_1, aes(x = fecha)) + geom_point(aes(y = res_2), alpha = 0.5)  +
+    geom_line(aes(y = ajuste_3, colour = dia_semana), size = 1) + paleta 
+```
+
+Nótese que con estas estimaciones de distintos efectos, podemos regresar a la serie
+original para hacer mejores estimaciones, más suavizadas:
+
+```{r}
+datos_dia <-  datos_dia_1 %>% 
+    mutate(n_1 = n - ajuste_2 - ajuste_3 + res_3)
+ggplot(datos_dia, aes(x = fecha, y = n_1)) + geom_line()
+```
+```{r}
+mod_1 <- loess(n_1 ~ as.numeric(fecha), data = datos_dia, 
+               span = 0.05, degree = 2, family = "symmetric")
+datos_dia <- datos_dia %>% ungroup %>% 
+    mutate(ajuste_4 = fitted(mod_1)) %>% 
+    mutate(res_4 = n - ajuste_4) %>% 
+    mutate(n_2 = n - ajuste_4 - ajuste_3)
+ggplot(datos_dia, aes(x = fecha)) +
+    geom_point(aes(y = n_1), alpha = 0.2, size = 1) +
+    geom_line(aes(y = ajuste_4), colour = "red")
+```
+
+
+```{r}
+mod_anual <- loess(n_2 ~ as.numeric(fecha), data = datos_dia, 
+               degree = 2, family = "symmetric", span = 0.007)
+datos_dia <- datos_dia %>%
+    mutate(ajuste_5 = fitted(mod_anual)) %>% 
+    mutate(res_5 = n_2 - ajuste_5) %>%
+    mutate(n_3 = n - ajuste_4 - ajuste_5)
+ggplot(datos_dia, aes(x = fecha)) +
+    geom_point(aes(y = n_2), alpha = 0.2, size = 1) +
+    geom_line(aes(y = ajuste_5), colour = "red") 
+
+```
+
+
+
+
+```{r}
+datos_dia <- datos_dia %>% group_by(dia_semana) %>% nest() %>% 
+    mutate(ajuste_mod = map(data, ~ loess(n_3 ~ as.numeric(fecha), data = .x, span = 0.1, 
+                                          degree=1, family = "symmetric"))) %>% 
+    mutate(ajuste_6 =  map(ajuste_mod, fitted)) %>% 
+    select(-ajuste_mod) %>% 
+    unnest() %>% 
+    mutate(res_6 = n_3 - ajuste_6)
+ggplot(datos_dia, aes(x = fecha, y = n_3, group = dia_semana)) + geom_point(aes(y = n_3))  +
+    geom_line(aes(y = ajuste_6), colour = "red")
+```
+
+
+
+
+
+Y ahora graficamos junto:
+
+```{r}
+datos_l <- datos_dia %>% select(fecha, dia_semana, n, ajuste_4, ajuste_5, ajuste_6, res_6) %>% 
+    gather(variable, valor, ajuste_4:res_6)
+(100 * quantile(datos_dia$res_6, seq(0, 1, 0.1)) / mean(datos_dia$n)) %>% round(2)
+```
+
+```{r}
+ggplot(datos_l, aes(x = fecha, y = valor, colour = dia_semana)) + 
+    facet_wrap(~variable,  ncol = 1, scales = "free_y") +
+    geom_point(size=0.5) + scale_colour_colorblind() 
+
+```
+
+
+
+
+Ahora podemos examinar los residuales
+
+```{r}
+pascua <- ymd(as.character(timeDate::Easter(2000:2017)))
+pascua_m1 <- ymd(as.character(timeDate::Easter(2000:2017))) - days(1)
+pascua_m2 <- ymd(as.character(timeDate::Easter(2000:2017))) - days(2)
+pascua_m3 <- ymd(as.character(timeDate::Easter(2000:2017))) - days(3)
+pascua_m4 <- ymd(as.character(timeDate::Easter(2000:2017))) - days(4)
+pascua_m5 <- ymd(as.character(timeDate::Easter(2000:2017))) - days(5)
+pascua_m6 <- ymd(as.character(timeDate::Easter(2000:2017))) - days(6)
+
+datos_dia$pascua <- as.numeric(datos_dia$fecha %in% pascua)
+datos_dia$pascua_m1 <- as.numeric(datos_dia$fecha %in% pascua_m1)
+datos_dia$pascua_m2 <- as.numeric(datos_dia$fecha %in% pascua_m2)
+datos_dia$pascua_m3 <- as.numeric(datos_dia$fecha %in% pascua_m3)
+datos_dia$pascua_m4 <- as.numeric(datos_dia$fecha %in% pascua_m4)
+datos_dia$pascua_m5 <- as.numeric(datos_dia$fecha %in% pascua_m5)
+datos_dia$pascua_m6 <- as.numeric(datos_dia$fecha %in% pascua_m6)
+
+```
+
+```{r}
+datos_dia %>% arrange(res_6)
+datos_dia %>% arrange(desc(res_6))
+```
+
+```{r}
+sept_1 <- ymd(paste0(2000:2016, "-09-01")) %>% yday
+s_v <- ymd(paste0(2000:2016, "-02-14")) %>% yday
+datos_dia$antes_2006 <- datos_dia$año < 2006
+ggplot(datos_dia , aes(x = dia_año, y = res_6, 
+                                             group = factor(año))) + 
+    geom_line() +
+    geom_vline(xintercept = sept_1, alpha = 0.3) +
+    geom_vline(xintercept = s_v, alpha = 0.3, colour="red", alpha = 0.3) +
+    facet_wrap( ~ antes_2006, ncol = 1) 
+    
+```
+
+
+```{r}
+datos_da <- datos_dia %>% 
+    mutate(bisiesto = (año %in% c(2002, 2004, 2008, 2012, 2016))) %>% 
+    mutate(periodo_años = ifelse(antes_2006, "Hasta 2005", "Después de 2005")) %>% 
+    group_by(dia_año, periodo_años, bisiesto) %>% 
+    summarise(residual_prom = mean(res_6)) %>% 
+    mutate(dia_año_p = (dia_año + 150) %% 365) %>% 
+    mutate(grupo = cut(residual_prom, c(-2000,-200, 200,2000)))
+label_y <- -1000
+ggplot(datos_da, aes(x = dia_año_p, y = residual_prom,
+                     colour = grupo, group=1)) +
+    theme(legend.position = "none") +
+     geom_line(colour = "gray80") +
+    geom_point(size = 1.2) + scale_color_colorblind() +
+    facet_grid(bisiesto ~ periodo_años, labeller = label_both) +
+   # geom_vline(xintercept = 195, colour="red", alpha = 0.5) +
+        annotate("text", x = yday("2014-02-14") +  150, y = label_y, label = "San Valentín", 
+             colour="black", alpha = 0.5, angle = 90, vjust = -0.5) +
+#    geom_vline(xintercept = yday("2013-03-01") +  150, colour="red", alpha = 0.5) +
+    annotate("text", x = yday("2013-03-01") + 150, y = label_y, label = "Marzo 1", 
+             colour="black", alpha = 0.5, angle = 90, vjust = -0.5) +
+ #   geom_vline(xintercept = (yday("2013-09-16") +  150) %% 365, colour="red", alpha = 0.5) +
+    annotate("text", x = (yday("2013-09-16") +  150) %% 365, y = label_y, label = "Día de Independencia", 
+             colour="black", alpha = 0.5, angle = 90, vjust = -0.5) +
+  #  geom_vline(xintercept = (yday("2013-11-02") +  150) %% 365, colour="red", alpha = 0.5) +
+        annotate("text", x = (yday("2013-11-02") +  150) %% 365, y = label_y, label = "Día de Muertos", 
+             colour="black", alpha = 0.5, angle = 90, vjust = -0.5) +
+   # geom_vline(xintercept = (yday("2013-12-25") +  150) %% 365, colour="red", alpha = 0.5)+
+        annotate("text", x = (yday("2013-12-25") +  150) %% 365, y = label_y, label = "Navidad", 
+             colour="black", alpha = 0.5, angle = 90, vjust = -0.5) +
+#    geom_vline(xintercept = (yday("2013-01-01") +  150) %% 365, colour="red", alpha = 0.5)+
+    annotate("text", x = (yday("2013-01-01") +  150) %% 365, y = label_y, label = "Año Nuevo", 
+             colour="black", alpha = 0.5, angle = 90, vjust = -0.5) +
+ #   geom_vline(xintercept = (yday("2013-05-01") +  150) %% 365, colour="red", alpha = 0.5)+
+    annotate("text", x = (yday("2013-05-01") +  150) %% 365, y = label_y, label = "Mayo 1", 
+             colour="black", alpha = 0.5, angle = 90, vjust = -0.5) +
+  #  geom_vline(xintercept = (yday("2013-09-01") +  150) %% 365, colour="red", alpha = 0.5) +
+    annotate("text", x = (yday("2013-09-01") +  150) %% 365, y = label_y, label = "Septiembre 1", 
+             colour="black", alpha = 0.5, angle = 90, vjust = -0.5) 
+```
+
+
+
+```{r}
+datos_dia %>% arrange(res_6)
+datos_dia %>% arrange(desc(res_6))
+```
+
+```{r}
+datos_dia$dia_año <- yday(datos_dia$fecha)
+ggplot(datos_dia %>% filter(año > 2000), aes(x = fecha, y = res_6, 
+                                             group = factor(año))) + 
+    geom_line() + geom_smooth()
+    
+```
+
+### Semana santa {-}
+```{r}
+pascuas <- tibble(pascua_dia = ymd(as.character(timeDate::Easter(1999:2017)))) %>% 
+    mutate(año = year(pascua_dia))
+datos_dia <- left_join(datos_dia, pascuas, by = "año") %>% 
+    mutate(dias_para_pascua = fecha - pascua_dia) %>% 
+    mutate(dias_para_pascua = as.numeric(dias_para_pascua))
+datos_dia_p <- datos_dia %>% filter(abs(dias_para_pascua) < 20)
+ggplot(datos_dia_p, aes(x = dias_para_pascua, y = res_6)) + 
+    geom_line(aes(group=año), colour ="gray") + geom_point(colour = "gray") +
+    geom_smooth(data = datos_dia_p, aes(x=dias_para_pascua, y = res_6), 
+                se = FALSE, span = 0.12, method = "loess", col = "red") +
+    geom_hline(yintercept = 0)
+```
+
+```{r}
+datos_dia_p %>% group_by(año) %>% 
+    summarise(suma_res = sum(res_6), suma_total = sum(n)) %>% 
+    mutate( prop = suma_res / suma_total)
+sum(datos_dia_p$n)
+sum(datos_dia_p$res_6)
+100 * sum(datos_dia_p$res_6) / sum(datos_dia_p$n)
+```
