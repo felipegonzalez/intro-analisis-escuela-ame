@@ -343,25 +343,26 @@ ggplot(sat, aes(x = frac, y = sat)) + geom_point()
 
 Es natural observar una relación curva en estas circunstancias: si las distribuciones
 en la población se distribuyen de manera simétrica, con muchos estudiantes en el centro y cada vez
-menos en las colas, entonces conforme tomamos una fracción más grande de alumnos, y promedio
-baja cada vez más lentamente.
+menos en las colas, entonces conforme tomamos una fracción más grande de alumnos el promedio
+baja más lentamente. 
 
 Podemos usar el logaritmo para la fracción, y otenemos una relación cercana a lineal:
 
 
 ```{r, fig.width=4, fig.height=2.5}
 ggplot(sat, aes(x = frac, y = sat)) + geom_point() + 
-    scale_x_log10() +
-    geom_smooth(method = "lm")
+    geom_smooth(method = "loess", method.args = list(degree = 1))
 ```
 
 Lo que sugiere corregir el desempeño en cada estado de la siguiente forma: Ajustamos una
 recta:
 
 ```{r}
-sat$residuales_frac <- residuals(lm(sat ~ log(frac), data = sat))
-ggplot(sat, aes(x = expend, y = residuales_frac)) + geom_point() +
-    geom_smooth(span = 1, size = 0)
+sat$residuales_frac <- residuals(loess(sat ~ log(frac), degree = 1, span = 0.5, data = sat))
+ggplot(sat, aes(x = expend, y = residuales_frac, label = state)) + 
+    geom_point(colour = "red") +
+    geom_smooth(method = "loess", span = 0.5, size = 1, method.args = list(degree = 1), se = FALSE) +
+    geom_text_repel(alpha = 0.5)
 ```
 
 
