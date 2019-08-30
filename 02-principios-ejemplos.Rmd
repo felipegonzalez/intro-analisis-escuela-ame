@@ -273,9 +273,9 @@ para cualquier $\Delta x$. Esto implica que la derivada de $f$ tiene que ser $1/
 y por lo tanto la transformación que buscamos es el logaritmo. En escala logarítmica, 
 las comparaciones son:
 
-$$log(y) - log(x) = log(y/x) = log(1 + \frac{Delta x}{x}) \approx \frac{\Delta_x}{x}$$
+$$\log(y) - \log(x) = \log(y/x) = \log \left(1 + \frac{\Delta x}{x}\right) \approx \frac{\Delta x}{x}$$
 
-y esta aproximación es buena cuando $|{\Delta x}{x}| < 0.25$ (y muy buena si es menor a 0.1).
+y esta aproximación es buena cuando $|\frac{\Delta x}{x}| < 0.25$ (y muy buena si es menor a 0.1).
 
 
 Veamos entonces cómo se ven los datos de casas en escala logarítmica:
@@ -331,6 +331,39 @@ ggplot(fusion, aes(x = nv.vv, y = log(time))) + geom_boxplot() + geom_jitter()
 De la gráfica, vemos que la distribución VV está desplazada alrededor de 0.3 unidades (en logaritmo)
 hacia abajo. Esto implica que el tiempo bajo VV es alrededor de 66% los tiempos bajo NV. La variación
 dentro de cada grupo es considerable.
+
+## Calificaciones del SAT
+
+En el caso de las calificaciones del SAT, habíamos visto que había una relación
+fuerte entre la fracción de alumnos que toma el examen y la calificación promedio del estado:
+
+```{r, fig.width=4, fig.height=2.5}
+ggplot(sat, aes(x = frac, y = sat)) + geom_point()
+```
+
+Es natural observar una relación curva en estas circunstancias: si las distribuciones
+en la población se distribuyen de manera simétrica, con muchos estudiantes en el centro y cada vez
+menos en las colas, entonces conforme tomamos una fracción más grande de alumnos, y promedio
+baja cada vez más lentamente.
+
+Podemos usar el logaritmo para la fracción, y otenemos una relación cercana a lineal:
+
+
+```{r, fig.width=4, fig.height=2.5}
+ggplot(sat, aes(x = frac, y = sat)) + geom_point() + 
+    scale_x_log10() +
+    geom_smooth(method = "lm")
+```
+
+Lo que sugiere corregir el desempeño en cada estado de la siguiente forma: Ajustamos una
+recta:
+
+```{r}
+sat$residuales_frac <- residuals(lm(sat ~ log(frac), data = sat))
+ggplot(sat, aes(x = expend, y = residuales_frac)) + geom_point() +
+    geom_smooth(span = 1, size = 0)
+```
+
 
 
 
