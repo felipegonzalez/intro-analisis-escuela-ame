@@ -27,7 +27,7 @@ Agreagmos por día el número de nacimientos registrados.
 ```{r}
 library(tidyverse)
 library(lubridate)
-natalidad <- readRDS("./datos/natalidad/natalidad.rds") %>% 
+natalidad <- readRDS("./datos/nacimientos/natalidad.rds") %>% 
     mutate(dia_semana = weekdays(fecha)) %>% 
     mutate(dia_año = yday(fecha)) %>% 
     mutate(año = year(fecha)) %>% 
