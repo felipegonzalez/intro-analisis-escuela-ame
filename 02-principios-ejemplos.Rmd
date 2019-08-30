@@ -268,13 +268,17 @@ de IDOTRR (con rango de 50 a 150 mil dólares).
 
 ¿Cómo convertimos una escala aditiva a una multiplicativa? Buscamos una función $f$ tal que
 
-$$f(x+ \Delta x) - f(x) \approx \frac{\Delta x }{x}$$
+$$f(y) - f(x) = f(x+ \Delta x) - f(x) \approx \frac{\Delta x }{x}$$
 para cualquier $\Delta x$. Esto implica que la derivada de $f$ tiene que ser $1/x$,
-y por lo tanto la transfomración que buscamos es el logaritmo. 
+y por lo tanto la transformación que buscamos es el logaritmo. En escala logarítmica, 
+las comparaciones son:
 
-$$\log(a + \Delta) - \log(a) = log(1 + \Delta/a) \approx  \Delta/a,$$
-la aproximación es muy buena si $\Delta/a$ es menor que 0.2 en valor absoluto. 
+$$log(y) - log(x) = log(y/x) = log(1 + \frac{Delta x}{x}) \approx \frac{\Delta_x}{x}$$
 
+y esta aproximación es buena cuando $|{\Delta x}{x}| < 0.25$ (y muy buena si es menor a 0.1).
+
+
+Veamos entonces cómo se ven los datos de casas en escala logarítmica:
 
 ```{r}
 ggplot(casas %>% filter(nombre_zona %in% 
@@ -285,7 +289,7 @@ ggplot(casas %>% filter(nombre_zona %in%
     geom_jitter(width =0.1, height = 0, alpha = 0.5) 
 ```
 
-Y la variación es más similar a lo largo de cada zona. Los cuartiles superiores e inferiores
+La variación es más similar a lo largo de cada zona. Los cuartiles superiores e inferiores
 están un poco debajo o arriba de 25\% de la mediana, lo cual podemos leer directamente 
 de la gráfica.
 
