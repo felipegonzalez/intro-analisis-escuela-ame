@@ -1,0 +1,363 @@
+# Principios y ejemplos
+
+## Enlace {-}
+
+Consideremos la prueba Enlace (2011) de matemáticas para primarias. Una primera pregunta 
+que alguien podría hacerse es:  ¿qué escuelas son mejores, las privadas o las públicas? 
+
+```{r, message = FALSE, echo = FALSE, include=FALSE, eval = FALSE}
+col_spec <- cols_only(X2 = col_character(), X3 = col_character(),
+                      X6 = col_character(), X24 = col_double(),
+                      X77 = col_integer(),
+                      X82 = col_integer(),
+                      X84 = col_character())
+enlace_1 <- read_csv("./datos/enlace/escuelas_enlace_nacional_primaria_1.csv", skip=3, 
+                     col_names = FALSE, guess_max = 100000, col_type = col_spec,
+                     locale = locale(encoding = "ISO-8859-1"))
+enlace_2 <- read_csv("./datos/enlace/escuelas_enlace_nacional_primaria_2.csv", skip=3, 
+                     col_names = FALSE, guess_max = 100000, col_type = col_spec,
+                     locale = locale(encoding = "ISO-8859-1"))
+enlace <- bind_rows(enlace_1, enlace_2)
+names(enlace) <- c("estado", "clave", "tipo", "mate_6", "num_evaluados", "num_evaluados_total", "marginacion")
+table(enlace$tipo)
+enlace <- enlace %>% mutate(tipo = ifelse(tipo == "INDêGENA", "INDÍGENA", tipo))
+write_csv(enlace, "datos/enlace.csv")
+#enlace <- enlace %>% 
+#    filter(tipo %in%  c("GENERAL", "PARTICULAR"))
+```
+
+Con estos datos a la mano, podemos hacer unos primeros resúmenes de los datos. El rango
+de la calificación de matemáticas para un alumno es de 0-800. Vemos dispersión
+considerable en las calificaciones de las escuelas, y diferencias considerables 
+entre tipo de escuelas:
+
+```{r, message = FALSE}
+enlace <- read_csv("datos/enlace.csv")
+enlace <- enlace %>%  filter(num_evaluados_total > 0, mate_6 > 0) %>% 
+    mutate(tipo = fct_reorder(tipo, mate_6, mean)) %>% 
+    mutate(marginacion = fct_reorder(marginacion, mate_6, median))
+enlace_tbl <- enlace %>% group_by(tipo) %>% 
+    summarise(
+        n_escuelas = n(),
+        cuantiles = list(cuantil(mate_6, c(0.05, 0.25, 0.5, 0.75, 0.95)))) %>% unnest %>% 
+    mutate(valor = round(valor)) %>% 
+    mutate(tipo = fct_reorder(tipo, valor, mean))
+enlace_tbl %>% spread(cuantil, valor)
+```
+
+Podemos graficar de varias maneras, por ejemplo:
+
+
+
+
+
+```{r, fig.width = 10, fig.height = 6}
+g_medianas <- ggplot(enlace_tbl %>% filter(cuantil == 0.50), aes(x = tipo, y = valor)) +
+    geom_point(colour = "red") + ylim(c(150,880)) + labs(subtitle = "Gráfica 1")
+g_80 <- ggplot(enlace_tbl  %>% spread(cuantil,valor), 
+                                     aes(x = tipo, y = `0.5`)) +
+    geom_linerange(aes(ymin= `0.05`, ymax = `0.95`), colour = "gray40") +
+    geom_point(colour = "red", size = 3) + ylim(c(150,880)) + 
+    labs(subtitle = "Gráfica 1") +
+    ylab("Promedios Matemáticas")
+    
+g_80_p <- ggplot(enlace_tbl  %>% spread(cuantil,valor), 
+                                     aes(x = tipo, y = `0.5`)) +
+    geom_linerange(aes(ymin= `0.05`, ymax = `0.95`), colour = "gray40") +
+    geom_linerange(aes(ymin= `0.25`, ymax = `0.75`), size = 2, colour = "white") +
+    geom_point(colour = "red", size = 3) +
+     ylim(c(150,880)) + labs(subtitle = "Gráfica 2")+
+    ylab("Promedios Matemáticas")
+g_boxplot <- ggplot(enlace  , aes(x = tipo, y = mate_6)) + 
+    geom_boxplot(outlier.size = 0.7) +
+    labs(subtitle = "Gráfica 3")+ ylim(c(150,880))+
+    ylab("Promedios Matemáticas")
+gridExtra::grid.arrange(g_80, g_80_p, g_boxplot, nrow = 2)
+```
+
+En términos de comparaciones, podemos discutir qué tan apropiada es cada gráfica. Graficar más
+cuantiles es más útil para hacer comparaciones. Por ejemplo, en la Gráfica 2 podmos ver que la
+mediana de las escuelas generales está cercano al cuantil 10\% de las escuelas particulares. Por otro
+lado, el diagrama de caja y brazos muestra también valores "atípicos". 
+
+La diferencia es considerable entre tipos de escuela, y el principio 1 funciona bien con 
+estas gráficas. Sin embargo, sabemos que podemos mejorar en las principios 2 y 3. Podemos comenzar
+por agregar, por ejemplo, el nivel del marginación del municipio donde se encuentra la escuela.
+
+```{r}
+enlace_tbl_marg <- enlace %>% group_by(tipo, marginacion) %>% 
+    summarise(
+        n_escuelas = n(),
+        cuantiles = list(cuantil(mate_6, c(0.05, 0.25, 0.5, 0.75, 0.95)))) %>% unnest %>% 
+    mutate(valor = round(valor)) %>% 
+    ungroup %>% 
+    filter( n_escuelas > 30)
+
+```
+
+```{r, fig.width = 10, fig.height = 4}
+g_80_p <- ggplot(enlace_tbl_marg  %>% spread(cuantil, valor), 
+                                     aes(x = marginacion, y = `0.5`)) +
+    geom_linerange(aes(ymin= `0.05`, ymax = `0.95`), colour = "gray40") +
+    geom_linerange(aes(ymin= `0.25`, ymax = `0.75`), size = 2, colour = "white") +
+    geom_point(colour = "red", size = 2) +
+    ylab("Promedios Matemáticas") + facet_wrap(~tipo, nrow = 1) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+g_80_p
+```
+
+Esta gráfica nos ayuda a mejorar nuestra pregunta inicial
+
+- Las escuelas en municipios de marginación más baja tienden a tener mejores resultados. 
+- Escuelas particulares en municipios de marginación alta y media tienen resultados
+comparables con escuelas generales en municipios de marginación baja. 
+- Esto *indica* que hay factores asociados al desempeño que no tienen que ver con
+el tipo de "sistema", sino del entorno de las escuelas.
+- Los estudiantes que acuden a escuelas particulares provienen de familias que tienen
+más recursos mejores niveles de bienestar. ¿Qué otras variables nos ayudaría a completar
+este análisis?
+
+
+## Estados y calificaciones en SAT {-}
+
+¿Cómo se relaciona el gasto por alumno, a nivel estatal, 
+con sus resultados académicos? Hay trabajo
+considerable en definir estos términos, pero supongamos que tenemos el
+[siguiente conjunto de datos](http://jse.amstat.org/datasets/sat.txt) (@Guber2011), que son
+datos oficiales agregados por estado de Estados Unidos. Tenemos las variables
+*sat*, por ejemplo, que es la calificación promedio de los alumnos en cada estado
+(para 1997), y la variable *expend*, que es el gasto en miles de dólares
+por estudiante en (1994-1995), además de algunas otras variables. 
+
+Primero nos preguntamos si hay diferencias en gasto a lo largo de estados:
+(miles de dólares por alumno):
+
+```{r, message = FALSE}
+sat <- read_csv("datos/sat.csv")
+quantile(sat$expend, c(0, 0.1, 0.5, 0.9, 1))
+```
+
+
+Las calificaciones del sat:
+
+
+```{r, message = FALSE}
+sat %>% select(state, sat, expend) %>% sample_n(10) %>% arrange(sat) %>% formatear_tabla()
+```
+
+Podemos resumir las calificaciones del SAT a lo largo de estados:
+
+```{r}
+quantile(sat$sat)
+```
+
+Esta variación considerable es considerable para promedios del SAT: 
+el percentil 75 es alrededor de 1050 puntos, mientras que el percentil 33 corresponde a alrededor de 800.
+
+Ahora hacemos nuestro primer ejericico de comparación: ¿Cómo se ven las
+calificaciones para estados en distintos niveles de gasto? Podemos
+usar una gráfica de dispersión:
+
+
+```{r}
+ ggplot(sat, aes(x = expend, y = sat, label = state)) + 
+  geom_point(colour = "red", size = 2) + geom_text_repel(colour = "gray50") +
+  xlab("Gasto por alumno (miles de dólares)") +
+  ylab("Calificación promedio en SAT")
+```
+
+Estas comparaciones no son de muy alta calidad, solo estamos usando 2 variables (pocas),
+y no hay mucho que podamos decir en cuanto explicación.
+
+
+**Las unidades que estamos comparando pueden diferir fuertemente en otras 
+dimensiones importantes, lo cual hace interpretar la gráfica muy difícil**
+
+Sabemos que es posible que el IQ difiera en los estados, pero no como producir
+diferencias de este tipo. Sin embargo, descubrimos que existe una variable adicional, 
+que es el porcentaje de alumnos de cada estado
+que toma el SAT. Podemos agregar como sigue:
+
+```{r}
+ ggplot(sat, aes(x = expend, y = math, label=state, colour = frac)) + 
+  geom_point() + geom_text_repel() +
+  xlab("Gasto por alumno (miles de dólares)") +
+  ylab("Calificación en matemáticas") 
+```
+
+
+Y vemos entonces por qué nuestra comparación inicial es relativamente pobre:
+los estados con mejores resultados promedio en el SAT son aquellos donde una
+fracción relativamente baja de los estudiantes toma el examen. La diferencia
+es considerable: 
+
+```{r}
+set.seed(991)
+sat$clase <- kmeans(sat %>% select(frac), 
+                    centers = 4,  nstart = 100, iter.max = 100)$cluster
+sat <- sat %>% mutate(rank_p = rank(frac, ties= "first") / length(frac))
+ggplot(sat, aes(x = rank_p, y = frac, label = state, colour = factor(clase))) +
+  geom_point(size = 2) + 
+  #geom_text_repel(colour = "gray80", size = 3) +
+  paleta
+```
+
+Estos resultados indican que es más probable que buenos alumnos decidan hacer
+el SAT - y esto ocurre de manera diferente en cada estado (en algunos estados
+era más común otro examen, el ACT). 
+
+Si hacemos clusters de estados
+según el % de alumnos, empezamos a ver otra historia. Ajustamos rectas
+de mínimos cuadrados como referencia:
+
+```{r}
+ggplot(sat, aes(x = expend, y = math, label=state, colour = factor(clase))) + 
+  geom_point(size = 3) + 
+  geom_smooth(method = "lm", se = FALSE) +
+  xlab("Gasto por alumno (miles)") +
+  ylab("Calificación en matemáticas") + paleta +
+  geom_text_repel(colour = "gray70") 
+```
+
+Nótese que esto nos muestra que nuestra pregunta original tiene una respuesta
+simple pero poco útil. Podemos pensar en mejores preguntas, pero todas
+son mucho más difíciles de contestar. 
+
+## Comparaciones multiplicativas {-}
+
+Hay dos maneras de hacer comparaciones:
+
+- En escala **aditivas**: por ejemplo, el grupo A tiene 50 personas más que el grupo B
+- En escala **multiplicativas**: el grupo A tiene 25\% más personas que el grupo B
+
+¿Cuáles son más apropiadas?
+
+Distintos aspectos del análisis aparecen dependiendo de qué tipo de comparaciones queramos
+hacer, pero muy frecuentemente una tipo comparación es preferible al otro. Por ejemplo,
+si queremos comparar incrementos de precios a lo largo de distintos tipos de productos, es
+natural usar escalas multiplicativas. 
+
+La elección de la comparación apropiada mejora la calidad de las comparaciones, y
+simplifica el análisis y su interpretación. 
+
+
+```{r, message = FALSE}
+source("R/casas_preprocesamiento.R")
+set.seed(4021)
+casas_completo <- casas
+casas <- casas_completo %>% sample_frac(0.8)
+casas_holdout <- casas_completo %>% anti_join(casas)
+```
+
+```{r}
+ggplot(casas %>% filter(nombre_zona %in% c("NridgHt", "CollgCr", "IDOTRR", "Somerst", "Edwards")) %>% 
+           mutate(nombre_zona = fct_reorder(nombre_zona, precio_miles)), 
+       aes(x = nombre_zona, y = precio_miles)) + 
+    geom_boxplot(outlier.alpha = 0) +
+    geom_jitter(width =0.1, height = 0, alpha = 0.5) + scale_y_continuous(breaks = seq(100,600, 100))
+```
+
+En esta gráfica podemos hacer comparaciones entre precios de casas de manera
+aditiva: por ejemplo, las casa más cara de Somerset es de 50 mil dólares más cara que la
+siguiente más cara. O en IDOTRR las casas son 100 mil dólares más baratas que en CollgCr.
+
+Sin embargo, una comparación multiplicativa puede ser más adecuada y simplifica la descripción
+de los datos. Por ejemplo, una variación de 20 mil dólares en casas de NridgHt no es 
+muy considerable (con rango de 200 a 600 mil dólares), pero sí es importante para una casa
+de IDOTRR (con rango de 50 a 150 mil dólares).
+
+¿Cómo convertimos una escala aditiva a una multiplicativa? Buscamos una función $f$ tal que
+
+$$f(x+ \Delta x) - f(x) \approx \frac{\Delta x }{x}$$
+para cualquier $\Delta x$. Esto implica que la derivada de $f$ tiene que ser $1/x$,
+y por lo tanto la transfomración que buscamos es el logaritmo. 
+
+$$\log(a + \Delta) - \log(a) = log(1 + \Delta/a) \approx  \Delta/a,$$
+la aproximación es muy buena si $\Delta/a$ es menor que 0.2 en valor absoluto. 
+
+
+```{r}
+ggplot(casas %>% filter(nombre_zona %in% 
+                            c("NridgHt", "CollgCr", "IDOTRR", "Somerst", "Edwards")) %>% 
+           mutate(nombre_zona = fct_reorder(nombre_zona, precio_miles)), 
+       aes(x = nombre_zona, y = log(precio_miles))) +
+     geom_boxplot(outlier.alpha = 0) + 
+    geom_jitter(width =0.1, height = 0, alpha = 0.5) 
+```
+
+Y la variación es más similar a lo largo de cada zona. Los cuartiles superiores e inferiores
+están un poco debajo o arriba de 25\% de la mediana, lo cual podemos leer directamente 
+de la gráfica.
+
+Esta es una comparación superior, pues descubrimos una regularidad importante en los
+datos (principio 3). En este caso, lo logramos cambiando a una escala más apropiada para
+el problema.
+
+
+## Ejemplo: tiempos de fusión {-}
+
+Veamos el siguiente ejemplo, que es un experimento donde se midió el tiempo
+que tardan distintas personas en fusionar un estereograma para ver una imagen 3D.
+Existen dos condiciones: en una se dio indicaciones de qué figura tenían que
+buscar (VV) y en otra no se dio esa indicación. ¿Las instrucciones verbales
+ayudan a fusionar más rápido el estereograma?
+
+```{r, message = FALSE}
+fusion <- read_delim("./datos/fusion_time.txt", delim = " ", trim_ws = TRUE)
+ggplot(fusion, aes(x = nv.vv, y = time)) + geom_boxplot() + geom_jitter()
+```
+
+
+Lo primero que observamos es que hay una variabilidad grande entre el tiempo que tardan
+en fusionar: los rangos van de menos de 5 segundos hasta 20 - 40 segundos. Esto sugiere dos
+posibilidades:
+
+- Hay personas que son mucho más hábiles que otras para fusionar estereogramas
+- Cada persona puede tardar una cantidad muy variable de tiempo para fusionar un estereograma
+
+En cualquier caso, tiene más sentido pensar en diferencias relativas: si alguien tarda 8 segundos,
+tardó el doble que alguien que tardó 4 segundos, iugal que la comparación de alguien que tarda 16 vs 8 segundos.
+
+
+```{r, message = FALSE}
+fusion <- read_delim("./datos/fusion_time.txt", delim = " ", trim_ws = TRUE)
+ggplot(fusion, aes(x = nv.vv, y = log(time))) + geom_boxplot() + geom_jitter()
+```
+
+De la gráfica, vemos que la distribución VV está desplazada alrededor de 0.3 unidades (en logaritmo)
+hacia abajo. Esto implica que el tiempo bajo VV es alrededor de 66% los tiempos bajo NV. La variación
+dentro de cada grupo es considerable.
+
+
+
+## Cuándo la elección es menos importante {-}
+
+En algunos casos, la diferencia no es muy importante. Supongamos
+que tenemos pares de números positivos $(a_i, b_i)$, tales que las $b_i$ varían relativamente
+poco con respecto a las diferencias $a_i - b_i$. Entonces podemos aproximar:
+
+$$\frac{a_i - b_i}{b_i} = \frac{a_i - b_i}{A z_i + B}\approx  \frac{1}{B} (a_i - b_i),$$
+
+de forma que las comparaciones aditivas y multipicativas son similares, y *la elección se 
+reduce a una preferencia de la escala*. Esto se muestra en la primera gráfica en la siguiente
+ilustración. Por otro lado, cuando hay más variación en el denominador, las comparaciones pueden dar
+resultados muy diferentes:
+
+```{r, fig.width =6, fig.height = 5}
+set.seed(81)
+tab_1 <- tibble(b = runif(100, 45,55),   a = b * runif(100, 0, 2), tipo = "b var chica", error = "multiplicativo")
+tab_2 <- tibble(b = runif(100, 10, 100), a = b * runif(100, 0, 2), tipo = "b var grande", error = "multiplicativo")
+tab_3 <- tibble(b = runif(100, 45,55),   a = b + runif(100, -1, 1), tipo = "b var chica", error = "aditivo")
+tab_4 <- tibble(b = runif(100, 10, 100), a = b + runif(100, -1, 1), tipo = "b var grande", error = "aditivo")
+tab <- bind_rows(tab_1, tab_2)
+g_1 <- ggplot(tab, aes(x = a-b, y = (a-b)/b, colour = b)) + geom_point() +
+    facet_wrap(error ~ tipo)
+tab <- bind_rows(tab_3, tab_4)
+g_2 <- ggplot(tab, aes(x = a-b, y = (a-b)/b, colour = b)) + geom_point() +
+    facet_wrap(error ~ tipo)
+gridExtra::grid.arrange(g_1, g_2, ncol = 1)
+```
+
+
+
+
