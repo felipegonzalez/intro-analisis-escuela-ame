@@ -1,4 +1,4 @@
-## Ejemplo: nacimientos en México
+# Ejemplo: nacimientos en México
 
 Este ejemplo sigue es tomado de un análisis de [A. Vehtari y A. Gelman](https://statmodeling.stat.columbia.edu/2016/05/18/birthday-analysis-friday-the-13th-update/)
 
@@ -9,10 +9,6 @@ Una gráfica popular (ver por ejemplo [esta visualización](http://thedailyviz.c
 
 ```{r}
 knitr::include_graphics("./figuras/heatmapbirthdays1.png")
-library(tidyverse)
-library(ggthemes)
-theme_set(theme_minimal(base_size = 14))
-
 ```
 
 ¿Cómo criticarías este análisis desde el punto de vista de los tres primeros principios del
@@ -27,6 +23,8 @@ Agreagmos por día el número de nacimientos registrados.
 ```{r}
 library(tidyverse)
 library(lubridate)
+library(ggthemes)
+theme_set(theme_minimal(base_size = 14))
 natalidad <- readRDS("./datos/nacimientos/natalidad.rds") %>% 
     mutate(dia_semana = weekdays(fecha)) %>% 
     mutate(dia_año = yday(fecha)) %>% 
@@ -54,7 +52,7 @@ primero la tendencia, haciendo promedios locales con vecindad grande:
 Primero quitamos la tendencia:
 
 ```{r}
-mod_1 <- loess(n ~ as.numeric(fecha), data = natalidad, span = 0.3, degree = 2)
+mod_1 <- loess(n ~ as.numeric(fecha), data = natalidad, span = 0.2, degree = 2)
 datos_dia <- natalidad %>% ungroup %>% 
     mutate(ajuste_1 = fitted(mod_1)) %>% 
     mutate(res_1 = n - ajuste_1)
@@ -67,8 +65,8 @@ Restamos a la serie la tendencia, y así obtenemos mejores comparaciones control
 (por ejemplo, comparar un día de 2000 y de 2015 tendria más sentido):
 
 ```{r}
-mod_anual <- loess(res_1 ~ yday(fecha), data = datos_dia, 
-               degree = 0, family = "symmetric", span = 0.02)
+mod_anual <- loess(res_1 ~ as.numeric(fecha), data = datos_dia, 
+               degree = 0, family = "symmetric", span = 0.002)
 datos_dia <- datos_dia %>%
     mutate(ajuste_2 = fitted(mod_anual)) %>% 
     mutate(res_2 = res_1 - ajuste_2)
@@ -92,37 +90,40 @@ ggplot(datos_dia_1, aes(x = fecha)) + geom_point(aes(y = res_2), alpha = 0.5)  +
     geom_line(aes(y = ajuste_3, colour = dia_semana), size = 1) + paleta 
 ```
 
+Finalmente, examinamos los residuales finales:
+```{r}
+ggplot(datos_dia, aes(x = fecha, y = res_3)) + geom_line() +
+    geom_smooth(method = "loess", span = 0.03, 
+                method.args = list(degree=2, family = "symmetric"))
+```
+
+
 Nótese que con estas estimaciones de distintos efectos, podemos regresar a la serie
 original para hacer mejores estimaciones, más suavizadas:
 
 ```{r}
-datos_dia <-  datos_dia_1 %>% 
-    mutate(n_1 = n - ajuste_2 - ajuste_3 + res_3)
-ggplot(datos_dia, aes(x = fecha, y = n_1)) + geom_line()
-```
-```{r}
 mod_1 <- loess(n_1 ~ as.numeric(fecha), data = datos_dia, 
-               span = 0.05, degree = 2, family = "symmetric")
+               span = 0.1, degree = 2, family = "symmetric")
 datos_dia <- datos_dia %>% ungroup %>% 
     mutate(ajuste_4 = fitted(mod_1)) %>% 
     mutate(res_4 = n - ajuste_4) %>% 
     mutate(n_2 = n - ajuste_4 - ajuste_3)
 ggplot(datos_dia, aes(x = fecha)) +
-    geom_point(aes(y = n_1), alpha = 0.2, size = 1) +
+    geom_point(aes(y = n_1), alpha = 0.3, size = 1) +
     geom_line(aes(y = ajuste_4), colour = "red")
 ```
 
 
 ```{r}
 mod_anual <- loess(n_2 ~ as.numeric(fecha), data = datos_dia, 
-               degree = 2, family = "symmetric", span = 0.007)
+               degree = 2, family = "symmetric", span = 0.005)
 datos_dia <- datos_dia %>%
     mutate(ajuste_5 = fitted(mod_anual)) %>% 
     mutate(res_5 = n_2 - ajuste_5) %>%
     mutate(n_3 = n - ajuste_4 - ajuste_5)
 ggplot(datos_dia, aes(x = fecha)) +
     geom_point(aes(y = n_2), alpha = 0.2, size = 1) +
-    geom_line(aes(y = ajuste_5), colour = "red") 
+    geom_line(aes(y = ajuste_5), colour = "red", size = 1.5) 
 
 ```
 
@@ -131,8 +132,8 @@ ggplot(datos_dia, aes(x = fecha)) +
 
 ```{r}
 datos_dia <- datos_dia %>% group_by(dia_semana) %>% nest() %>% 
-    mutate(ajuste_mod = map(data, ~ loess(n_3 ~ as.numeric(fecha), data = .x, span = 0.1, 
-                                          degree=1, family = "symmetric"))) %>% 
+    mutate(ajuste_mod = map(data, ~ loess(n_3 ~ as.numeric(fecha), data = .x, span = 0.05, 
+                                          degree = 1, family = "symmetric"))) %>% 
     mutate(ajuste_6 =  map(ajuste_mod, fitted)) %>% 
     select(-ajuste_mod) %>% 
     unnest() %>% 
@@ -162,7 +163,6 @@ ggplot(datos_l, aes(x = fecha, y = valor, colour = dia_semana)) +
 
 
 
-
 Ahora podemos examinar los residuales
 
 ```{r}
@@ -181,6 +181,23 @@ datos_dia$pascua_m3 <- as.numeric(datos_dia$fecha %in% pascua_m3)
 datos_dia$pascua_m4 <- as.numeric(datos_dia$fecha %in% pascua_m4)
 datos_dia$pascua_m5 <- as.numeric(datos_dia$fecha %in% pascua_m5)
 datos_dia$pascua_m6 <- as.numeric(datos_dia$fecha %in% pascua_m6)
+datos_dia <- datos_dia %>% mutate(semana_santa = pascua + pascua_m1 +
+                                      pascua_m2 + pascua_m3 + pascua_m4 + pascua_m5 + pascua_m6)
+```
+
+
+```{r}
+datos_dia$dia_mes <- day(datos_dia$fecha)
+datos_dia$viernes_13 <- datos_dia$dia_mes == 13 & datos_dia$dia_semana == "Friday"
+ggplot(datos_dia %>% filter(dia_semana == "Friday"), 
+    aes(x = fecha, y = res_6, colour = factor(semana_santa))) +
+    geom_point() +
+    facet_wrap(~viernes_13) + scale_color_colorblind()
+```
+
+Podemos calcular cuántos nacimientos se "evitan" en Viernes 13:
+
+```{r}
 
 ```
 
@@ -251,13 +268,7 @@ datos_dia %>% arrange(res_6)
 datos_dia %>% arrange(desc(res_6))
 ```
 
-```{r}
-datos_dia$dia_año <- yday(datos_dia$fecha)
-ggplot(datos_dia %>% filter(año > 2000), aes(x = fecha, y = res_6, 
-                                             group = factor(año))) + 
-    geom_line() + geom_smooth()
-    
-```
+
 
 ### Semana santa {-}
 ```{r}
@@ -282,3 +293,9 @@ sum(datos_dia_p$n)
 sum(datos_dia_p$res_6)
 100 * sum(datos_dia_p$res_6) / sum(datos_dia_p$n)
 ```
+
+
+```{r}
+acf(datos_dia$res_6, lag.max = 600)
+```
+
