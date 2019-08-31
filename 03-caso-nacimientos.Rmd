@@ -79,14 +79,14 @@ Ahora podemos capturar el efecto de día de la semana. Podemos hacer suavizamien
 loess para cada serie independiente
 
 ```{r}
-datos_dia_1 <- datos_dia %>% group_by(dia_semana) %>% nest() %>% 
+datos_dia <- datos_dia %>% group_by(dia_semana) %>% nest() %>% 
     mutate(ajuste_mod = map(data, ~ loess(res_2 ~ as.numeric(fecha), data = .x, 
                                           span = 0.1, degree = 1, family = "symmetric"))) %>% 
     mutate(ajuste_3 =  map(ajuste_mod, fitted)) %>% 
     select(-ajuste_mod) %>% 
     unnest() %>% 
     mutate(res_3 = res_2 - ajuste_3) %>% ungroup
-ggplot(datos_dia_1, aes(x = fecha)) + geom_point(aes(y = res_2), alpha = 0.5)  +
+ggplot(datos_dia, aes(x = fecha)) + geom_point(aes(y = res_2), alpha = 0.5)  +
     geom_line(aes(y = ajuste_3, colour = dia_semana), size = 1) + paleta 
 ```
 
@@ -102,6 +102,7 @@ Nótese que con estas estimaciones de distintos efectos, podemos regresar a la s
 original para hacer mejores estimaciones, más suavizadas:
 
 ```{r}
+datos_dia <- datos_dia %>% mutate(n_1 = n - ajuste_2 - ajuste_3)
 mod_1 <- loess(n_1 ~ as.numeric(fecha), data = datos_dia, 
                span = 0.1, degree = 2, family = "symmetric")
 datos_dia <- datos_dia %>% ungroup %>% 
@@ -116,7 +117,7 @@ ggplot(datos_dia, aes(x = fecha)) +
 
 ```{r}
 mod_anual <- loess(n_2 ~ as.numeric(fecha), data = datos_dia, 
-               degree = 2, family = "symmetric", span = 0.005)
+               degree = 2, family = "symmetric", span = 0.01)
 datos_dia <- datos_dia %>%
     mutate(ajuste_5 = fitted(mod_anual)) %>% 
     mutate(res_5 = n_2 - ajuste_5) %>%
@@ -133,7 +134,7 @@ ggplot(datos_dia, aes(x = fecha)) +
 ```{r}
 datos_dia <- datos_dia %>% group_by(dia_semana) %>% nest() %>% 
     mutate(ajuste_mod = map(data, ~ loess(n_3 ~ as.numeric(fecha), data = .x, span = 0.05, 
-                                          degree = 1, family = "symmetric"))) %>% 
+                                          degree=2, family = "symmetric"))) %>% 
     mutate(ajuste_6 =  map(ajuste_mod, fitted)) %>% 
     select(-ajuste_mod) %>% 
     unnest() %>% 
@@ -227,7 +228,7 @@ datos_da <- datos_dia %>%
     group_by(dia_año, periodo_años, bisiesto) %>% 
     summarise(residual_prom = mean(res_6)) %>% 
     mutate(dia_año_p = (dia_año + 150) %% 365) %>% 
-    mutate(grupo = cut(residual_prom, c(-2000,-200, 200,2000)))
+    mutate(grupo = cut(residual_prom, c(-2000,-200, 200,2000))) 
 label_y <- -1000
 ggplot(datos_da, aes(x = dia_año_p, y = residual_prom,
                      colour = grupo, group=1)) +
