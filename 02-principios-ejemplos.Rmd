@@ -27,7 +27,8 @@ write_csv(enlace, "datos/enlace.csv")
 ```
 
 Con estos datos a la mano, podemos hacer unos primeros resúmenes de los datos. El rango
-de la calificación de matemáticas para un alumno es de 0-800. Vemos dispersión
+de la calificación de matemáticas para un alumno es de 0-800, y aproximadamente
+la mitad de los alumnos califica en el rengo de 450 a 550. Vemos dispersión
 considerable en las calificaciones de las escuelas, y diferencias considerables 
 entre tipo de escuelas:
 
@@ -46,9 +47,6 @@ enlace_tbl %>% spread(cuantil, valor)
 ```
 
 Podemos graficar de varias maneras, por ejemplo:
-
-
-
 
 
 ```{r, fig.width = 10, fig.height = 6}
@@ -278,15 +276,25 @@ $$\log(y) - \log(x) = \log(y/x) = \log \left(1 + \frac{\Delta x}{x}\right) \appr
 y esta aproximación es buena cuando $|\frac{\Delta x}{x}| < 0.25$ (y muy buena si es menor a 0.1).
 
 
-Veamos entonces cómo se ven los datos de casas en escala logarítmica:
+Veamos entonces cómo se ven los datos de casas en escala logarítmica. A la izquierda
+mostramos una gráfica más apropiada para análisis, y a la derecha una que quizá prefereríamos
+usar para presentación
 
-```{r}
-ggplot(casas %>% filter(nombre_zona %in% 
+```{r, fig.width = 9, fig.height = 3}
+g_1 <- ggplot(casas %>% filter(nombre_zona %in% 
                             c("NridgHt", "CollgCr", "IDOTRR", "Somerst", "Edwards")) %>% 
            mutate(nombre_zona = fct_reorder(nombre_zona, precio_miles)), 
        aes(x = nombre_zona, y = log(precio_miles))) +
      geom_boxplot(outlier.alpha = 0) + 
     geom_jitter(width =0.1, height = 0, alpha = 0.5) 
+g_2 <- ggplot(casas %>% filter(nombre_zona %in% 
+                            c("NridgHt", "CollgCr", "IDOTRR", "Somerst", "Edwards")) %>% 
+           mutate(nombre_zona = fct_reorder(nombre_zona, precio_miles)), 
+       aes(x = nombre_zona, y = precio_miles)) +
+     geom_boxplot(outlier.alpha = 0) + 
+    geom_jitter(width =0.1, height = 0, alpha = 0.5) + 
+    scale_y_log10(breaks = c(50, 100, 200, 400))
+gridExtra::grid.arrange(g_1, g_2, ncol = 2)
 ```
 
 La variación es más similar a lo largo de cada zona. Los cuartiles superiores e inferiores
@@ -325,7 +333,10 @@ tardó el doble que alguien que tardó 4 segundos, iugal que la comparación de 
 
 ```{r, message = FALSE}
 fusion <- read_delim("./datos/fusion_time.txt", delim = " ", trim_ws = TRUE)
-ggplot(fusion, aes(x = nv.vv, y = log(time))) + geom_boxplot() + geom_jitter()
+g_1 <- ggplot(fusion, aes(x = nv.vv, y = log(time))) + geom_boxplot() + geom_jitter() 
+g_2 <- ggplot(fusion, aes(x = nv.vv, y = time)) + geom_boxplot() + geom_jitter() +
+     scale_y_log10()
+gridExtra::grid.arrange(g_1, g_2, ncol = 2)
 ```
 
 De la gráfica, vemos que la distribución VV está desplazada alrededor de 0.3 unidades (en logaritmo)

@@ -90,26 +90,38 @@ ggplot(puntos, aes(x = x, y = y)) +
     
 ```
 
-Ejemplos: Alguien nos pregunta cuáles son las primarias que tienen las mejores calificaciones
-en la prueba Enlace. Podríamos buscar los datos de Enlace, e implementar algún tipo
-de ranqueo tomando en cuenta el tamaño de muesra de cada escuela. ¿Qué significa este
-ordenamiento? ¿Contesta una pregunta útil? ¿Cuál es probablemente una mejor pregunta?
+Ejemplos: Alguien nos pregunta cuáles son las tiendas que mas venden de una cadena. Podriamos
+consultar bases de datos, hacer extracciones, definir periodos, etc. y dar una
+respuesta que probablemente es poco útil. Nos damos cuenta, por ejemplo, porque la
+peor tienda es una que abrió hace relativamente poco, y la mejor es una de las tiendas
+más grandes que está en una zona de tráfico de alto costo. Una pregunta más interesante
+es, ¿qué equipos de ventas tienen mejor desempeño? ¿Cuánto aporta tener una cafetería dentro
+de la tienda en términos de ventas?, etc.  
 
 ## Principios del diseño analítico {-}
 
 Edward Tufte (@tufte06) propuso seis principios de diseño analítico que caracteriza
 al mejor trabajo de análisis de datos. Aquí están los principios con algunas
-modificaciones ligeras:
+modificaciones ligeras. Nos concentraremos en los siguientes:
 
 1. Muestran claramente **comparaciones**, diferencias y variación.
 2. Tienden a ser **multivariados**: estudian conjuntamente más de 1 o 2 variables.
 3. Muestran **estructura sistemática**, sugieren explicaciones. Cuando es posible,
 aportan evidencia de causalidad.
+
+También muy importantes pero en los que pondremos menos énfasis:
+
 4. Datos y procesos están bien **documentados**. El análisis es reproducible y transparente.
 5. Intentan **integrar** la evidencia completa: texto, explicaciones, tablas y
 gráficas.
+
+Y finalmente, el principio general:
+
 6. La calidad, relevancia, e integridad del **contenido** son los que
-al final sostienen al análisis.
+al final sostienen al análisis - por sí mismos, el uso de técnicas sofisticadas,
+algoritmos novedosos, uso o no de grandes datos, estilo de visualizaciones o presentaciones
+no son marcas o sellos de un análisis de datos exitoso.
+
 
 ## Gráfica de Minard {-}
 
