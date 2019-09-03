@@ -8,7 +8,6 @@ que alguien podría hacerse es:  ¿qué escuelas son mejores, las privadas o las
 ```{r, message = FALSE, echo = FALSE, include=FALSE, eval = FALSE}
 col_spec <- cols_only(X2 = col_character(), X3 = col_character(),
                       X6 = col_character(), X24 = col_double(),
-                      X77 = col_integer(),
                       X82 = col_integer(),
                       X84 = col_character())
 enlace_1 <- read_csv("./datos/enlace/escuelas_enlace_nacional_primaria_1.csv", skip=3, 
@@ -18,12 +17,10 @@ enlace_2 <- read_csv("./datos/enlace/escuelas_enlace_nacional_primaria_2.csv", s
                      col_names = FALSE, guess_max = 100000, col_type = col_spec,
                      locale = locale(encoding = "ISO-8859-1"))
 enlace <- bind_rows(enlace_1, enlace_2)
-names(enlace) <- c("estado", "clave", "tipo", "mate_6", "num_evaluados", "num_evaluados_total", "marginacion")
+names(enlace) <- c("estado", "clave", "tipo", "mate_6",  "num_evaluados_total", "marginacion")
 table(enlace$tipo)
 enlace <- enlace %>% mutate(tipo = ifelse(tipo == "INDêGENA", "INDÍGENA", tipo))
 write_csv(enlace, "datos/enlace.csv")
-#enlace <- enlace %>% 
-#    filter(tipo %in%  c("GENERAL", "PARTICULAR"))
 ```
 
 Con estos datos a la mano, podemos hacer unos primeros resúmenes de los datos. El rango
@@ -32,24 +29,25 @@ la mitad de los alumnos califica en el rengo de 450 a 550. Vemos dispersión
 considerable en las calificaciones de las escuelas, y diferencias considerables 
 entre tipo de escuelas:
 
-```{r, message = FALSE}
+```{r, message = FALSE, echo = FALSE}
 enlace <- read_csv("datos/enlace.csv")
 enlace <- enlace %>%  filter(num_evaluados_total > 0, mate_6 > 0) %>% 
     mutate(tipo = fct_reorder(tipo, mate_6, mean)) %>% 
     mutate(marginacion = fct_reorder(marginacion, mate_6, median))
+```
+
+```{r, message = FALSE}
 enlace_tbl <- enlace %>% group_by(tipo) %>% 
-    summarise(
-        n_escuelas = n(),
-        cuantiles = list(cuantil(mate_6, c(0.05, 0.25, 0.5, 0.75, 0.95)))) %>% unnest %>% 
-    mutate(valor = round(valor)) %>% 
-    mutate(tipo = fct_reorder(tipo, valor, mean))
-enlace_tbl %>% spread(cuantil, valor)
+    summarise(n_escuelas = n(),
+              cuantiles = list(cuantil(mate_6, c(0.05, 0.25, 0.5, 0.75, 0.95)))) %>% 
+    unnest %>% mutate(valor = round(valor)) 
+enlace_tbl %>% spread(cuantil, valor) %>% formatear_tabla()
 ```
 
 Podemos graficar de varias maneras, por ejemplo:
 
 
-```{r, fig.width = 10, fig.height = 6}
+```{r, fig.width = 10, fig.height = 6, echo = FALSE}
 g_medianas <- ggplot(enlace_tbl %>% filter(cuantil == 0.50), aes(x = tipo, y = valor)) +
     geom_point(colour = "red") + ylim(c(150,880)) + labs(subtitle = "Gráfica 1")
 g_80 <- ggplot(enlace_tbl  %>% spread(cuantil,valor), 
@@ -59,23 +57,24 @@ g_80 <- ggplot(enlace_tbl  %>% spread(cuantil,valor),
     labs(subtitle = "Gráfica 1") +
     ylab("Promedios Matemáticas")
     
-g_80_p <- ggplot(enlace_tbl  %>% spread(cuantil,valor), 
-                                     aes(x = tipo, y = `0.5`)) +
+g_80_p <- ggplot(enlace_tbl  %>% spread(cuantil,valor), aes(x = tipo, y = `0.5`)) +
     geom_linerange(aes(ymin= `0.05`, ymax = `0.95`), colour = "gray40") +
     geom_linerange(aes(ymin= `0.25`, ymax = `0.75`), size = 2, colour = "white") +
     geom_point(colour = "red", size = 3) +
      ylim(c(150,880)) + labs(subtitle = "Gráfica 2")+
     ylab("Promedios Matemáticas")
+
 g_boxplot <- ggplot(enlace  , aes(x = tipo, y = mate_6)) + 
     geom_boxplot(outlier.size = 0.7) +
-    labs(subtitle = "Gráfica 3")+ ylim(c(150,880))+
+    labs(subtitle = "Gráfica 3")+ ylim(c(150,930))+
     ylab("Promedios Matemáticas")
+
 gridExtra::grid.arrange(g_80, g_80_p, g_boxplot, nrow = 2)
 ```
 
 En términos de comparaciones, podemos discutir qué tan apropiada es cada gráfica. Graficar más
-cuantiles es más útil para hacer comparaciones. Por ejemplo, en la Gráfica 2 podmos ver que la
-mediana de las escuelas generales está cercano al cuantil 10\% de las escuelas particulares. Por otro
+cuantiles es más útil para hacer comparaciones. Por ejemplo, en la Gráfica 2 podemos ver que la
+mediana de las escuelas generales está cercano al cuantil 5\% de las escuelas particulares. Por otro
 lado, el diagrama de caja y brazos muestra también valores "atípicos". 
 
 La diferencia es considerable entre tipos de escuela, y el principio 1 funciona bien con 
@@ -83,24 +82,25 @@ estas gráficas. Sin embargo, sabemos que podemos mejorar en las principios 2 y 
 por agregar, por ejemplo, el nivel del marginación del municipio donde se encuentra la escuela.
 
 ```{r}
-enlace_tbl_marg <- enlace %>% group_by(tipo, marginacion) %>% 
-    summarise(
-        n_escuelas = n(),
-        cuantiles = list(cuantil(mate_6, c(0.05, 0.25, 0.5, 0.75, 0.95)))) %>% unnest %>% 
-    mutate(valor = round(valor)) %>% 
-    ungroup %>% 
-    filter( n_escuelas > 30)
-
+enlace_tbl_marg <- enlace %>% 
+    group_by(tipo, marginacion) %>% 
+    summarise(n_alumnos = sum(num_evaluados_total),
+              cuantiles = list(cuantil(mate_6, c(0.05, 0.25, 0.5, 0.75, 0.95)))) %>% 
+    unnest %>% mutate(valor = round(valor)) %>% 
+    filter( n_alumnos > 20)
 ```
 
-```{r, fig.width = 10, fig.height = 4}
+```{r, fig.width = 10, fig.height = 4, echo = FALSE}
 g_80_p <- ggplot(enlace_tbl_marg  %>% spread(cuantil, valor), 
                                      aes(x = marginacion, y = `0.5`)) +
     geom_linerange(aes(ymin= `0.05`, ymax = `0.95`), colour = "gray40") +
     geom_linerange(aes(ymin= `0.25`, ymax = `0.75`), size = 2, colour = "white") +
-    geom_point(colour = "red", size = 2) +
+    geom_point(colour = "red", aes(size = log10(n_alumnos/1000))) +
     ylab("Promedios Matemáticas") + facet_wrap(~tipo, nrow = 1) +
-    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+    scale_size_continuous(name = "Miles de \nAlumnos",
+                          breaks = c(-0.3, 0, 1, 2, 2.7),
+                          labels = c(0.5, 1, 10, 100, 500)) 
 g_80_p
 ```
 
@@ -111,9 +111,10 @@ Esta gráfica nos ayuda a mejorar nuestra pregunta inicial
 comparables con escuelas generales en municipios de marginación baja. 
 - Esto *indica* que hay factores asociados al desempeño que no tienen que ver con
 el tipo de "sistema", sino del entorno de las escuelas.
-- Los estudiantes que acuden a escuelas particulares provienen de familias que tienen
-más recursos mejores niveles de bienestar. ¿Qué otras variables nos ayudaría a completar
-este análisis?
+- Por ejemplo los estudiantes que acuden a escuelas particulares 
+probablemente provienen de familias que tienen
+más recursos mejores niveles de bienestar (pueden pagar la escuela). 
+¿Qué otras variables nos ayudaría a completar este análisis?
 
 
 ## Estados y calificaciones en SAT {-}
@@ -127,30 +128,22 @@ datos oficiales agregados por estado de Estados Unidos. Tenemos las variables
 (para 1997), y la variable *expend*, que es el gasto en miles de dólares
 por estudiante en (1994-1995), además de algunas otras variables. 
 
-Primero nos preguntamos si hay diferencias en gasto a lo largo de estados:
-(miles de dólares por alumno):
 
 ```{r, message = FALSE}
 sat <- read_csv("datos/sat.csv")
-quantile(sat$expend, c(0, 0.1, 0.5, 0.9, 1))
+sat_tbl <- sat %>% select(state, expend, sat) %>% 
+    gather(variable, valor, expend:sat) %>% 
+    group_by(variable) %>% 
+    summarise(cuantiles = list(cuantil(valor))) %>% unnest %>% 
+    spread(cuantil, valor)
+sat_tbl %>% formatear_tabla
 ```
 
-
-Las calificaciones del sat:
-
-
-```{r, message = FALSE}
-sat %>% select(state, sat, expend) %>% sample_n(10) %>% arrange(sat) %>% formatear_tabla()
-```
-
-Podemos resumir las calificaciones del SAT a lo largo de estados:
-
-```{r}
-quantile(sat$sat)
-```
 
 Esta variación considerable es considerable para promedios del SAT: 
-el percentil 75 es alrededor de 1050 puntos, mientras que el percentil 33 corresponde a alrededor de 800.
+el percentil 75 es alrededor de 1050 puntos, mientras que el percentil 33 corresponde a alrededor de 800, 
+e igualmente hay diferencias considerables de gasto por alumno (miles de dólares) a lo largo 
+de los estados.
 
 Ahora hacemos nuestro primer ejericico de comparación: ¿Cómo se ven las
 calificaciones para estados en distintos niveles de gasto? Podemos
@@ -166,7 +159,6 @@ usar una gráfica de dispersión:
 
 Estas comparaciones no son de muy alta calidad, solo estamos usando 2 variables (pocas),
 y no hay mucho que podamos decir en cuanto explicación.
-
 
 **Las unidades que estamos comparando pueden diferir fuertemente en otras 
 dimensiones importantes, lo cual hace interpretar la gráfica muy difícil**
@@ -187,9 +179,13 @@ que toma el SAT. Podemos agregar como sigue:
 Y vemos entonces por qué nuestra comparación inicial es relativamente pobre:
 los estados con mejores resultados promedio en el SAT son aquellos donde una
 fracción relativamente baja de los estudiantes toma el examen. La diferencia
-es considerable: 
+es considerable.
 
-```{r}
+En este punto podemos hacer varias cosas. Una primera idea es intentar comparar
+estados más similares en cuanto a la población de alumnos que asiste. Podríamos hacer
+grupos como sigue:
+
+```{r, echo = FALSE}
 set.seed(991)
 sat$clase <- kmeans(sat %>% select(frac), 
                     centers = 4,  nstart = 100, iter.max = 100)$cluster
@@ -208,7 +204,7 @@ Si hacemos clusters de estados
 según el % de alumnos, empezamos a ver otra historia. Ajustamos rectas
 de mínimos cuadrados como referencia:
 
-```{r}
+```{r, echo = FALSE}
 ggplot(sat, aes(x = expend, y = math, label=state, colour = factor(clase))) + 
   geom_point(size = 3) + 
   geom_smooth(method = "lm", se = FALSE) +
@@ -217,9 +213,53 @@ ggplot(sat, aes(x = expend, y = math, label=state, colour = factor(clase))) +
   geom_text_repel(colour = "gray70") 
 ```
 
+
+
+Sin embargo, el resultado puede variar considerablemente si categorizamos de distintas maneras.
+
+Otra idea es más útil es *factorizar* o *controlar*
+el efecto de el % de alumnos que toma el examen, y hacer una comparación de la variación
+restante. Para hacer esto, podemos examinar primero la relación entre la fracción de
+alumnos que toma el examen del SAT y las calificaciones:
+
+```{r, fig.width =5, fig.height = 3, echo = FALSE}
+ggplot(sat, aes(x = frac, y = sat, label = state)) + geom_point() +
+    geom_smooth(method = "loess", span = 0.5, method.args = list(degree = 1)) +
+    annotate("text", x = 40, y = 1050, label = "Desempeño por \n encima del esperado", colour = "gray30") +
+    annotate("text", x = 15, y = 900, label = "Desempeño por \n abajo del esperado", colour  = "gray30") 
+```
+
+Y podemos podemos extraer la diferencia entre cada observación y el esperado, representado
+por el suavizador azul. 
+
+```{r}
+suavizador <- loess(sat ~ frac, sat, degree = 1, span = 0.5)
+sat <- sat %>% mutate(residual = residuals(suavizador))
+ ggplot(sat, aes(x = expend, y = residual, label = state)) + 
+  geom_point(colour = "red", size = 2) + geom_text_repel(colour = "gray50") +
+  xlab("Gasto por alumno (miles de dólares)") +
+  ylab("Residual SAT (vs fracción de alumnos)")
+```
+
+La indicación que obtenemos es diferente: ahora parece ser que estados con más gasto
+tienden a tener mejores resultados, controlando por la fracción de estudiantes que toma el SAT,
+aunque hay variación considerable para cada nivel de gasto.
 Nótese que esto nos muestra que nuestra pregunta original tiene una respuesta
-simple pero poco útil. Podemos pensar en mejores preguntas, pero todas
-son mucho más difíciles de contestar. 
+simple pero poco útil. con este análisis podemos pensar en mejores preguntas, pero todas
+son mucho más difíciles de contestar!
+
+## Ajuste y residuales {-}
+
+Esta técnica de análisis en la que controlamos por variables para "escarbar en los datos",
+se puede resumir como sigue. Intentamos ajustar patrones conocidos en los datos, "quitarlos de
+los datos", y examinar la variación restante:
+
+$$ datos = ajuste + residual $$
+
+En un principio, ajuste y residuales requieren de nuestra atención. El objetivo de este proceso
+es hacer más datos, no menos, con la idea de que hacer comparaciones más finas que las que los
+datos sin procesar nos dan. Es una técnica que repetiremos varias veces.
+
 
 ## Comparaciones multiplicativas {-}
 
@@ -239,7 +279,7 @@ La elección de la comparación apropiada mejora la calidad de las comparaciones
 simplifica el análisis y su interpretación. 
 
 
-```{r, message = FALSE}
+```{r, message = FALSE, echo = FALSE}
 source("R/casas_preprocesamiento.R")
 set.seed(4021)
 casas_completo <- casas
@@ -247,7 +287,7 @@ casas <- casas_completo %>% sample_frac(0.8)
 casas_holdout <- casas_completo %>% anti_join(casas)
 ```
 
-```{r}
+```{r, echo = FALSE}
 ggplot(casas %>% filter(nombre_zona %in% c("NridgHt", "CollgCr", "IDOTRR", "Somerst", "Edwards")) %>% 
            mutate(nombre_zona = fct_reorder(nombre_zona, precio_miles)), 
        aes(x = nombre_zona, y = precio_miles)) + 
@@ -280,7 +320,7 @@ Veamos entonces cómo se ven los datos de casas en escala logarítmica. A la izq
 mostramos una gráfica más apropiada para análisis, y a la derecha una que quizá prefereríamos
 usar para presentación
 
-```{r, fig.width = 9, fig.height = 3}
+```{r, fig.width = 9, fig.height = 3, echo = FALSE}
 g_1 <- ggplot(casas %>% filter(nombre_zona %in% 
                             c("NridgHt", "CollgCr", "IDOTRR", "Somerst", "Edwards")) %>% 
            mutate(nombre_zona = fct_reorder(nombre_zona, precio_miles)), 
@@ -314,7 +354,7 @@ Existen dos condiciones: en una se dio indicaciones de qué figura tenían que
 buscar (VV) y en otra no se dio esa indicación. ¿Las instrucciones verbales
 ayudan a fusionar más rápido el estereograma?
 
-```{r, message = FALSE}
+```{r, message = FALSE, echo = FALSE}
 fusion <- read_delim("./datos/fusion_time.txt", delim = " ", trim_ws = TRUE)
 ggplot(fusion, aes(x = nv.vv, y = time)) + geom_boxplot() + geom_jitter()
 ```
@@ -331,7 +371,7 @@ En cualquier caso, tiene más sentido pensar en diferencias relativas: si alguie
 tardó el doble que alguien que tardó 4 segundos, iugal que la comparación de alguien que tarda 16 vs 8 segundos.
 
 
-```{r, message = FALSE}
+```{r, message = FALSE, echo = FALSE}
 fusion <- read_delim("./datos/fusion_time.txt", delim = " ", trim_ws = TRUE)
 g_1 <- ggplot(fusion, aes(x = nv.vv, y = log(time))) + geom_boxplot() + geom_jitter() 
 g_2 <- ggplot(fusion, aes(x = nv.vv, y = time)) + geom_boxplot() + geom_jitter() +
@@ -342,41 +382,6 @@ gridExtra::grid.arrange(g_1, g_2, ncol = 2)
 De la gráfica, vemos que la distribución VV está desplazada alrededor de 0.3 unidades (en logaritmo)
 hacia abajo. Esto implica que el tiempo bajo VV es alrededor de 66% los tiempos bajo NV. La variación
 dentro de cada grupo es considerable.
-
-## Calificaciones del SAT
-
-En el caso de las calificaciones del SAT, habíamos visto que había una relación
-fuerte entre la fracción de alumnos que toma el examen y la calificación promedio del estado:
-
-```{r, fig.width=4, fig.height=2.5}
-ggplot(sat, aes(x = frac, y = sat)) + geom_point()
-```
-
-Es natural observar una relación curva en estas circunstancias: si las distribuciones
-en la población se distribuyen de manera simétrica, con muchos estudiantes en el centro y cada vez
-menos en las colas, entonces conforme tomamos una fracción más grande de alumnos el promedio
-baja más lentamente. 
-
-Podemos usar el logaritmo para la fracción, y otenemos una relación cercana a lineal:
-
-
-```{r, fig.width=4, fig.height=2.5}
-ggplot(sat, aes(x = frac, y = sat)) + geom_point() + 
-    geom_smooth(method = "loess", method.args = list(degree = 1))
-```
-
-Lo que sugiere corregir el desempeño en cada estado de la siguiente forma: Ajustamos una
-recta:
-
-```{r}
-sat$residuales_frac <- residuals(loess(sat ~ log(frac), degree = 1, span = 0.5, data = sat))
-ggplot(sat, aes(x = expend, y = residuales_frac, label = state)) + 
-    geom_point(colour = "red") +
-    geom_smooth(method = "loess", span = 0.5, size = 1, method.args = list(degree = 1), se = FALSE) +
-    geom_text_repel(alpha = 0.5)
-```
-
-
 
 
 ## Cuándo la elección es menos importante {-}
