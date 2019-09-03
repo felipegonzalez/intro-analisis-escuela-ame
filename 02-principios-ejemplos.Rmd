@@ -185,7 +185,7 @@ En este punto podemos hacer varias cosas. Una primera idea es intentar comparar
 estados más similares en cuanto a la población de alumnos que asiste. Podríamos hacer
 grupos como sigue:
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, fig.width = 6, fig.height = 3}
 set.seed(991)
 sat$clase <- kmeans(sat %>% select(frac), 
                     centers = 4,  nstart = 100, iter.max = 100)$cluster
@@ -278,21 +278,24 @@ natural usar escalas multiplicativas.
 La elección de la comparación apropiada mejora la calidad de las comparaciones, y
 simplifica el análisis y su interpretación. 
 
+En el siguiente ejemplo, consideramos cómo varía el precio de un conjunto de casas
+dependiendo de la calificación de calidad:
+
 
 ```{r, message = FALSE, echo = FALSE}
 source("R/casas_preprocesamiento.R")
-set.seed(4021)
+set.seed(21)
 casas_completo <- casas
-casas <- casas_completo %>% sample_frac(0.8)
+casas <- casas_completo %>% sample_frac(0.9)
 casas_holdout <- casas_completo %>% anti_join(casas)
 ```
 
 ```{r, echo = FALSE}
-ggplot(casas %>% filter(nombre_zona %in% c("NridgHt", "CollgCr", "IDOTRR", "Somerst", "Edwards")) %>% 
-           mutate(nombre_zona = fct_reorder(nombre_zona, precio_miles)), 
-       aes(x = nombre_zona, y = precio_miles)) + 
+casas_ejemplo <- casas %>% filter(calidad_gral > 3) %>% 
+           mutate(nombre_zona = fct_reorder(nombre_zona, calidad_gral))
+ggplot(casas_ejemplo, aes(x = factor(calidad_gral), y = precio_miles)) + 
     geom_boxplot(outlier.alpha = 0) +
-    geom_jitter(width =0.1, height = 0, alpha = 0.5) + scale_y_continuous(breaks = seq(100,600, 100))
+    geom_jitter(width =0.1, height = 0, alpha = 0.2) 
 ```
 
 En esta gráfica podemos hacer comparaciones entre precios de casas de manera
@@ -321,29 +324,83 @@ mostramos una gráfica más apropiada para análisis, y a la derecha una que qui
 usar para presentación
 
 ```{r, fig.width = 9, fig.height = 3, echo = FALSE}
-g_1 <- ggplot(casas %>% filter(nombre_zona %in% 
-                            c("NridgHt", "CollgCr", "IDOTRR", "Somerst", "Edwards")) %>% 
-           mutate(nombre_zona = fct_reorder(nombre_zona, precio_miles)), 
-       aes(x = nombre_zona, y = log(precio_miles))) +
+g_1 <- ggplot(casas_ejemplo, 
+       aes(x = factor(calidad_gral), y = log(precio_miles))) +
      geom_boxplot(outlier.alpha = 0) + 
-    geom_jitter(width =0.1, height = 0, alpha = 0.5) 
-g_2 <- ggplot(casas %>% filter(nombre_zona %in% 
-                            c("NridgHt", "CollgCr", "IDOTRR", "Somerst", "Edwards")) %>% 
-           mutate(nombre_zona = fct_reorder(nombre_zona, precio_miles)), 
-       aes(x = nombre_zona, y = precio_miles)) +
+    geom_jitter(width =0.1, height = 0, alpha = 0.1)  + 
+    scale_y_continuous(breaks = seq(3, 7, 0.5))
+g_2 <- ggplot(casas_ejemplo, 
+       aes(x = factor(calidad_gral), y = precio_miles)) +
      geom_boxplot(outlier.alpha = 0) + 
-    geom_jitter(width =0.1, height = 0, alpha = 0.5) + 
-    scale_y_log10(breaks = c(50, 100, 200, 400))
+    geom_jitter(width =0.1, height = 0, alpha = 0.1) + 
+    scale_y_log10(breaks = c(50, 100, 200, 400)) 
 gridExtra::grid.arrange(g_1, g_2, ncol = 2)
 ```
 
-La variación es más similar a lo largo de cada zona. Los cuartiles superiores e inferiores
-están un poco debajo o arriba de 25\% de la mediana, lo cual podemos leer directamente 
-de la gráfica.
+La variación es más similar a lo largo de cada categoría de calidad. En la escala logarítmica,
+las cajas (cuartil inferior a cuartil superior) está alrededor de tamaño 0.25, y la mediana
+está aproximadamente centrada en cada caja. Así que la variación entre el cuartil superior
+e inferior respecto a la mediana es de 12\% aproximadamente. *Esto es aproximadamente
+cierto en cada grupo de calidad*. Podemos calcular cuantiles adicionales:
+
+```{r}
+casas_tbl <- casas_ejemplo %>% group_by(calidad_gral) %>% 
+    summarise(cuantiles = list(cuantil(log(precio_miles), c(0.05, 0.25, 0.5, 0.75, 0.95)))) %>% 
+    unnest
+g_80_p <- ggplot(casas_tbl  %>% spread(cuantil,valor), aes(x = calidad_gral, y = `0.5`)) +
+    geom_linerange(aes(ymin= `0.05`, ymax = `0.95`), colour = "gray40") +
+    geom_linerange(aes(ymin= `0.25`, ymax = `0.75`), size = 2, colour = "white") +
+    geom_point(colour = "red", size = 3) +
+    scale_y_continuous(breaks = seq(4, 6.5, by =0.25))
+g_80_p
+```
+
+```{r}
+casas_tbl <- casas_ejemplo %>% group_by(calidad_gral) %>% 
+    summarise(cuantiles = list(cuantil((precio_miles), c(0.05, 0.25, 0.5, 0.75, 0.95)))) %>% 
+    unnest
+ggplot(casas_tbl  %>% spread(cuantil,valor), aes(x = calidad_gral, y = `0.5`)) +
+    geom_linerange(aes(ymin= `0.05`, ymax = `0.95`), colour = "gray40") +
+    geom_linerange(aes(ymin= `0.25`, ymax = `0.75`), size = 2, colour = "white") +
+    geom_point(colour = "red", size = 3) 
+```
+
 
 Esta es una comparación superior, pues descubrimos una regularidad importante en los
 datos (principio 3). En este caso, lo logramos cambiando a una escala más apropiada para
 el problema.
+
+Podemos examinar los residuales de distintas maneras. Para describir estas gráficas
+de manera cuantitativa, por ejemplo, podemos hacer lo siguiente:
+
+$$ precio (log) = mediana\_calidad + residual $$
+
+Primero vemos las medianas por grupo:
+
+```{r}
+medianas <- casas_ejemplo %>% group_by(calidad_gral) %>% 
+    summarise(mediana = median(precio_miles)) %>% 
+    arrange(desc(mediana)) %>% 
+    mutate(incremento = mediana / lead(mediana) - 1)
+medianas
+```
+
+Como los residuales son similares en cada grupo, los agrupamos para resumir:
+
+```{r, echo = FALSE, message = FALSE}
+residuales <- casas_ejemplo %>% left_join(medianas) %>% 
+    group_by(calidad_gral) %>% 
+    mutate(residual = log(precio_miles) - log(mediana)) 
+quantile(residuales$residual, 
+         c(0, 0.10, 0.25, 0.5, 0.75, 0.9, 1)) %>% kable
+```
+
+Así que nuestro resumen sería la tabla de arriba, junto con esta distribución de residuales. Diríamos:
+
+- Cada punto adiconal de calidad, la mediana del precio aumenta larededor de 20\%. Dentro de cada grupo
+de calidad, el 50\% de las casas está a una diferencia máxima de +/- 12% del precio mediano de la categoría,
+y 80\% de las casas alrededor de +/- 27%. En algunos casos observamos diferencias de 60 - 130 \% del precio mediano.
+
 
 
 ## Ejemplo: tiempos de fusión {-}
