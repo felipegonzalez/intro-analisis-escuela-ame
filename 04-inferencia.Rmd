@@ -1,0 +1,293 @@
+# Inferencia y predicción
+
+Una buena parte de los problemas de análisis de datos tratan de una manera u otra 
+generalizar observaciones obtenidas de una muestra a la población de donde se extrajo la muestra. 
+Esto puede ocurrir de varias formas:
+
+- Una muestra extraída de una población finita, y queremos entender aspectos acerca 
+de la población (inferencia)
+- Con los datos obtenidos hoy, queremos hacer predicciones para el futuro (predicción)
+- Y más en general: tenemos ciertos datos que suponemos fueron influenciados por factores al azar, 
+controlados o no controlados ¿qué podemos decir acerca de las regularidades del proceso? 
+(incertidumbre en procesos y aleatorización)
+
+- Qué tan sólidas son nuestras conclusiones a variación en la muestra que usamos? 
+
+En todos los casos, el paso importante es intentar separar señales útiles (para explicar, predecir,
+o mostrar estructura) de aspectos debidos a factores de los que no tenemos información.
+
+### Ejemplo
+
+En este experimento particular, se seleccionó al azar el tratamiento para cada individuo. Pero tenemos
+que cuestionar que quizá por azar, parece ser mejor. Por ejemplo, comparemos lo que veríamos
+con una muestra en contraste con la población:
+
+```{r, fig.width = 6, fig.height = 3}
+library(tidyverse)
+library(ggrepel)
+library(nullabor)
+library(knitr)
+theme_set(theme_minimal(base_size = 14))
+paleta <- scale_colour_manual(values = c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
+source("R/funciones_auxiliares.R")
+```
+
+```{r}
+set.seed(72)
+pob_tab <- tibble(id = 1:2000, x = rgamma(2000, 2, 1), grupo = sample(c("a","b", "c"), 2000, 
+                                                                      prob = c(4,2,1), replace = T))
+muestra_tab <- pob_tab %>% sample_n(70)
+g_1 <- ggplot(muestra_tab, aes(x = grupo, y = x)) + geom_boxplot(outlier.alpha = 0) +
+    geom_jitter(alpha = 0.3) + 
+    coord_flip() +  labs(subtitle = "Muestra")
+g_2 <- ggplot(pob_tab, aes(x= grupo, y = x)) + geom_boxplot(outlier.alpha = 0) +
+    coord_flip() +  labs(subtitle = "Población")
+gridExtra::grid.arrange(g_1, g_2, ncol = 2) 
+```
+
+Por ejemplo, obtenemos para la muestra:
+
+```{r}
+muestra_tab %>% group_by(grupo) %>% summarise(mediana = median(x))
+```
+
+En la muestra, la mediana del grupo c es menor que la de b, por ejemplo. 
+Las dispersiones parecen ser también ditintas.
+Pero en la población, las medianas son muy similares. Las muestras son relativamente chicas.
+
+Cualquier cuantificación de la evidencia que vimos en la muestra debería tomar en cuenta el
+hecho de que estamos utilizando muestras relativamente chicas.
+
+## Permutaciones y el lineup
+
+Una forma de pensar este problema es el siguiente: 
+
+- Observamos ciertas diferencias en las muestras obtenidas para cada grupo.
+- Suponiendo que los grupos realmente tienen distribuciones muy similares, entonces los
+grupos "a", "b", "c" son realmente etiquetas que no tienen significado.
+- Si permutamos al azar las etiquetas, entonces obtendríamos otra muestra que pudimos haber
+obtenido
+- Si repetimos el proceso de permutación muchas veces, podemos comparar las diferencias que observamos
+en la muestras. Si las diferencias en las muestras no tienen ninguna característica sistemática
+que las distinga de las otras muestras obtenidas por permutaciones, entonces tenemos poca
+evidencia de que las diferencias que observamos en nuestra muestra sean sistemáticas.
+
+Vamos a intentar esto, por ejemplo usando una gráfica de cuantiles
+
+```{r}
+set.seed(11)
+reps <- lineup(null_permute("grupo"), muestra_tab, n = 12)
+grafica_cuantiles(reps %>%  mutate(grupo_escondido = factor(digest::digest2int(grupo) %% 177)), 
+                             grupo_escondido, x) + facet_wrap(~.sample) + ylab("x")
+```
+
+Y la pregunta que hacemos es **podemos distinguir nuestra muestra entre todas las 
+replicaciones producidas con permutaciones**? Nota: para evitar en parte hacer trampa, reetiquetamos
+las letras, y usamos otra gráfica diferente.
+
+En este ejemplo, es difícil indicar cuáles son los datos. Los grupos tienen distribuciones
+similares y factible que las diferencias que observamos se deban a variación muestral.  Podríamos
+resumir nuestros datos como:
+
+Como los datos son consistentes con la hipótesis de que todos los grupos provienen de la
+misma distribución, podemos resumir haciendo *pooling* o agregación. Para cada grupo, 
+los percentiles son
+
+```{r}
+muestra_tab %>% pull(x) %>% quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.9))
+```
+
+Comparando con los datos poblacionales:
+
+```{r}
+pob_tab %>% pull(x) %>%  quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.9))
+```
+
+Gracias a que hicimos pooling de todos, estas estimaciones son bastantes razonables.
+
+## Cuando la estadística es numérica {-}
+
+Ahora suupongamos que hacemos una pregunta mucho más específica, que se refiere a un número particular:
+¿la media del grupo b puede ser considerablemente es diferente de la del grupo c? En lugar de usar 
+gráfica, podemos calcular la estadística de interés para cada grupo, y tomar la diferencia. Comparamos
+el valor observado con los resultados de las muestras obtenidas por permutación:
+
+```{r, fig.width = 5, fig.height = 2.5}
+set.seed(118)
+reps <- lineup(null_permute("grupo"), muestra_tab, n = 3000)
+dif_obs <- muestra_tab %>% group_by(grupo) %>% 
+    summarise(mediana  = median(x)) %>% 
+    spread(grupo, mediana) %>% 
+    mutate(diferencia = b - c) %>% pull(diferencia)
+reps_media <- reps %>% 
+    group_by(grupo, .sample) %>% 
+    summarise(mediana  = median(x)) %>% 
+    spread(grupo, mediana) %>% 
+    mutate(diferencia = b - c)
+g_1 <- ggplot(reps_media, aes(sample = diferencia)) + geom_qq(distribution = stats::qunif) +
+    geom_hline(yintercept = dif_obs, colour = "red") +
+    annotate("text", x = 0.25, y = dif_obs + 0.1, label = "diferencia observada", colour = "red")
+g_2 <- ggplot(reps_media, aes(x = diferencia)) + geom_histogram(binwidth = 0.1 ) +
+    geom_vline(xintercept = dif_obs, colour = "red")
+gridExtra::grid.arrange(g_1, g_2, ncol = 2) 
+```
+
+
+Y notamos que el resultado obtenido en nuestra muestra no es excepcionalmente grande
+
+???
+** Hablar de p-values **
+
+Repitimos el ejemplo con un cambio
+
+```{r}
+set.seed(72)
+muestra_tab <- pob_tab %>% sample_n(90) %>% 
+    mutate(x = ifelse(grupo == "b", 2.5 * x, x))
+g_1 <- ggplot(muestra_tab, aes(x = grupo, y = x)) + geom_boxplot(outlier.alpha = 0) +
+    geom_jitter(alpha = 0.3) + 
+    coord_flip() + ylim(c(0, 15)) + labs(subtitle = "Muestra")
+g_2 <- ggplot(pob_tab, aes(x= grupo, y = x)) + geom_boxplot(outlier.alpha = 0) +
+    coord_flip() + ylim(c(0, 15)) + labs(subtitle = "Población")
+gridExtra::grid.arrange(g_1, g_2, ncol = 2) 
+```
+
+Por ejemplo, obtenemos para la muestra:
+
+```{r}
+muestra_tab %>% group_by(grupo) %>% summarise(mediana = median(x))
+```
+
+```{r}
+set.seed(9012)
+reps <- lineup(null_permute("grupo"), muestra_tab, n = 12)
+grafica_cuantiles(reps %>%  mutate(grupo_escondido = factor(digest::digest2int(grupo) %% 177)), 
+                             grupo_escondido, x) + facet_wrap(~.sample) + ylab("x") +
+    coord_flip()
+```
+
+
+Podemos distinguir más o menos claramente que está localizada en valores
+más altos y tiene mayor dispersión.
+
+```{r, fig.width = 5, fig.height = 2.5}
+set.seed(118)
+reps <- lineup(null_permute("grupo"), muestra_tab, n = 3000)
+dif_obs <- muestra_tab %>% group_by(grupo) %>% 
+    summarise(mediana  = median(x)) %>% 
+    spread(grupo, mediana) %>% 
+    mutate(diferencia = b - c) %>% pull(diferencia)
+reps_media <- reps %>% 
+    group_by(grupo, .sample) %>% 
+    summarise(mediana  = median(x)) %>% 
+    spread(grupo, mediana) %>% 
+    mutate(diferencia = b - c)
+g_1 <- ggplot(reps_media, aes(sample = diferencia)) + geom_qq(distribution = stats::qunif) +
+    geom_hline(yintercept = dif_obs, colour = "red") +
+    annotate("text", x = 0.4, y = dif_obs + 0.2, label = "diferencia observada", colour = "red")
+g_2 <- ggplot(reps_media, aes(x = diferencia)) + geom_histogram(binwidth = 0.1 ) +
+    geom_vline(xintercept = dif_obs, colour = "red")
+gridExtra::grid.arrange(g_1, g_2, ncol = 2) 
+```
+
+La diferencia observada es extrema, y es muy poco probable que hayamos observado tal diferencia
+por variación muestra. Tenemos evidencia de que la mediana del grupo "c" es más alta en la población que
+"b".
+
+
+## Ejemplo: casas
+
+Las medianas de las casas son claramente diferentes:
+
+```{r}
+casas_f <- casas %>% filter(nombre_zona %in% 
+            c( "Crawfor", "CollgCr", "Edwards", "IDOTRR", "NoRidge", "NridgHt", "NAmes"))
+reps <- lineup(null_permute("nombre_zona"), casas_f, n = 6)
+grafica_casas <- function(data){
+    ggplot(data %>% mutate(nombre_zona = fct_reorder(nombre_zona, precio_miles, median)), 
+           aes(x = nombre_zona, y = precio_miles)) + #geom_boxplot(outlier.alpha = 0, width = 0.3) +
+         geom_boxplot(alpha = 0.5)  + scale_y_log10()
+}
+#grafica_casas(reps) + facet_wrap(~ .sample, ncol = 2) + coord_flip()
+grafica_cuantiles(reps, nombre_zona, precio_miles) + facet_wrap(~.sample) + 
+    coord_flip() + scale_y_log10()
+
+```
+
+
+Que nos indica varias cosas:
+
+- Las medianas de las zonas son diferentes, y sus distribuciones están recorridas respecto
+a la media
+
+En este ejemplo, es´ más interesante averiguar si los cuantiles representados tienen distribución 
+similar.
+
+```{r, echo = FALSE}
+pos_datos <- sample(12, 1)
+```
+
+```{r, fig.height = 6, fig.width = 6}
+library(nullabor)
+casas_f <- casas %>% filter(nombre_zona %in% 
+            c( "Crawfor", "CollgCr", "Edwards",  "NoRidge", "NridgHt", "NAmes")) %>% 
+    group_by(nombre_zona) %>% mutate(mediana = median(log(precio_m2_miles)), 
+                                     residual = log(precio_m2_miles) - mediana) %>% ungroup
+reps <- lineup(null_permute("residual"), casas_f, n = 12, pos = pos_datos)
+reps <- reps %>% mutate(nombre_zona = fct_reorder(nombre_zona, mediana, median)) %>% 
+               mutate(precio_miles_perm = mediana + residual) %>% 
+    mutate(mediana_perm = median((precio_miles_perm)), residual = (precio_miles_perm) - mediana_perm) %>% ungroup
+#grafica_casas(reps) + facet_wrap(~ .sample, ncol = 2) + coord_flip()
+grafica_cuantiles(reps, nombre_zona, residual) + facet_wrap(~.sample) + 
+    coord_flip() 
+```
+
+La aproximación es razonable, y por esto nos da una razón sólida para
+la observación que hicimos en la sección anterior. 
+
+
+---
+
+
+## Ejemplo: tiempos de fusión
+
+Consideremos el ejemplo de fusión de estereogramas que vimos anteriormente. Una pregunta 
+que podríamos hacer es: considerando que hay mucha variación en el tiempo de fusión dentro
+de cada tratamiento, necesitamos calificar la evidencia de nuestra conclusión (el tiempo de fusión se reduce al 66\% aproximadamente).
+
+```{r, fig.width = 4, fig.height = 5}
+reps <- lineup(null_permute("nv.vv"), fusion, 10)
+ggplot(reps, aes(x = nv.vv, y = time, colour = nv.vv)) +
+    #geom_boxplot(colour = "gray") +
+    geom_jitter(width = 0.1, alpha = 0.7, size = 1) + 
+    facet_wrap(~.sample) + scale_y_log10()
+```
+
+```{r}
+reps <- lineup(null_permute("nv.vv"), fusion, 1000)
+cocientes_perm <- reps  %>%  group_by(.sample, nv.vv) %>% 
+    summarise(mediana = mean(time)) %>% 
+    spread(nv.vv, mediana) %>% 
+    summarise(cociente = (VV / NV))
+ggplot(cocientes_perm, aes(x = cociente)) + geom_histogram() +
+    geom_vline(xintercept = 0.64)
+```
+
+Lo que muestra evidencia considerable de la instrucción verbal ayuda a reducir el tiempo
+de fusión de los estereogramas.
+
+
+
+## Ejemplo {-}
+
+```{r}
+sat_p <- lineup(null_permute("sat"), sat, 10)
+graf_sat <- function(data){
+    ggplot(data, aes(x = expend, y = sat )) +
+        geom_point() +
+        geom_smooth(method = "loess", 
+                    colour = "red",
+                    span = 1, method.args = list(degree = 1, family = "symmetric"))
+}
+graf_sat(sat_p) + facet_wrap( ~ .sample, ncol = 5)
+```

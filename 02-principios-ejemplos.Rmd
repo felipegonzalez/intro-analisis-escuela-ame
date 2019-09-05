@@ -30,6 +30,9 @@ considerable en las calificaciones de las escuelas, y diferencias considerables
 entre tipo de escuelas:
 
 ```{r, message = FALSE, echo = FALSE}
+library(tidyverse)
+library(ggrepel)
+library(knitr)
 enlace <- read_csv("datos/enlace.csv")
 enlace <- enlace %>%  filter(num_evaluados_total > 0, mate_6 > 0) %>% 
     mutate(tipo = fct_reorder(tipo, mate_6, mean)) %>% 
@@ -223,11 +226,19 @@ restante. Para hacer esto, podemos examinar primero la relación entre la fracci
 alumnos que toma el examen del SAT y las calificaciones:
 
 ```{r, fig.width =5, fig.height = 3, echo = FALSE}
+#sat <- sat %>% mutate(cuant = qnorm(frac / 100, 500, 100))
 ggplot(sat, aes(x = frac, y = sat, label = state)) + geom_point() +
     geom_smooth(method = "loess", span = 0.5, method.args = list(degree = 1)) +
     annotate("text", x = 40, y = 1050, label = "Desempeño por \n encima del esperado", colour = "gray30") +
     annotate("text", x = 15, y = 900, label = "Desempeño por \n abajo del esperado", colour  = "gray30") 
+
 ```
+
+- Normal:
+
+
+
+
 
 Y podemos podemos extraer la diferencia entre cada observación y el esperado, representado
 por el suavizador azul. 
@@ -241,7 +252,8 @@ sat <- sat %>% mutate(residual = residuals(suavizador))
   ylab("Residual SAT (vs fracción de alumnos)")
 ```
 
-La indicación que obtenemos es diferente: ahora parece ser que estados con más gasto
+La indicación que obtenemos es diferente: ahora parece haber cierta 
+evicencia de  que estados con más gasto
 tienden a tener mejores resultados, controlando por la fracción de estudiantes que toma el SAT,
 aunque hay variación considerable para cada nivel de gasto.
 Nótese que esto nos muestra que nuestra pregunta original tiene una respuesta
