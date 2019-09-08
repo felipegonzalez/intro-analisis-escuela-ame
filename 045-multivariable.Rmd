@@ -1,0 +1,63 @@
+# Dimensión alta
+
+Dependiendo del tamaño de los datos, trabajar en dimensiones altas es más difícil porque
+típicamente hay pocos datos en cada región en el espacio donde estamos trabajando. 
+
+En estos casos, obtener resultados buenos requiere de encontrar estructura particular al problema
+y explotarla. 
+
+## Ejemplo
+
+Índice de marginación, descomposición en valores singulares
+
+## Ejemplo 
+
+Construir modelos.
+
+```{r}
+library(rfinterval)
+set.seed(9912)
+casas_t <- casas %>% sample_frac(0.8) %>% as.data.frame
+casas_p <- casas %>% anti_join(casas_t) %>% as.data.frame
+intervals_sc <- rfinterval(precio_miles ~ area_habitable_sup_m2 + calidad_gral +
+                               nombre_zona + condicion_gral + aire_acondicionado +
+                               area_lote_m2 + baños_completos + calidad_calefaccion, 
+                   train_data = casas_t, test_data = casas_p,
+                   params_ranger = list(mtry = 5),
+                   method = "quantreg")
+sc_i <- intervals_sc$quantreg_interval
+#sc_i <- intervals_sc$oob_interval
+preds <- intervals_sc$testPred
+sc_i$precio_miles <- casas_p$precio_miles
+sc_i$area <- casas_p$area_habitable_sup_m2
+sc_i$pred <- preds
+mean(abs(sc_i$pred - sc_i$precio_miles)) / mean(sc_i$precio_miles)
+ggplot(sc_i, aes(x = pred, ymin = lower, ymax = upper, y = precio_miles)) +
+    geom_point(colour = "red") +
+    geom_linerange(colour = "gray")
+sc_i %>% summarise(cobertura = mean(precio_miles < upper & precio_miles > lower))
+```
+
+
+Ahora podemos hacer comparaciones predictivas controlando de distintas maneras
+
+```{r}
+casas_tm <- casas_t %>% 
+    filter(nombre_zona %in% c("IDOTRR", "Edwards", "BrkSide", "NridgHt", "NoRidge", "NAmes", "CollgCr")) %>% 
+    mutate(nombre_zona = factor(nombre_zona))
+modelo <- ranger::ranger(precio_miles ~ area_habitable_sup_m2 + calidad_gral +
+                               nombre_zona + condicion_gral + aire_acondicionado +
+                               area_lote_m2 + baños_completos + calidad_calefaccion,
+                data = casas_tm  , 
+                mtry = 3, num.trees = 1000)
+```
+
+
+```{r}
+pd <- pdp::partial(modelo,pred.var =  c("area_habitable_sup_m2", "nombre_zona", "calidad_gral"),
+              plot = FALSE)
+ggplot(pd , 
+     aes(x = area_habitable_sup_m2, y = yhat, colour = factor(nombre_zona))) +
+    geom_line() +
+        facet_wrap(~ calidad_gral)
+```
