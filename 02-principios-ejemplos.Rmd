@@ -1,5 +1,157 @@
 # Principios y ejemplos
 
+## Algunos conceptos básicos {-}
+
+En el análisis los datos típicamente están organizados en *bonches de números etiquetados* que corresponden
+a unidades con múltiples estructuras jerárquicas, a veces más complejas y a veces menos.
+
+Por ejemplo, los siguientes datos fueron registrados en un restaurante durante cuatro días consecutivos:
+
+### Ejemplo {-}
+
+```{r}
+library(tidyverse)
+library(ggrepel)
+library(knitr)
+source("./R/funciones_auxiliares.R")
+propinas <- reshape2::tips %>% 
+  rename(cuenta_total = total_bill, propina = tip, sexo = sex, fumador = smoker,
+         dia = day, momento = time, num_personas = size) %>% 
+  mutate(sexo = recode(sexo, Female = "Mujer", Male = "Hombre"), 
+         fumador = recode(fumador, No = "No", Si = "Si"),
+         dia = recode(dia, Sun = "Dom", Sat = "Sab", Thur = "Jue", Fri = "Vie"),
+         momento = recode(momento, Dinner = "Cena", Lunch = "Comida")) %>% 
+  select(-sexo) %>% 
+  mutate(dia  = fct_relevel(dia, c("Jue", "Vie", "Sab", "Dom")))
+sample_n(propinas, 10) %>% formatear_tabla()
+```
+
+Aquí la unidad de observación es una cuenta particular. Tenemos tres mediciones numéricas
+de cada cuenta: cúanto fue la cuenta total, la propina, y el número de personas asociadas a la cuenta.
+Los datos están separados según se fumó o no en la mesa, y temporalmente en dos partes: el día
+(Jueves, Viernes, Sábado o Domingo), cada uno separado por Cena y Comida. 
+
+Lo primero que nos interesa es comparar los datos dentro de cada "bonche":
+
+- ¿Varían mucho o poco? ¿Cuáles son valores típicos o centrales? ¿Existen valores atípicos?
+- ¿Cómo es la variación conjunta de varias mediciones en un bonche? 
+- ¿Cómo están asociadas las distintas agrupaciones de los datos? ¿Qué agrupaciones están más asociadas?
+
+Supongamos entonces que consideramos simplemente la variable de *cuenta_total*. Podemos comenzar
+por ordenar los datos, y ver cuáles datos están en los extremos y cuáles están en los lugares centrales:
+
+```{r}
+cuenta <- propinas %>% mutate(
+    orden_cuenta = rank(cuenta_total, ties.method = "first"), 
+    f = orden_cuenta / n()) %>% 
+  select(cuenta_total, orden_cuenta, f) %>% arrange(f)
+bind_rows(head(cuenta), tail(cuenta)) %>% formatear_tabla()
+```
+
+y graficamos los datos en orden, interpolando valores consecutivos.
+
+```{r, fig.width = 4, fig.height = 4}
+ggplot(cuenta, aes(x = f, y = cuenta_total)) + geom_point(colour = "red", alpha = 0.5) + geom_line() +
+  labs(subtitle = "Gráfica de cuantiles: Cuenta total") +
+  scale_x_continuous(breaks = seq(0, 1, 0.1))
+```
+
+A esta función le llamamos la **función de cuantiles** para la variable cuenta total. Y nos
+sirve para comparar directamente los distintos valores que observamos los datos
+según el orden que ocupan. 
+
+Estas gráfica no pierde información, su forma es informativa.
+
+**Dispersión y Valores centrales**
+
+- El *rango* de datos va de unos 3 dólares hasta 45 dólares
+- Los **valores centrales** (del cuantil 0.25 al 0.75, por ejemplo), están
+entre unos 13 y 25 dólares
+- Podemos usar el cuantil 0.5 (**mediana**) para dar un valor *central* de esta distribución,
+que está alrededor de 18 dólares.
+
+Y podemos dar resúmenes más refinados si es necesario
+
+- El cuantil 0.95 es de unos 35 dólares - sólo 5\% de las cuentas son de más de 35 dólares
+- El cuantil 0.05 es de unos 8 dólares - sólo 5\% de las cuentas son de 8 dólares o menos.
+
+Finalmente, la forma de la gráfica la interpretamos usando su pendiente, haciendo comparaciones
+de diferentes partes de la gráfica:
+
+- La distribución de valores tiene asimetría: el 10\% de las cuentas más altas 
+tiene considerablemente más dispersión que el 10\% de las cuentas más bajas. 
+
+- Entre los cuantiles 0.2 y 0.5 es donde existe *mayor* densidad de datos: la pendiente
+es baja, lo que significa que al avanzar en los cuantiles, los valores observados no cambian mucho.
+
+- Cuando la pendiente es alta, quiere decir que los datos tienen más dispersión local o están más separados.
+
+En algunos casos, es más natural hacer un *histograma*, donde dividimos el rango de la variable
+en cubetas o intervalos (en este caso de igual longitud), y graficamos cuántos datos caen en cada
+cubeta:
+
+```{r, fig.width = 10, fig.height = 4}
+g_1 <- ggplot(cuenta, aes(x = cuenta_total)) + geom_histogram(binwidth = 1) +
+  labs(subtitle = "Histograma: Cuenta total") 
+g_2 <- ggplot(cuenta, aes(x = cuenta_total)) + geom_histogram(binwidth = 2) +
+  labs(subtitle = "Histograma: Cuenta total") 
+g_3 <- ggplot(cuenta, aes(x = cuenta_total)) + geom_histogram(binwidth = 5) +
+  labs(subtitle = "Histograma: Cuenta total") 
+gridExtra::grid.arrange(g_1, g_2, g_3, ncol = 3)
+```
+
+Finalmente, una gráfica más compacta que resume la gráfica de cuantiles o el histograma
+es el diagrama de caja y brazos. Mostramos dos versiones, la clásica de Tukey (T) y otra versión
+menos común de Spear/Tufte (ST):
+
+```{r, fig.width = 8, fig.height = 4}
+library(ggthemes)
+cuartiles <- quantile(cuenta$cuenta_total)
+g_1 <- ggplot(cuenta, aes(x = f, y = cuenta_total)) + 
+  labs(subtitle = "Gráfica de cuantiles: Cuenta total") +
+  geom_hline(yintercept = cuartiles[2], colour = "gray") + 
+  geom_hline(yintercept = cuartiles[3], colour = "gray") +
+  geom_hline(yintercept = cuartiles[4], colour = "gray") +
+  geom_point(alpha = 0.5) + geom_line() 
+g_2 <- ggplot(cuenta, aes(x = factor("ST", levels =c("ST")), y = cuenta_total)) + 
+  geom_tufteboxplot() +
+  #geom_violin(draw_quantiles = c(0.25, 0.5, 0.75)) +
+  labs(subtitle = " ") +  xlab("") + ylab("")
+g_3 <- ggplot(cuenta, aes(x = factor("T"), y = cuenta_total)) + geom_boxplot() +
+  labs(subtitle = " ") +  xlab("") + ylab("")
+g_4 <- ggplot(cuenta, aes(x = factor("P"), y = cuenta_total)) + geom_jitter(height = 0, width =0.2, alpha = 0.5) +
+  labs(subtitle = " ") +  xlab("") + ylab("")
+gridExtra::grid.arrange(g_1, g_2, g_3, g_4, nrow = 1, widths = c(8, 2, 2, 2)) 
+```
+
+
+- **Ventajas en el análisis inicial**: en un principio del análisis, estos resúmenes
+(cuantiles) pueden ser más útiles que utilizar medias y varianzas por ejemplo. La razón es
+que :
+
+- son cantidades más fácilmente interpretables
+- los cuantiles centrales son más resistentes a valores atípicos que medias o varianzas
+- Sin embargo, permite identificar valores extremos
+
+
+
+<div style= "float:right;position: relative; top: -80px;">
+```{r, fig.width = 2, fig.height = 3, echo = FALSE}
+ggplot(propinas, aes(x = dia, y = cuenta_total, colour)) + 
+  geom_tufteboxplot(median.type = "line", hoffset = 0.03)
+```
+</div>
+
+Usando diagramas de caja y brazos podemos comparar distribuciones de distintos bonches
+de datos:
+
+Y vemos que estas distribuciones no son muy diferentes unas de otras, aunque los fines
+de semana parecen tener cuentas de 5 dólares más altas.
+
+
+
+
+
 ## Enlace {-}
 
 Consideremos la prueba Enlace (2011) de matemáticas para primarias. Una primera pregunta 
@@ -30,9 +182,7 @@ considerable en las calificaciones de las escuelas, y diferencias considerables
 entre tipo de escuelas:
 
 ```{r, message = FALSE, echo = FALSE}
-library(tidyverse)
-library(ggrepel)
-library(knitr)
+
 enlace <- read_csv("datos/enlace.csv")
 enlace <- enlace %>%  filter(num_evaluados_total > 0, mate_6 > 0) %>% 
     mutate(tipo = fct_reorder(tipo, mate_6, mean)) %>% 
@@ -72,7 +222,11 @@ g_boxplot <- ggplot(enlace  , aes(x = tipo, y = mate_6)) +
     labs(subtitle = "Gráfica 3")+ ylim(c(150,930))+
     ylab("Promedios Matemáticas")
 
-gridExtra::grid.arrange(g_80, g_80_p, g_boxplot, nrow = 2)
+g_cuantil <- ggplot(enlace, aes(sample = mate_6, colour = tipo)) +
+  geom_qq(distribution = stats::qunif, size = 1) + ylab("Promedios Matemáticas") +
+  xlab("orden")
+
+gridExtra::grid.arrange(g_80, g_80_p, g_boxplot, g_cuantil, nrow = 2)
 ```
 
 En términos de comparaciones, podemos discutir qué tan apropiada es cada gráfica. Graficar más
@@ -90,7 +244,7 @@ enlace_tbl_marg <- enlace %>%
     summarise(n_alumnos = sum(num_evaluados_total),
               cuantiles = list(cuantil(mate_6, c(0.05, 0.25, 0.5, 0.75, 0.95)))) %>% 
     unnest %>% mutate(valor = round(valor)) %>% 
-    filter( n_alumnos > 20)
+    filter( n_alumnos > 100)
 ```
 
 ```{r, fig.width = 10, fig.height = 4, echo = FALSE}
@@ -192,6 +346,7 @@ grupos como sigue:
 set.seed(991)
 sat$clase <- kmeans(sat %>% select(frac), 
                     centers = 4,  nstart = 100, iter.max = 100)$cluster
+sat$clase <- fct_reorder(factor(sat$clase), sat$frac, mean)
 sat <- sat %>% mutate(rank_p = rank(frac, ties= "first") / length(frac))
 ggplot(sat, aes(x = rank_p, y = frac, label = state, colour = factor(clase))) +
   geom_point(size = 2) + 
@@ -234,9 +389,6 @@ ggplot(sat, aes(x = frac, y = sat, label = state)) + geom_point() +
 
 ```
 
-- Normal:
-
-
 
 
 
@@ -272,6 +424,11 @@ En un principio, ajuste y residuales requieren de nuestra atención. El objetivo
 es hacer más datos, no menos, con la idea de que hacer comparaciones más finas que las que los
 datos sin procesar nos dan. Es una técnica que repetiremos varias veces.
 
+## Ejemplo: tablas agregadas {-}
+
+```{r}
+
+```
 
 ## Comparaciones multiplicativas {-}
 
@@ -357,10 +514,10 @@ cierto en cada grupo de calidad*. Podemos calcular cuantiles adicionales:
 
 ```{r}
 casas_tbl <- casas_ejemplo %>% group_by(calidad_gral) %>% 
-    summarise(cuantiles = list(cuantil(log(precio_miles), c(0.05, 0.25, 0.5, 0.75, 0.95)))) %>% 
+    summarise(cuantiles = list(cuantil(log(precio_miles), c(0.1, 0.25, 0.5, 0.75, 0.9)))) %>% 
     unnest
 g_80_p <- ggplot(casas_tbl  %>% spread(cuantil,valor), aes(x = calidad_gral, y = `0.5`)) +
-    geom_linerange(aes(ymin= `0.05`, ymax = `0.95`), colour = "gray40") +
+    geom_linerange(aes(ymin= `0.1`, ymax = `0.9`), colour = "gray40") +
     geom_linerange(aes(ymin= `0.25`, ymax = `0.75`), size = 2, colour = "white") +
     geom_point(colour = "red", size = 3) +
     scale_y_continuous(breaks = seq(4, 6.5, by =0.25))
@@ -369,12 +526,12 @@ g_80_p
 
 ```{r}
 casas_tbl <- casas_ejemplo %>% group_by(calidad_gral) %>% 
-    summarise(cuantiles = list(cuantil((precio_miles), c(0.05, 0.25, 0.5, 0.75, 0.95)))) %>% 
+    summarise(cuantiles = list(cuantil((precio_miles), c(0.1, 0.25, 0.5, 0.75, 0.9)))) %>% 
     unnest
 ggplot(casas_tbl  %>% spread(cuantil,valor), aes(x = calidad_gral, y = `0.5`)) +
-    geom_linerange(aes(ymin= `0.05`, ymax = `0.95`), colour = "gray40") +
+    geom_linerange(aes(ymin= `0.1`, ymax = `0.9`), colour = "gray40") +
     geom_linerange(aes(ymin= `0.25`, ymax = `0.75`), size = 2, colour = "white") +
-    geom_point(colour = "red", size = 3) 
+    geom_point(colour = "red", size = 3) + scale_y_log10()
 ```
 
 
@@ -451,6 +608,14 @@ gridExtra::grid.arrange(g_1, g_2, ncol = 2)
 De la gráfica, vemos que la distribución VV está desplazada alrededor de 0.3 unidades (en logaritmo)
 hacia abajo. Esto implica que el tiempo bajo VV es alrededor de 66% los tiempos bajo NV. La variación
 dentro de cada grupo es considerable.
+
+Gráficas de cuantiles puedes ser más efetivas para 
+
+```{r}
+ggplot(fusion, aes(sample = log(time), colour = nv.vv)) + 
+  geom_qq(distribution = stats::qunif) 
+```
+
 
 
 ## Cuándo la elección es menos importante {-}

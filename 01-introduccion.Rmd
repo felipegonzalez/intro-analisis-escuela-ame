@@ -7,8 +7,6 @@ library(knitr)
 library(kableExtra)
 library(lubridate)
 library(gridExtra)
-theme_set(theme_minimal(base_size = 14))
-paleta <- scale_colour_manual(values = c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
 source("R/funciones_auxiliares.R")
 ```
 
