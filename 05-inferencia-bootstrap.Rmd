@@ -1,0 +1,145 @@
+# Remuestreo: el bootstrap
+
+El bootstrap es una técnica para evaluar la variabilidad de estimaciones basadas en muestra.
+La situación más simple donde podemos aplicar bootstrap es la siguiente:
+
+- Supongamos que tomamos una muestra de una población
+- Por *muestra* entendemos que cada unidad de la población se selecciona con cierta probabilidad fija,
+independientemente de las elecciones que hayamos o no seleccionado en cada momento (es una muestra iid). También
+podemos pensar que cada observación se extrae de una distribución fija $F$ de manera independiente a las otras.
+- Una estadística es un proceso que se aplica a la muestra. 
+- Nos interesa saber qué tanto puede variar el valor de la estadística cuando lo aplicamos a distintas muestras.
+
+
+## Ejemplo (teórico)
+
+Supongamos que tenemos la siguiente población de escuelas:
+
+```{r}
+enlace <- read_csv("datos/enlace.csv") %>% filter(mate_6 > 0)
+nrow(enlace)
+```
+
+Y nos interesa saber, para la población, cuál es la mediana de calificaciones de matemáticas.
+Nuestra estadística es:
+
+```{r}
+fun_muestra <- function(x){
+    mean(x)
+}
+```
+
+Distintas muestras dan distintos resultados:
+
+```{r}
+enlace %>% sample_n(50) %>% summarise(mediana = fun_muestra(mate_6))
+enlace %>% sample_n(50) %>% summarise(mediana = fun_muestra(mate_6))
+```
+
+La *distribución* de muestreo son los valores que puede tomar la estadística bajo todas las posibles
+muestras. Podemos aproximarla tomando un número grande de muestras:
+
+```{r}
+medianas_muestras <- map_dbl(1:100, ~ enlace %>% sample_n(50) %>% summarise(mediana = fun_muestra(mate_6)) %>% pull(mediana))
+plot(sort(medianas_muestras))
+```
+
+```{r}
+medianas_muestras <- map_dbl(1:2000, ~ enlace %>% sample_n(50, replace = T) %>% summarise(mediana = fun_muestra(mate_6)) %>% pull(mediana))
+valor_poblacional <- median(enlace$mate_6)
+g_1 <- qplot(sort(medianas_muestras)) + geom_vline(xintercept = valor_poblacional)
+g_1
+```
+
+Cuyos cuantiles son: 
+
+```{r}
+quantile(medianas_muestras - valor_poblacional , c(0.025, 0.975))
+```
+
+Esto quiere decir que si estimamos con una muestra el valor poblacional, esperamos
+con 95\% de probabilidad que el error sea menos de unas 30 unidades. Esta es la precisión
+de nuestro estimador.
+
+Si usamos una muestra más grande podemos obetner un resultado más preciso:
+
+```{r}
+medianas_muestras_2 <- map_dbl(1:2000, ~ enlace %>% sample_n(300, replace = T) %>% summarise(mediana = fun_muestra(mate_6)) %>% pull(mediana))
+valor_poblacional <- median(enlace$mate_6)
+dist_muestreo <- bind_rows(tibble(mediana = medianas_muestras, n = 50), tibble(mediana = medianas_muestras_2, n = 300))
+ggplot(dist_muestreo, aes(x = mediana)) + geom_histogram() + facet_wrap(~ n)
+```
+
+Y como es de esperarse, vemos que muestras más grandes resultan en menos variablidad, y menor error de estimación.
+
+Sin embargo, normalmente solo tenemos una muestra disponible, y no necesariamente tenemos una
+manera práctica de calcular su distribución de muestreo que nos ayude a entender su variabilidad.
+
+Lo segundo mejor que podemos hacer es *considerar la muestra como si fuera nuestra población*, y repetir
+el proceso de arriba para estimar la distribución de muestreo. Veamos que sucede para dos muestras
+en este primer ejemplo:
+
+```{r}
+set.seed(8)
+muestras_boot <- function(x, B = 1000, fun_muestra){
+    muestra_1 <- enlace %>% sample_n(50)
+    muestra_2 <- enlace %>% sample_n(300)
+    medianas_muestras <- map_dbl(1:B, ~ muestra_1 %>% sample_n(50, replace = T) %>% 
+                                 summarise(mediana = fun_muestra(mate_6)) %>% pull(mediana))
+    medianas_muestras_1 <- map_dbl(1:B, ~ muestra_2 %>% sample_n(300, replace = T) %>% summarise(mediana = fun_muestra(mate_6)) %>% pull(mediana))
+    remuestreo_2 <- bind_rows(tibble(mediana = medianas_muestras, n = 50), tibble(mediana = medianas_muestras_1, n = 300)) %>% mutate(rep = x)    
+    
+}
+rep_remuestreo <- map(1:20, ~ muestras_boot(.x, B = 1000, fun_muestra = fun_muestra)) %>% bind_rows
+```
+
+
+```{r}
+dat <- bind_rows(dist_muestreo %>% mutate(rep = "pob"), rep_remuestreo %>% mutate(rep = as.character(rep)))
+ggplot(dat, aes(sample =  mediana, colour = rep == "pob", group = rep)) + 
+    geom_qq(distribution = stats::qunif, size = 0.1) + facet_wrap(~n)
+```
+
+Y notamos que la distribución bootstrap es un estimador razonable de la distribución de muestreo
+de nuestra estadística. Usando esta estimación podemos darnos una idea de la variabilidad
+de nuestro estimador.
+
+Por ejemplo, podríamos construir intervalos de confianza. Usamos la distribución bootstrap
+para construir una estimación de intervalo:
+
+```{r}
+intervalos <- rep_remuestreo %>% 
+    group_by(n, rep) %>% 
+    summarise(inf =  quantile(mediana, 0.05), sup = quantile(mediana, 0.95)) %>% 
+    mutate(valor_poblacional = median(enlace$mate_6))
+ggplot(intervalos, aes(x = rep, ymin = inf, ymax = sup)) + 
+    geom_hline(yintercept = median(enlace$mate_6), colour = "salmon") +
+    geom_linerange() +
+    facet_wrap(~n) 
+```
+
+La cobertura para nuestros intervalos es:
+
+```{r}
+intervalos %>% mutate(cubre = valor_poblacional > inf & valor_poblacional < sup) %>% 
+     group_by(n) %>% summarise(cobertura = mean(cubre))
+```
+
+Para este número de repeticiones, 
+
+
+** Referencias acerca de cobertura, y mejoras a a construcción de intervalos **
+
+
+El bootstrap se puede usar para una variedad grande de estadísticas. Esto incluye, por ejemplo,
+suavizadores.
+
+-- Ejemplo: suavizadores
+
+-- Ejemplo: análisis de componentes principales
+
+
+
+
+
+
