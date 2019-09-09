@@ -38,22 +38,27 @@ Lo primero que nos interesa es comparar los datos dentro de cada "bonche":
 - ¿Cómo están asociadas las distintas agrupaciones de los datos? ¿Qué agrupaciones están más asociadas?
 
 Supongamos entonces que consideramos simplemente la variable de *cuenta_total*. Podemos comenzar
-por ordenar los datos, y ver cuáles datos están en los extremos y cuáles están en los lugares centrales:
+por **ordenar los datos**, y ver cuáles datos están en los extremos y cuáles están en los lugares centrales:
 
 ```{r}
-cuenta <- propinas %>% mutate(
+propinas <- propinas %>% mutate(
     orden_cuenta = rank(cuenta_total, ties.method = "first"), 
-    f = orden_cuenta / n()) %>% 
-  select(cuenta_total, orden_cuenta, f) %>% arrange(f)
+    f = (orden_cuenta - 0.5) / n()) 
+cuenta <- propinas %>% select(orden_cuenta, f, cuenta_total) %>% arrange(f)
 bind_rows(head(cuenta), tail(cuenta)) %>% formatear_tabla()
 ```
 
+*Observación*: acerca del valor $f$ y restar 0.5
+
 y graficamos los datos en orden, interpolando valores consecutivos.
 
-```{r, fig.width = 4, fig.height = 4}
-ggplot(cuenta, aes(x = f, y = cuenta_total)) + geom_point(colour = "red", alpha = 0.5) + geom_line() +
-  labs(subtitle = "Gráfica de cuantiles: Cuenta total") +
+```{r, fig.width = 7, fig.height = 4}
+g_orden <- ggplot(cuenta, aes(x = orden_cuenta, y = cuenta_total)) + geom_point(colour = "red", alpha = 0.5) + 
+  labs(subtitle = "Cuenta total") 
+g_cuantiles <- ggplot(cuenta, aes(x = f, y = cuenta_total)) + geom_point(colour = "red", alpha = 0.5) + geom_line() +
+  labs(subtitle = "") +
   scale_x_continuous(breaks = seq(0, 1, 0.1))
+gridExtra::grid.arrange(g_orden, g_cuantiles, ncol = 2)
 ```
 
 A esta función le llamamos la **función de cuantiles** para la variable cuenta total. Y nos
@@ -91,12 +96,11 @@ en cubetas o intervalos (en este caso de igual longitud), y graficamos cuántos 
 cubeta:
 
 ```{r, fig.width = 10, fig.height = 4}
-g_1 <- ggplot(cuenta, aes(x = cuenta_total)) + geom_histogram(binwidth = 1) +
-  labs(subtitle = "Histograma: Cuenta total") 
-g_2 <- ggplot(cuenta, aes(x = cuenta_total)) + geom_histogram(binwidth = 2) +
-  labs(subtitle = "Histograma: Cuenta total") 
-g_3 <- ggplot(cuenta, aes(x = cuenta_total)) + geom_histogram(binwidth = 5) +
-  labs(subtitle = "Histograma: Cuenta total") 
+variable <- quo(cuenta_total)
+binwidth_min = 1
+g_1 <- ggplot(propinas, aes(x = !!variable)) + geom_histogram(binwidth = binwidth_min) 
+g_2 <- ggplot(propinas, aes(x = !!variable)) + geom_histogram(binwidth = binwidth_min * 2) 
+g_3 <- ggplot(propinas, aes(x = !!variable)) + geom_histogram(binwidth = binwidth_min * 5) 
 gridExtra::grid.arrange(g_1, g_2, g_3, ncol = 3)
 ```
 
@@ -126,27 +130,25 @@ gridExtra::grid.arrange(g_1, g_2, g_3, g_4, nrow = 1, widths = c(8, 2, 2, 2))
 
 
 - **Ventajas en el análisis inicial**: en un principio del análisis, estos resúmenes
-(cuantiles) pueden ser más útiles que utilizar medias y varianzas por ejemplo. La razón es
-que :
+(cuantiles) pueden ser más útiles que utilizar medias y varianzas, por ejemplo. La razón es
+que los cuantiles:
 
-- son cantidades más fácilmente interpretables
-- los cuantiles centrales son más resistentes a valores atípicos que medias o varianzas
+- Son cantidades más fácilmente interpretables
+- Los cuantiles centrales son más resistentes a valores atípicos que medias o varianzas
 - Sin embargo, permite identificar valores extremos
 
 
 
-<div style= "float:right;position: relative; top: -80px;">
-```{r, fig.width = 2, fig.height = 3, echo = FALSE}
-ggplot(propinas, aes(x = dia, y = cuenta_total, colour)) + 
-  geom_tufteboxplot(median.type = "line", hoffset = 0.03)
+
+### Ejercicio
+¿Cómo se ve la gráfica de cuantiles de las propinas? ¿Cómo crees que esta gráfica se
+compara con distintos histogramas?
+
+```{r, fig.width = 4, fig.height = 3}
+g_1 <- ggplot(propinas, aes(sample = propina)) + 
+  geom_qq(distribution = stats::qunif) + xlab("f") + ylab("propina")
+g_1
 ```
-</div>
-
-Usando diagramas de caja y brazos podemos comparar distribuciones de distintos bonches
-de datos:
-
-Y vemos que estas distribuciones no son muy diferentes unas de otras, aunque los fines
-de semana parecen tener cuentas de 5 dólares más altas.
 
 
 
@@ -244,7 +246,7 @@ enlace_tbl_marg <- enlace %>%
     summarise(n_alumnos = sum(num_evaluados_total),
               cuantiles = list(cuantil(mate_6, c(0.05, 0.25, 0.5, 0.75, 0.95)))) %>% 
     unnest %>% mutate(valor = round(valor)) %>% 
-    filter( n_alumnos > 100)
+    filter( n_alumnos > 20)
 ```
 
 ```{r, fig.width = 10, fig.height = 4, echo = FALSE}
@@ -261,7 +263,7 @@ g_80_p <- ggplot(enlace_tbl_marg  %>% spread(cuantil, valor),
 g_80_p
 ```
 
-Esta gráfica nos ayuda a mejorar nuestra pregunta inicial
+Esta gráfica nos ayuda a mejorar nuestra pregunta inicial:
 
 - Las escuelas en municipios de marginación más baja tienden a tener mejores resultados. 
 - Escuelas particulares en municipios de marginación alta y media tienen resultados
@@ -272,7 +274,7 @@ el tipo de "sistema", sino del entorno de las escuelas.
 probablemente provienen de familias que tienen
 más recursos mejores niveles de bienestar (pueden pagar la escuela). 
 ¿Qué otras variables nos ayudaría a completar este análisis?
-
+- Produjimos preguntas más difíciles, pero más relevantes para lo que queremos entender.
 
 ## Estados y calificaciones en SAT {-}
 
@@ -389,9 +391,6 @@ ggplot(sat, aes(x = frac, y = sat, label = state)) + geom_point() +
 
 ```
 
-
-
-
 Y podemos podemos extraer la diferencia entre cada observación y el esperado, representado
 por el suavizador azul. 
 
@@ -411,6 +410,78 @@ aunque hay variación considerable para cada nivel de gasto.
 Nótese que esto nos muestra que nuestra pregunta original tiene una respuesta
 simple pero poco útil. con este análisis podemos pensar en mejores preguntas, pero todas
 son mucho más difíciles de contestar!
+
+### Ejercicio: suavizadores
+
+Puedes practicar y entender cómo funcionan los suavidaores con **esta app**, cuya idea
+es tomada de [este libro](https://rafalab.github.io/dsbook/smoothing.html#local-weighted-regression-loess). El suavizamiento
+**loess** es diferente de promedios móviles centrados usuales, y a veces ayuda a obtener mejores
+suavizados (cuando hay estructura lineal en el problema):
+
+```{r, fig.width = 10, fig.height = 6, echo = FALSE}
+
+w_loess <- function(x){
+  ifelse(abs(x) < 1, (1 - abs(x)^3)^3, 0.0)
+}
+lm_ponderado <- function(...) {
+  geom_smooth(method = "lm", se = FALSE, ...)
+}
+
+crear_local <- function(frac_val = 10, alpha = 0.5){
+  num_datos = floor(alpha * nrow(sat)) + 1
+  sat_g <- sat %>% 
+    mutate(activos = rank(abs(frac - frac_val)) < num_datos,
+         max_dist = max(activos*abs(frac - frac_val)),
+         peso = w_loess((frac - frac_val)/max_dist))
+ggplot(sat_g, aes(x = frac, y = sat, label = state, size = peso)) + 
+  geom_point(colour = "gray") +
+  scale_size(range = c(0.5, 4)) +
+    geom_smooth(method = "loess", method.args = list(degree = 1), span = alpha, se = FALSE,
+              size = 1, colour = "red") +
+  lm_ponderado(data = sat_g %>% filter(peso > 0), aes(weight = peso^2)) +
+  geom_vline(xintercept = frac_val, colour = "gray") +
+  theme(legend.position = "none") 
+
+}
+grafs <- map(c(10, 20, 30, 40, 50, 60), ~ crear_local(.x, alpha = 0.6))
+gridExtra::grid.arrange(grobs = grafs,ncol = 3)
+```
+
+
+Promedios móviles (ponderados por distancia) dan resultados más ruidosos si queremos
+capturar la estructura lineal local:
+
+```{r, fig.width = 10, fig.height = 6, echo = FALSE}
+
+w_loess <- function(x){
+  ifelse(abs(x) < 1, (1 - abs(x)^3)^3, 0.0)
+}
+lm_ponderado <- function(...) {
+  geom_smooth(method = "lm", formula = y ~ 1, se = FALSE, ...)
+}
+
+crear_local <- function(frac_val, alpha = 0.5){
+  num_datos = floor(alpha * nrow(sat)) 
+  sat_g <- sat %>% 
+    mutate(activos = rank(abs(frac - frac_val)) < num_datos,
+         max_dist = max(activos*abs(frac - frac_val)),
+         peso = w_loess((frac - frac_val)/max_dist))
+ggplot(sat_g, aes(x = frac, y = sat, label = state, size = peso)) + 
+  geom_point(colour = "gray") +
+  scale_size(range = c(0.5, 4)) +
+    geom_smooth(method = "loess", method.args = list(degree = 0), 
+                span = alpha, se = FALSE,
+              size = 1, colour = "red") +
+  lm_ponderado(data = sat_g %>% filter(peso > 0), aes(weight = peso)) +
+  geom_vline(xintercept = frac_val, colour = "gray") +
+  theme(legend.position = "none") 
+
+}
+grafs <- map(c(10, 20, 30, 40, 50, 60), ~ crear_local(.x, alpha = 0.3))
+gridExtra::grid.arrange(grobs = grafs,ncol = 3)
+```
+
+
 
 ## Ajuste y residuales {-}
 
@@ -647,5 +718,118 @@ gridExtra::grid.arrange(g_1, g_2, ncol = 1)
 ```
 
 
+## Ejemplo (tablas)
+
+```{r}
+data(tea)
+te <- tea %>% select(how, price, sugar)
+```
+
+Nos interesa ver qué personas compran té suelto, y de qué tipo:
+
+```{r}
+precio <- te %>% group_by(price) %>% tally() %>% mutate(prop = round(100 * n / sum(n))) %>% 
+  select(-n)
+
+tipo <- te %>% group_by(how) %>% tally() %>% mutate(prop = round(100 * n / sum(n)))
+tipo 
+tipo <- tipo %>% select(how, prop_how = prop)
+```
+
+La mayor parte de las personas toma té en bolsas. Sin embargo, el tipo de té que compran es
+muy distinto:
 
 
+```{r}
+te %>% group_by(how, price) %>% tally() %>% group_by(how) %>% mutate(prop = round(100 * n / sum(n))) %>% 
+  select(-n) %>% spread(how, prop, fill = 0) 
+```
+
+```{r}
+tabla <- te %>% group_by(how, price) %>% tally() %>% group_by(how) %>% 
+  mutate(prop_price = (100 * n / sum(n))) %>% 
+  group_by(price) %>% mutate(prom_prop = mean(prop_price)) %>% 
+  mutate(perfil = (prop_price / prom_prop - 1) %>% round(2))  
+tabla_perfil <- tabla %>%   
+  select(how, price, perfil) %>% spread(how, perfil, fill = -1) 
+tabla <- tabla_perfil %>% 
+  gather(how, perfil, -price)
+tabla_2 <- tabla_perfil %>% 
+  gather(how, prop_price, -price)
+if_profile <- function(x){
+  any(x < 0) & any(x > 0)
+}
+marcar <- marcar_tabla_fun(0.25, "red", "black")
+tab_out <- tabla_perfil %>% left_join(precio) %>% mutate_if(if_profile, marcar) %>% 
+  knitr::kable(format = "html", escape = F, digits = 2) %>% 
+  kableExtra::kable_styling(bootstrap_options = c( "hover", "condensed"), full_width = FALSE)
+tab_out
+```
+
+```{r, fig.width = 6, fig.height = 2}
+tabla_ordenada <- tabla %>% ungroup %>% 
+  left_join(tabla %>% ungroup %>% filter(how == "tea bag") %>% select(price, perfil_tea = perfil)) %>% 
+  mutate(precio = fct_reorder(price, perfil_tea))
+g_perfil <- ggplot(tabla_ordenada,
+  aes(x = precio, xend = precio, y = perfil, yend = 0, group = how)) + 
+  geom_point() + geom_segment() + facet_wrap(~how) +
+  geom_hline(yintercept = 0 , colour = "gray")+ coord_flip()
+g_props <- ggplot(precio, aes(y = price, x = 1, label = prop, fill = 1)) + 
+    scale_fill_gradient(low = "white", high = "white") +
+  geom_tile() + geom_text() + theme(axis.text.x = element_blank(), legend.position = "none") +
+  xlab(" ") 
+g_perfil
+```
+
+
+
+```{r}
+ggplot(tabla_2 %>% ungroup %>% mutate(price = fct_reorder(price, prop_price)),
+  aes(x = price, y = prop_price, group = how, colour = how)) + 
+  geom_point() + coord_flip() + geom_line()
+```
+
+```{r}
+ganado <- read_csv("./datos/livestock.csv")
+ganado
+```
+
+```{r}
+ganado_2 <- ganado %>% mutate(count_miles = count / 1e6) %>%  
+  select(-count) %>% 
+  spread(livestock.type, count_miles) 
+ggplot(ganado_2, aes(x = Cattle, y = Poultry)) + geom_point()
+```
+
+```{r}
+ganado <- ganado %>% 
+  ungroup %>% 
+  mutate(media = mean(log(count))) %>% 
+  group_by(country) %>% 
+  mutate(por_pais = mean(log(count)) - media) %>% 
+  group_by(livestock.type) %>% 
+  mutate(por_tipo = mean(log(count)) - media) %>% 
+  mutate(residual = log(count) - (media + por_pais + por_tipo))
+```
+
+```{r}
+orden <- princomp(ganado_ancha  %>% select(-country))$scores[,1] %>% round(2)
+#orden <- kmeans(ganado_ancha  %>% select(-country), centers = 6)$cluster
+marcar_g <- marcar_tabla_fun_doble(-0.4, 0.4, "red", "black")
+ganado_ancha <- 
+  ganado %>% select(livestock.type, country, residual) %>% 
+  mutate(residual = round(residual, 2)) %>% 
+  spread(livestock.type, residual) 
+ganado_ancha %>% 
+  mutate(orden = orden) %>% 
+  arrange(orden) %>% 
+  mutate_if(if_profile, marcar_g) %>%
+  knitr::kable(format = "html", escape = F, digits = 2) %>% 
+  kableExtra::kable_styling(bootstrap_options = c( "hover", "condensed"), full_width = FALSE)
+```
+
+Y podemos resumir:
+
+```{r}
+ganado
+```
