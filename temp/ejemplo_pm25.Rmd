@@ -21,7 +21,7 @@ pm_larga <-  pm %>%
     mutate(fecha_hora = FECHA + hours(HORA-1)) %>% 
     mutate(valor = ifelse(valor == -99, NA, valor), 
            año = year(fecha_hora), mes = month(fecha_hora),
-           trimestre = month(fecha_hora)) %>% 
+           trimestre = quarter(fecha_hora)) %>% 
     left_join(estaciones)
 ```
 
@@ -38,40 +38,48 @@ faltantes <- pm_larga %>% group_by(año, estacion) %>% summarise(num_faltantes =
 faltantes %>% arrange((`2019`))
 ```
 
-Vamos a hacer un año:
+Consideramos los datos de 4 trimestres, 5 estaciones y 3 años: Podemos graficar
+para darnos una idea general de lo que está pasando:
 
 ```{r}
 agregada %>% select(año, HORA, trimestre, estacion, percentil_99) %>% spread(estacion, percentil_99)
-ggplot(agregada %>% filter(trimestre %in% c(1, 5, 9, 12)), aes(x = HORA, y = percentil_99, colour = factor(trimestre), group = trimestre)) + geom_line() +
-    facet_grid(estacion ~ año) + theme(legend.position="right")
+ggplot(agregada %>% filter(trimestre %in% c(1:12)), aes(x = HORA, y = percentil_99, colour = estacion, group = estacion)) + geom_line() +
+    facet_grid(trimestre ~ año) + theme(legend.position="right") +
+    scale_color_colorblind()
 ```
 
-Podemos comenzar a hacer nuestro análisis para un año dado, por ejemplo 2017 en el primer trimestre
+Hay varios patrones que podemos analizar en estos datos.
+Podemos comenzar nuestra hacer nuestro análisis para un año dado, por ejemplo 2017 en el primer trimestre
 
 
 ```{r}
 calc_ajuste <- function(tbl, col, reng, valor){
-    tbl <- tbl %>% ungroup %>% mutate(media_total = mean({{ valor }}))
-    columnas_tbl <- tbl %>% group_by({{ col }}) %>% 
-        summarise(valor_columna = mean({{ valor }} - media_total))
-    renglones_tbl <- tbl %>% group_by({{ reng }}) %>% 
-        summarise(valor_reng = mean({{ valor }}  - media_total))
-    res <- tbl %>% left_join(columnas_tbl) %>% left_join(renglones_tbl) %>% 
-        mutate(residual = {{ valor }} - (media_total + valor_columna + valor_reng ))
-    res
+    tbl <- tbl %>% ungroup %>% 
+        mutate(media_total = mean({{ valor }})) %>% 
+        group_by({{ col }}) %>% 
+        mutate(valor_columna = mean({{ valor }} - media_total)) %>% 
+        group_by({{ reng }}) %>% 
+        mutate(valor_renglon = mean({{ valor }}  - media_total)) %>% 
+        ungroup %>% 
+        mutate(residual = {{ valor }} - (media_total + valor_columna + valor_renglon ))
+    # columnas_tbl <- tbl %>% group_by({{ col }}) %>% 
+    #     summarise(valor_columna = mean({{ valor }} - media_total))
+    # renglones_tbl <- tbl %>% group_by({{ reng }}) %>% 
+    #     summarise(valor_reng = mean({{ valor }}  - media_total))
+    # res <- tbl %>% left_join(columnas_tbl) %>% left_join(renglones_tbl) %>% 
+    #     mutate(residual = {{ valor }} - (media_total + valor_columna + valor_reng ))
+    tbl
 }
 
-marcar_tabla <- function(x){
-    kableExtra::cell_spec(x, "html", color = ifelse(x <= -10, "darkgreen", ifelse(x>= 10, "red", "lightgray"))) 
-}
 
+marcar_tabla <- marcar_tabla_fun(10)
 
 prep_tabla <- function(ajuste, columna, renglon){
     media_total <- mean(ajuste$media_total)
     columnas_tbl <- ajuste %>% select({{ columna }} , valor_columna) %>% unique %>% 
         mutate({{ renglon }} := "efecto_c") %>% spread({{ columna }}, valor_columna) %>% 
         mutate( efecto_r = media_total)
-    renglones_tbl <- ajuste %>% select({{ renglon }}, efecto_r = valor_reng) %>% unique 
+    renglones_tbl <- ajuste %>% select({{ renglon }}, efecto_r = valor_renglon) %>% unique 
 
     res_tab <- ajuste %>% 
         #mutate({{ columna }} := fct_reorder({{ columna }} , residual)) %>% 
@@ -94,8 +102,8 @@ prep_tabla <- function(ajuste, columna, renglon){
 
 
 ```{r}
-ajuste <- agregada %>% filter(año == 2018, trimestre == 12) %>% 
-    calc_ajuste(., estacion, HORA, percentil_99)
+ajuste <- agregada %>% filter(año == 2019, trimestre == 2) %>% 
+    calc_ajuste(estacion, HORA, percentil_99)
 prep_tabla(ajuste, estacion, HORA)
 ```
 
