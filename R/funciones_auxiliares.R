@@ -1,5 +1,7 @@
 
 ## Sección 1
+theme_set(theme_minimal(base_size = 14))
+paleta <- scale_colour_manual(values = c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
 
 formatear_tabla <- function(x_tbl, scroll = FALSE){
     tabla <- knitr::kable(x_tbl) %>%
@@ -29,8 +31,28 @@ grafica_cuantiles <- function(datos, grupo, valor){
     
     grafica <- ggplot(cuantiles_tbl  %>% spread(cuantil, valor), 
         aes(x = {{ grupo }}, y = `0.5`)) +
-        geom_linerange(aes(ymin= `0.1`, ymax = `0.9`), colour = "gray40") +
-        geom_linerange(aes(ymin= `0.25`, ymax = `0.75`), size = 2, colour = "gray") 
+        #geom_linerange(aes(ymin= `0.1`, ymax = `0.9`), colour = "gray40") +
+        geom_linerange(aes(ymin= `0.25`, ymax = `0.75`), size = 2, colour = "gray") +
         geom_point(colour = "salmon", size = 2) 
     grafica
+}
+
+
+
+marcar_tabla_fun <- function(corte, color_1 = "darkgreen", color_2 = "red"){
+    fun_marcar <- function(x){
+        kableExtra::cell_spec(x, "html", 
+                              color = ifelse(x <= -corte, color_1, ifelse(x>= corte, color_2, "lightgray")))   
+    }
+    fun_marcar
+}
+
+
+marcar_tabla_fun_doble <- function(corte_1, corte_2, color_1 = "darkgreen", color_2 = "red"){
+    fun_marcar <- function(x){
+        kableExtra::cell_spec(x, "html", 
+                              color = ifelse(x <= corte_1, color_1, ifelse(x>= corte_2, color_2, "lightgray")),
+                              bold = ifelse(x <= 3*corte_1, TRUE, ifelse(x>= 3*corte_2, TRUE, FALSE)))
+    }
+    fun_marcar
 }
