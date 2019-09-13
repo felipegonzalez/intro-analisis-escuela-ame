@@ -7,80 +7,175 @@ library(lubridate)
 library(ggthemes)
 theme_set(theme_minimal(base_size = 14))
 ```
-Una buena parte de los problemas de análisis de datos tratan de una manera u otra 
-generalizar observaciones obtenidas de una muestra a la población de donde se extrajo la muestra. 
+
+Una buena parte de los problemas de análisis de datos tratan de separar señales útiles
+para el problema que nos interesa de ruido producido por variación de variables que no tenemos
+control. Por ejemplo:
+
+- Si usamos una muestra de una población para generalizar a la población, queremos separar de
+aspectos que generalizan a la población de otros que sólo dependen de variación muestral
+- Cuando queremos juzgar si un conjunto de datos observados es consistente con un modelo o
+con otro conjunto de datos observados, considerando que hay variables que no controlamos que
+afectan a ambos conjunots de datos.
 
 En todos los casos, el paso importante es intentar separar señales útiles (para explicar, predecir,
 o mostrar estructura) de *fluctuaciones* que resultan de variables de las que no tenemos información.
 
-## Comparación con distribuciones de referencia {-}
 
-Supongamos que tenemos una población o sistema para el cual hemos acumulado un número grande de datos.
-Obtenemos nuevas observaciones de otra población, y nos preguntamos si las observaciones son 
-consistentes con nuestra población de referencia.
+## Pruebas de hipótesis
 
-En este casos, diremos que la *hipótesis nula* es que los nuevos datos son consistentes 
-con la población de referencia. Si desacreditamos la hipótesis nula con nuestro análisis,
-entonces diremos que observamos *diferencia significativa* (ver @box78).
-
+La primera herramienta que veremos tiene como propósito 
 
 ### Ejemplo {-}
 
-Por ejemplo, supongamos que estamos considerando cambios rápidos en una serie de tiempo. Consideramos
-10 observaciones de nuestra serie de tiempo, y calculamos su pendiente. Hemos observado al sistema
-en un periodo largo, y resumimos nuestras observaciones de las pendientes de 10 puntos consecutivos:
-
+Por ejemplo, supongamos que estamos considerando cambios rápidos en una serie de tiempo de alta frecuencia. Hemos observado la serie en su estado "normal" durante un tiempo considerable, y cuando observamos nuevos
+datos quisiéramos juzgar si hay indicaciones o evidencia en contra de que el sistema sigue funcionando
+de manera similar. Digamos que monitoreamos ventanas de tamaño 20 y necesitamos tomar una decisión. Abajo
+mostramos cinco ejemplos donde el sistema opera normalmente, y un ejemplo de los datos más recientes:
 
 ```{r}
-simular_serie <- function(n = 1000, lambda = 1){
+simular_serie <- function(n = 1000, lambda = 1, ac = 0.7, x_inicial = 1){
     x <- numeric(n)
     pendiente <- numeric(n)
-    x[1] <- 3
+    x[1] <- x_inicial
     for(i in 2:n){
-        x[i] <-  0.5*(x[i - 1]) + rgamma(1, 1, 1 / lambda)
+        x[i] <-  ac*(x[i - 1]) + rgamma(1, 1, 1 / lambda)
         if(i >= 10){
             x_s <- x[i - seq(9, 0, -1)]
             t_s <- seq(0, 9, 1)
-            s <- lm.fit(cbind(1, t_s), x_s)$coefficients[2]
+            s <- sd(lm.fit(cbind(1, t_s), x_s)$residuals)
+            #s <- sd(x_s)
             pendiente[i] <- s
         }
     }
-    tibble(t = 1:n, obs = x, pendiente = pendiente)
+    tibble(t = 1:n, obs = x, pendiente = pendiente) %>% filter(t > 50)
 }
-tbl <- simular_serie(2000, 1)
+tbl <- simular_serie(2000)
+muestrear_ventanas <- function(control, obs, n_ventana = 20, long = 20){
+    n_control <- nrow(control)
+    inicios <- sample(1:(nrow(control) - long), n_ventana - 1)
+    control_lista <- map(inicios, function(i){
+        filter(control, t %in% seq(i, i + long - 1))
+    })
+    dat_lista <- append(control_lista, list(obs))
+    orden <- sample(1:n_ventana, n_ventana)
+    list(lineup = tibble(rep = orden, datos = dat_lista) %>% 
+        unnest %>% group_by(rep) %>% mutate(t_0 = t - min(t)) %>% ungroup,
+        pos = last(orden))
+}
+set.seed(1213)
+obs <- tbl[500:519, ]
+ventanas_tbl <- muestrear_ventanas(tbl, obs, n_ventana = 6)
+ggplot(ventanas_tbl$lineup, aes(x = t_0, y = obs, colour = factor(rep==ventanas_tbl$pos))) + geom_line() + 
+    geom_point() + facet_wrap(~rep, nrow = 2) +
+    theme(legend.position = "none") + scale_y_log10()
 ```
+
+
+Cuando nos señalan cuáles son los datos nuevos, 
+es fácil encontrar aspectos particulares que distinguen
+las nuevas observaciones de las anteriores. Pero hay variabilidad considerable en el
+proceso usual, de forma que nos preguntamos si no estamos sobreinterpretando 
+variaciones que son parte normal del proceso.
+
+Repetimos el ejercicio con nuevos datos: ¿cuál de los siugientes es diferente?
 
 
 ```{r}
-set.seed(9)
-tbl_2 <- simular_serie(100) 
-ggplot(tbl, aes(sample = pendiente)) + geom_qq(distribution = stats::qunif) +
-    geom_hline(yintercept = tbl_2$pendiente[100])
+obs <- simular_serie(500, x_inicial = last(obs_tbl$obs))
+prueba_tbl <- muestrear_ventanas(tbl, obs[1:20, ], n_ventana = 20)
+ggplot(prueba_tbl$lineup, aes(x = t_0, y = obs)) + geom_line() + 
+     facet_wrap(~rep, nrow = 4) + scale_y_log10()
 ```
 
-La observación está alrededor del cuantil 0.25. 
+**Ejercicio**: ¿cuáles son los datos nuevos (solo hay un panel con los nuevos datos)? ¿Las elecciones tomadas son consistentes con el azar, o se desvían hacia un panel donde no están los datos nuevos?
 
-Este no es cuantil muy extremo, así que desde este punto de vista, esto no aporta evidencia
-en contra de la hipótesis nula es verdadera: el sistema sigue funcionando de manera usual.
 
-Por el contrario, si observáramos:
+Ahora contrastemos con  un ejemplo donde ocurre un cambio considerable:
+
 ```{r}
-set.seed(91)
-tbl_2 <- simular_serie(100, lambda = 3) 
-obs <- tbl_2$pendiente[100]
-ggplot(tbl, aes(sample = pendiente)) + geom_qq(distribution = stats::qunif) +
-    geom_hline(yintercept = obs)
+obs_dif <- simular_serie(500, lambda = 3, ac = 0.3, x_inicial = last(obs_tbl$obs))
+prueba_tbl <- muestrear_ventanas(tbl, obs_dif[1:20, ], n_ventana = 20)
+ggplot(prueba_tbl$lineup, aes(x = t_0, y = obs)) + geom_line() + 
+   facet_wrap(~rep, nrow = 4) + scale_y_log10()
 ```
 
-entonces tendríamos evidencia para descartar la hipótesis nula: las nuevas observaciones
-son poco consistentes con la distribución de referencia.
+Aunque es imposible estar seguros de que ha ocurrido un cambio considerable, la diferencia de una de las
+series es muy considerable. La probabilidad de haber acertado por alguna característica particular
+que aparece por azar es de 0.05 - relativamente baja.
+
+**Observaciones y terminología**:
+
+1. Llamamos *hipótesis nula* a la hipótesis de que los nuevos datos son producidos bajo
+las mismas condiciones que los datos control.
+
+2. Si no escogemos la gráfica correcta, nuestra conclusión es que la prueba no aporta evidencia
+en contra de la hipótesis nula. 
+
+3. Si escogemos la gráfica correcta, nuestra conclusión es que la prueba aporta evidencia
+en contra de la hipótesis nula.
+
+¿Qué tan fuerte es la evidencia, en caso de que descubrimos los datos no nulos? 
+
+4. Cuando el número de paneles es más grande y detectamos los datos, la evidencia es más alta en contra de la nula. La razón es que si todos los datos son nulos, escogemos la gráfica "diferente" usando características de variación que ocurren naturalmente el sistema: es decir, escogimos al azar el panel distinto. Decimos que el *nivel de significancia de la prueba* es la probabilidad de atinarle a los
+datos correctos cuando la hipótesis nula es razonable. En el caso de 20 paneles, es de 1/20 = 0.05
+
+5. Si acertamos, y la diferencia es más notoria y fue más fácilmente detectar la gráfica diferente,
+esto también sugiere más evidencia en contra de la hipótesis nula.
+
+6. Adicionalmente, esta prueba nos puede indicar con mucho detalle qué es lo que puede estar cambiando.
+
+7. Finalmente, esta prueba nunca nos da seguridad completa acerca de ninguna conclusión, aún cuando
+hiciéramos muchos páneles.
+
+## Comparación con distribuciones de referencia {-}
+
+En el ejemplo anterior, nuestra estadística de prueba es una gráfica. Cuando la estadística
+de prueba es muy extrema comparado con lo que obtenemos con los datos nulos (o de referencia),
+entonces terminamos con evidencia acumulada en contra de la hipótesis nula.
+
+Nuestra estadística también puede ser numérica. Esta simplificación tiene algunas ventajas. Por ejemplo,
+podemos hacer más cálculos y cuantificaciones, pero también tiene desventajas: debemos enfocar la estadística a un aspecto concreto de los datos.
+
+Supongamos entonces que medimos la pendiente a lo largo de la ventana de tamaño 20. En este caso,
+podemos construir una distribución para nuestra estadística, *bajo la hipótesis nula*. En este caso,
+tomamos todas las posibles ventanas y los valores de pendiente que obtenemos, y graficamos:
+
+```{r}
+g_1 <- ggplot(tbl, aes(sample = pendiente)) + geom_qq(distribution = stats::qunif) +
+    labs(subtitle = "Referencia (nula)")
+g_2 <- ggplot(tbl, aes(x = pendiente)) + geom_histogram() + labs(subtitle = " ") + coord_flip() +
+    xlab("")
+gridExtra::grid.arrange(g_1, g_2, nrow = 1, widths = c(4, 2))
+```
+
+En el primer caso, obtuvimos una pendiente de
+
+```{r}
+sd_nula <- obs$pendiente[20]
+sd_dif <- obs_dif$pendiente[20]
+sd_nula
+sd_dif
+```
+
+```{r}
+g_1 <- ggplot(tbl, aes(sample = pendiente)) + geom_qq(distribution = stats::qunif) +
+    labs(subtitle = "Referencia (nula)") + 
+    geom_hline(yintercept = c(sd_nula, sd_dif), col = "red")
+g_2 <- g_2 <- ggplot(tbl, aes(x = pendiente)) + geom_histogram() + labs(subtitle = " ") + coord_flip() +
+    xlab("")
+gridExtra::grid.arrange(g_1, g_2, nrow = 1, widths = c(4, 2))
+```
+
+
 
 Podemos cuantificar qué tan extrema es nuestra observación mediante el cálculo de un *valor p*. 
 El cuantil de la observación es
 
 ```{r}
 dist_acum <- ecdf(tbl$pendiente)
-dist_acum(obs)
+dist_acum(sd_nula)
+dist_acum(sd_dif)
 ```
 
 Si la observación fuera extraída de la población original (es decir, se cumple
@@ -88,10 +183,11 @@ la hipótesis nula),  una observación tan extrema o más de lo que observamos t
 de ocurrir de
 
 ```{r}
-2*dist_acum(obs)
+2*(1-dist_acum(sd_nula))
+2*(1-dist_acum(sd_dif))
 ```
 
-La cual es muy baja, y aporta evidencia en contra de la hipótesis nula
+Para la La cual es muy baja, y aporta evidencia en contra de la hipótesis nula.
 
 
 ### Ejemplo {-}
@@ -104,6 +200,10 @@ Nos interesa saber qué tan distintos son los datos que produce cada condición 
 qué tan diferentes son las muestras. Hay muchos aspectos
 que podríamos cuestionar acerca de cómo son diferentes los tres sistemas. En este caso,
 nos preguntamos, por ejemplo, si las distribuciones son similares o no.
+
+
+**Apophenia**: poner esfuerzos donde vale la pena poner esfuerzos, ser más eficiente.
+
 
 ```{r, fig.width = 6, fig.height = 3, echo = FALSE}
 library(tidyverse)
@@ -139,10 +239,11 @@ muestra_tab %>% group_by(grupo) %>%
 ```
 
 En la muestra, la mediana del grupo c es menor que la de b, por ejemplo. 
-Las dispersiones parecen ser también ditintas. Las muestras son relativamente chicas.
+Las dispersiones parecen ser también ditintas. Las muestras son relativamente chicas, especialmente
+para el grupo b y c.
 
 Podemos construir ahora una *hipótesis nula*, que establece que las observaciones
-de los procesos son intercambiables:
+provienen de una población similar.
 
 - Los tres procesos son prácticamente indistiguibles desde el punto de vista del sistema. La variación
 que observamos se debe a que tenemos información incompleta: si observáramos todos los posibles
@@ -166,10 +267,10 @@ Vamos a intentar esto, por ejemplo usando una gráfica de cuantiles. Hacemos un 
 y el culpable (los verdaderos datos) están en una posición escogida al azar.
 
 ```{r}
-set.seed(11)
-reps <- lineup(null_permute("grupo"), muestra_tab, n = 12)
+set.seed(88)
+reps <- lineup(null_permute("grupo"), muestra_tab, n = 20)
 grafica_cuantiles(reps %>%  mutate(grupo_1 = factor(digest::digest2int(grupo) %% 177)), 
-                             grupo_1, x) + facet_wrap(~.sample) + ylab("x")
+                             grupo_1, x) + facet_wrap(~.sample, ncol = 5) + ylab("x")
 ```
 
 Y la pregunta que hacemos es **podemos distinguir nuestra muestra entre todas las 
@@ -184,7 +285,7 @@ nula, entonces la probabilidad de escoger al verdadero culpable es de 1/12 = 0.0
 llama *significancia de nuestra prueba de lineup*.
 
 - Si la persona escoge los verdaderos datos, rechazamos la hipótesis nula (equivalencia entre los
-tres bonches de datos), y decimos que los datos son *significativamente diferentes* al nivel 0.08.
+tres bonches de datos), y decimos que los datos son *significativamente diferentes* al nivel 0.05.
 
 - Si la persona escoge uno de los datos permutados, no rechazamos la hipótesis nula. Esto usualmente
 implica que es razonable proceder en nuestro análisis de estos datos bajo la hipótesis de trabajo
@@ -435,24 +536,24 @@ ggplot(wasp_lda, aes(x = LD1, y = LD2, colour = grupo)) + geom_point(size = 3) +
 ## El jardín de los senderos que se bifurcan
 
 Recientemente (aunque muchos estadísticos lo han repetido desde hace mucho tiempo), se ha reconocido
-en campos como la sicología la "crisis de replicabilidad". Esta crisis aparece con la
-observación de que muchos estudios que recibieron mucha publicidad (por ejemplo, el efecto positivo
-de hacer "poses poderosas" antes de hacer una entrevista, etc.) inicialmente, no han podido ser replicados
+en campos como la sicología la "crisis de replicabilidad" (ver por ejemplo @falsefindings). Varios estudios que recibieron mucha publicidad inicialmente no han podido ser replicados
 posteriormente por otros investigadores. Por ejemplo:
 
-- Hacer "poses poderosas" produce cambios fisiológicos que mejoran nuestro desempeño en ciertas tareas
+- Hacer [poses poderosas](https://www.sciencedaily.com/releases/2017/09/170911095932.htm) produce cambios fisiológicos que mejoran nuestro desempeño en ciertas tareas
 - Patrones de ovulación de las mujeres influyen en los candidatos que escogen para votar
-- Mostrar palabras relacionadas con "viejo" hacen que las personas caminen más lento (efectos de *priming*) 
+- Mostrar palabras relacionadas con "viejo" hacen que las personas caminen más lento (efectos de [priming](https://www.nature.com/news/nobel-laureate-challenges-psychologists-to-clean-up-their-act-1.11535)) 
 En todos estos casos, la evidencia de estos efectos fue respaldada finalmente (pues es requisito para
 publicación) por una prueba de hipótesis nula con un valor p menor a 0.05. Este estándar de publicación
-es seguido por varias revistas. Este problema de replicabilidad parece ser más frecuente cuando:
+es seguido por varias áreas y revistas. Este problema de replicabilidad parece ser más frecuente cuando:
 
-1. Se trata de estudios de potencia baja (mediciones ruidosas y  tamaños de muestra chicos)
+1. Se trata de estudios de potencia baja: mediciones ruidosas y  tamaños de muestra chicos.
 2. El plan de análisis no está claramente definido desde un principio (lo cual es difícil cuando
 se están investigando "fenómenos no estudiados antes")
 
- Como vimos en ejemplos anteriores, hay varias decisiones, todas razonables, que podemos tomar cuando 
-estamos buscando las comparaciones correctas:
+Aunque haya varios ejemplos de manipulaciones conscientes para obtener resultados publicables
+([p-hacking](https://en.wikipedia.org/wiki/Data_dredging)), 
+ como vimos en ejemplos anteriores, hay varias decisiones, todas razonables, que podemos tomar cuando 
+estamos buscando las comparaciones correctas. Algunas pueden ser:
 
 - Transformar los datos (tomar o no logaritmos, u otra transformación)
 - Editar datos atípicos (razonable si los equipos pueden fallar, o hay errores de captura, por ejemplo)
@@ -460,7 +561,10 @@ estamos buscando las comparaciones correctas:
 para personas entre 20 y 30 años, y tenemos tres casos con 33 años. ¿Los dejamos o los usamos?)
 
 Dado un juego de datos, las justificaciones de las decisiones que se toman en cada paso se justifican
-y son razonables. Esto invalida en parte el uso valores p como criterio de evidencia contra la hipótesis nula.
+y son razonables, pero con datos distintos las decisiones pueden ser diferentes. 
+Este es el jardín de los senderos que se bifurcan de [Gelman](http://www.stat.columbia.edu/~gelman/research/published/incrementalism_3.pdf), 
+que invalida en parte el uso valores p como criterio de evidencia contra la hipótesis nula.
+Ver por ejemplo el [comunicado de la ASA](https://www.amstat.org/asa/files/pdfs/P-ValueStatement.pdf).
 
 ## Ejemplo:
 En el ejemplo de datos de fusión, decidimos probar, por ejemplo, el promedio de
@@ -502,9 +606,5 @@ los valores p pueden tener poco significado.
 En áreas como la sicología, existen ahora movimientos fuertes en favor de la replicación. Este movimiento
 sugiere dar valor a los estudios exploratorios que no reportan valor p, y posteriormente, si el estudio
 es de interés, puede intentarse una replicación confirmatoria, con potencia más alta y con planes de análisis predefinidos.
-
-
-
-
 
 

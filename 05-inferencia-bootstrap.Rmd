@@ -47,7 +47,7 @@ plot(sort(medianas_muestras))
 
 ```{r}
 medianas_muestras <- map_dbl(1:2000, ~ enlace %>% sample_n(50, replace = T) %>% summarise(mediana = fun_muestra(mate_6)) %>% pull(mediana))
-valor_poblacional <- median(enlace$mate_6)
+valor_poblacional <- median(enlace$mate_6) 
 g_1 <- qplot(sort(medianas_muestras)) + geom_vline(xintercept = valor_poblacional)
 g_1
 ```
