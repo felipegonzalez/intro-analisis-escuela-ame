@@ -1,0 +1,2407 @@
+--- 
+title: "Una introducción al Análisis de Datos"
+author: "Felipe González"
+date: "`r Sys.Date()`"
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: [book.bib]
+biblio-style: apalike
+link-citations: yes
+description: "Notas para el taller de intro a análisis de datos de la Escuela AME 2019"
+---
+
+# Temario
+
+Notas y materiales para el taller de intro al análisis de datos de la Escuela
+AME 2019: Ciencia de datos
+
+## Temas
+
+1. Principios de análisis
+2. Inferencia y causalidad
+3. Modelos
+
+
+## Referencias importantes
+
+## Instrucciones
+
+<!--chapter:end:index.Rmd-->
+
+# Introducción {#intro}
+
+```{r, echo = FALSE, message=FALSE}
+library(tidyverse)
+library(ggrepel)
+library(knitr)
+library(kableExtra)
+library(lubridate)
+library(gridExtra)
+source("R/funciones_auxiliares.R")
+```
+
+
+En esta introducción corta al análisis de datos buscamos
+proveer a principiantes en análisis de datos de: 
+
+- Algunas ideas generales útiles que sirven para hacer mejor análisis de datos.
+- Algunas técnicas particulares que son de uso común.
+
+Distintos analistas, en distintas áreas, pueden poner diferente énfasis
+en el tipo de herramientas y técnicas preferidas. Así que un taller de este
+tipo necesariamente refleja ciertos puntos de vista, experiencias, y 
+opiniones y juicios.
+
+
+## Tukey y análisis de datos {-}
+
+El término *análisis de datos* fue quizá 
+introducido (@huber50, @donoho50) por Tukey en el artículo 
+*The Future of Data Analysis* (@tukeyda) en 
+su sentido más común. 
+
+- La máxima del análisis de datos es, según Tukey: Es mucho más valiosa
+una respuesta aproximada a la pregunta correcta, que usualmente es vaga,
+que una respuesta exacta a la pregunta incorrecta, que siempre puede formularse
+con precisión. El análisis de datos avanza con **respuestas aproximadas a preguntas
+vagas**.
+
+- El análisis de datos se trata de **hacer juicios** de distintos tipos: basados
+en la experiencia del campo particular de interés, en experiencia más amplia
+de resultados en varios campos, y resultados abstractos de propiedades de técnicas
+particulares (pruebas matemáticas y resultados empíricos).
+
+- El análisis de datos se adhiere a **características científicas**: buscamos más 
+alcance y utilidad que seguridad, aceptamos equivocarnos algunas veces para que
+en muchos casos evidencia poco adecuada *sugiera* la respuesta correcta. Los
+argumentos matemáticos (estadística matemática, ciencias de la computación) son 
+guías pero no pueden determinar el proceso.
+
+El analista de datos, entonces, busca hacer aportaciones útiles, y 
+orientar en lo posible el avance de su equipo, que
+como conjunto quiere resolver problemas no triviales. El analista
+de datos a veces resuelve problemas, pero más usualmente crea otros nuevos!
+
+## Preguntas vagas {-}
+
+En esta gráfica [Roger Peng](https://simplystatistics.org/2019/04/17/tukey-design-thinking-and-better-questions/) hay tres caminos: uno es uno ideal que pocas veces sucede,
+otro produce respuestas poco útiles pero es fácil, y otro es tortuoso pero que 
+caracteriza el mejor trabajo de análisis de datos:
+
+
+```{r, echo = FALSE, message = FALSE, fig.cap = "Adaptado de R. Peng: [Tukey, design thinking and better questions.](https://simplystatistics.org/2019/04/17/tukey-design-thinking-and-better-questions/)"}
+
+puntos <- tibble(x = c(0.5, 1.2, 4, 4), y = c(0.5, 4, 0.5, 5),
+                 etiqueta = c("dónde\ncomenzamos\nrealmente", "Análisis de datos \n poco útil, de bajo impacto", 
+                              "dónde creeemos\nque comenzamos", "Nuestra \n Meta "))
+set.seed(211)
+browniano <- tibble(x = 0.5 +  cumsum(c(0,rnorm(50, 0.03, 0.1))) ,
+                    y = 0.5 +  cumsum(c(0, rnorm(50, 0.02, 0.2))))
+puntos <- bind_rows(puntos, tail(browniano, 1) %>% mutate(etiqueta = "Terminamos?!?"))
+flechas <- tibble(x = c(0.5, 4), y = c(0.5, 0.5), xend = c(1.2, 4), yend = c(4, 5))
+
+ggplot(puntos, aes(x = x, y = y)) + 
+    xlab("Calidad de la pregunta") +
+    ylab("Peso de la evidencia") +
+    theme(axis.text.x=element_blank(),
+        axis.text.y=element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+    geom_segment(data = flechas, aes(xend=xend, yend=yend),
+                 arrow = arrow(length = unit(0.3, "inches"))) +
+    geom_path(data = browniano) +
+    geom_point(data = browniano) +
+    geom_point(colour="red", size = 5) +
+    geom_text(aes(label = etiqueta), vjust = -0.5, hjust = 1.1, size = 4.2) +
+    #labs(caption = "Adaptado de R. Peng: Tukey, design thinking and better questions.") +
+    xlim(c(-0.1 , 4)) + ylim(c(0,6))
+    
+```
+
+Ejemplos: Alguien nos pregunta cuáles son las tiendas que mas venden de una cadena. Podriamos
+consultar bases de datos, hacer extracciones, definir periodos, etc. y dar una
+respuesta que probablemente es poco útil. Nos damos cuenta, por ejemplo, porque la
+peor tienda es una que abrió hace relativamente poco, y la mejor es una de las tiendas
+más grandes que está en una zona de tráfico de alto costo. Una pregunta más interesante
+es, ¿qué equipos de ventas tienen mejor desempeño? ¿Cuánto aporta tener una cafetería dentro
+de la tienda en términos de ventas?, etc.  
+
+## Principios del diseño analítico {-}
+
+Edward Tufte (@tufte06) propuso seis principios de diseño analítico que caracteriza
+al mejor trabajo de análisis de datos. Aquí están los principios con algunas
+modificaciones ligeras. Nos concentraremos en los siguientes:
+
+1. Muestran claramente **comparaciones**, diferencias y variación.
+2. Tienden a ser **multivariados**: estudian conjuntamente más de 1 o 2 variables.
+3. Muestran **estructura sistemática**, sugieren explicaciones. Cuando es posible,
+aportan evidencia de causalidad.
+
+También muy importantes pero en los que pondremos menos énfasis:
+
+4. Datos y procesos están bien **documentados**. El análisis es reproducible y transparente.
+5. Intentan **integrar** la evidencia completa: texto, explicaciones, tablas y
+gráficas.
+
+Y finalmente, el principio general:
+
+6. La calidad, relevancia, e integridad del **contenido** son los que
+al final sostienen al análisis - por sí mismos, el uso de técnicas sofisticadas,
+algoritmos novedosos, uso o no de grandes datos, estilo de visualizaciones o presentaciones
+no son marcas o sellos de un análisis de datos exitoso.
+
+
+## Gráfica de Minard {-}
+
+La ilustración que Tufte usa para mostrar excelencia en diseño analítico es
+una gráfica de Minard que sirve para entender la campaña de Napoleón (1812) 
+en Rusia:
+
+```{r, echo = FALSE, fig.cap = "Marcha de Napoleón de Charles Minard. Tomado de [Wikipedia](https://en.wikipedia.org/wiki/Charles_Joseph_Minard)"}
+knitr::include_graphics("figuras/Minard.png")
+```
+
+¿Cómo satisface los principios del diseño analítico este análisis?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--chapter:end:01-introduccion.Rmd-->
+
+# Principios y ejemplos
+
+## Algunos conceptos básicos {-}
+
+En el análisis los datos típicamente están organizados en *bonches de números etiquetados* que corresponden
+a unidades con múltiples estructuras jerárquicas, a veces más complejas y a veces menos.
+
+Por ejemplo, los siguientes datos fueron registrados en un restaurante durante cuatro días consecutivos:
+
+### Ejemplo {-}
+
+```{r}
+library(tidyverse)
+library(ggrepel)
+library(knitr)
+source("./R/funciones_auxiliares.R")
+propinas <- reshape2::tips %>% 
+  rename(cuenta_total = total_bill, propina = tip, sexo = sex, fumador = smoker,
+         dia = day, momento = time, num_personas = size) %>% 
+  mutate(sexo = recode(sexo, Female = "Mujer", Male = "Hombre"), 
+         fumador = recode(fumador, No = "No", Si = "Si"),
+         dia = recode(dia, Sun = "Dom", Sat = "Sab", Thur = "Jue", Fri = "Vie"),
+         momento = recode(momento, Dinner = "Cena", Lunch = "Comida")) %>% 
+  select(-sexo) %>% 
+  mutate(dia  = fct_relevel(dia, c("Jue", "Vie", "Sab", "Dom")))
+sample_n(propinas, 10) %>% formatear_tabla()
+```
+
+Aquí la unidad de observación es una cuenta particular. Tenemos tres mediciones numéricas
+de cada cuenta: cúanto fue la cuenta total, la propina, y el número de personas asociadas a la cuenta.
+Los datos están separados según se fumó o no en la mesa, y temporalmente en dos partes: el día
+(Jueves, Viernes, Sábado o Domingo), cada uno separado por Cena y Comida. 
+
+Lo primero que nos interesa es comparar los datos dentro de cada "bonche":
+
+- ¿Varían mucho o poco? ¿Cuáles son valores típicos o centrales? ¿Existen valores atípicos?
+- ¿Cómo es la variación conjunta de varias mediciones en un bonche? 
+- ¿Cómo están asociadas las distintas agrupaciones de los datos? ¿Qué agrupaciones están más asociadas?
+
+Supongamos entonces que consideramos simplemente la variable de *cuenta_total*. Podemos comenzar
+por **ordenar los datos**, y ver cuáles datos están en los extremos y cuáles están en los lugares centrales:
+
+```{r}
+propinas <- propinas %>% mutate(
+    orden_cuenta = rank(cuenta_total, ties.method = "first"), 
+    f = (orden_cuenta - 0.5) / n()) 
+cuenta <- propinas %>% select(orden_cuenta, f, cuenta_total) %>% arrange(f)
+bind_rows(head(cuenta), tail(cuenta)) %>% formatear_tabla()
+```
+
+*Observación*: acerca del valor $f$ y restar 0.5
+
+y graficamos los datos en orden, interpolando valores consecutivos.
+
+```{r, fig.width = 7, fig.height = 4}
+g_orden <- ggplot(cuenta, aes(x = orden_cuenta, y = cuenta_total)) + geom_point(colour = "red", alpha = 0.5) + 
+  labs(subtitle = "Cuenta total") 
+g_cuantiles <- ggplot(cuenta, aes(x = f, y = cuenta_total)) + geom_point(colour = "red", alpha = 0.5) + geom_line() +
+  labs(subtitle = "") +
+  scale_x_continuous(breaks = seq(0, 1, 0.1))
+gridExtra::grid.arrange(g_orden, g_cuantiles, ncol = 2)
+```
+
+A esta función le llamamos la **función de cuantiles** para la variable cuenta total. Y nos
+sirve para comparar directamente los distintos valores que observamos los datos
+según el orden que ocupan. 
+
+Estas gráfica no pierde información, su forma es informativa.
+
+**Dispersión y Valores centrales**
+
+- El *rango* de datos va de unos 3 dólares hasta 45 dólares
+- Los **valores centrales** (del cuantil 0.25 al 0.75, por ejemplo), están
+entre unos 13 y 25 dólares
+- Podemos usar el cuantil 0.5 (**mediana**) para dar un valor *central* de esta distribución,
+que está alrededor de 18 dólares.
+
+Y podemos dar resúmenes más refinados si es necesario
+
+- El cuantil 0.95 es de unos 35 dólares - sólo 5\% de las cuentas son de más de 35 dólares
+- El cuantil 0.05 es de unos 8 dólares - sólo 5\% de las cuentas son de 8 dólares o menos.
+
+Finalmente, la forma de la gráfica la interpretamos usando su pendiente, haciendo comparaciones
+de diferentes partes de la gráfica:
+
+- La distribución de valores tiene asimetría: el 10\% de las cuentas más altas 
+tiene considerablemente más dispersión que el 10\% de las cuentas más bajas. 
+
+- Entre los cuantiles 0.2 y 0.5 es donde existe *mayor* densidad de datos: la pendiente
+es baja, lo que significa que al avanzar en los cuantiles, los valores observados no cambian mucho.
+
+- Cuando la pendiente es alta, quiere decir que los datos tienen más dispersión local o están más separados.
+
+En algunos casos, es más natural hacer un *histograma*, donde dividimos el rango de la variable
+en cubetas o intervalos (en este caso de igual longitud), y graficamos cuántos datos caen en cada
+cubeta:
+
+```{r, fig.width = 10, fig.height = 4}
+variable <- quo(cuenta_total)
+binwidth_min = 1
+g_1 <- ggplot(propinas, aes(x = !!variable)) + geom_histogram(binwidth = binwidth_min) 
+g_2 <- ggplot(propinas, aes(x = !!variable)) + geom_histogram(binwidth = binwidth_min * 2) 
+g_3 <- ggplot(propinas, aes(x = !!variable)) + geom_histogram(binwidth = binwidth_min * 5) 
+gridExtra::grid.arrange(g_1, g_2, g_3, ncol = 3)
+```
+
+Finalmente, una gráfica más compacta que resume la gráfica de cuantiles o el histograma
+es el diagrama de caja y brazos. Mostramos dos versiones, la clásica de Tukey (T) y otra versión
+menos común de Spear/Tufte (ST):
+
+```{r, fig.width = 8, fig.height = 4}
+library(ggthemes)
+cuartiles <- quantile(cuenta$cuenta_total)
+g_1 <- ggplot(cuenta, aes(x = f, y = cuenta_total)) + 
+  labs(subtitle = "Gráfica de cuantiles: Cuenta total") +
+  geom_hline(yintercept = cuartiles[2], colour = "gray") + 
+  geom_hline(yintercept = cuartiles[3], colour = "gray") +
+  geom_hline(yintercept = cuartiles[4], colour = "gray") +
+  geom_point(alpha = 0.5) + geom_line() 
+g_2 <- ggplot(cuenta, aes(x = factor("ST", levels =c("ST")), y = cuenta_total)) + 
+  geom_tufteboxplot() +
+  #geom_violin(draw_quantiles = c(0.25, 0.5, 0.75)) +
+  labs(subtitle = " ") +  xlab("") + ylab("")
+g_3 <- ggplot(cuenta, aes(x = factor("T"), y = cuenta_total)) + geom_boxplot() +
+  labs(subtitle = " ") +  xlab("") + ylab("")
+g_4 <- ggplot(cuenta, aes(x = factor("P"), y = cuenta_total)) + geom_jitter(height = 0, width =0.2, alpha = 0.5) +
+  labs(subtitle = " ") +  xlab("") + ylab("")
+gridExtra::grid.arrange(g_1, g_2, g_3, g_4, nrow = 1, widths = c(8, 2, 2, 2)) 
+```
+
+
+- **Ventajas en el análisis inicial**: en un principio del análisis, estos resúmenes
+(cuantiles) pueden ser más útiles que utilizar medias y varianzas, por ejemplo. La razón es
+que los cuantiles:
+
+- Son cantidades más fácilmente interpretables
+- Los cuantiles centrales son más resistentes a valores atípicos que medias o varianzas
+- Sin embargo, permite identificar valores extremos
+
+
+
+
+### Ejercicio
+¿Cómo se ve la gráfica de cuantiles de las propinas? ¿Cómo crees que esta gráfica se
+compara con distintos histogramas?
+
+```{r, fig.width = 4, fig.height = 3}
+g_1 <- ggplot(propinas, aes(sample = propina)) + 
+  geom_qq(distribution = stats::qunif) + xlab("f") + ylab("propina")
+g_1
+```
+
+
+
+
+
+## Enlace {-}
+
+Consideremos la prueba Enlace (2011) de matemáticas para primarias. Una primera pregunta 
+que alguien podría hacerse es:  ¿qué escuelas son mejores, las privadas o las públicas? 
+
+```{r, message = FALSE, echo = FALSE, include=FALSE, eval = FALSE}
+col_spec <- cols_only(X2 = col_character(), X3 = col_character(),
+                      X6 = col_character(), X24 = col_double(),
+                      X82 = col_integer(),
+                      X84 = col_character())
+enlace_1 <- read_csv("./datos/enlace/escuelas_enlace_nacional_primaria_1.csv", skip=3, 
+                     col_names = FALSE, guess_max = 100000, col_type = col_spec,
+                     locale = locale(encoding = "ISO-8859-1"))
+enlace_2 <- read_csv("./datos/enlace/escuelas_enlace_nacional_primaria_2.csv", skip=3, 
+                     col_names = FALSE, guess_max = 100000, col_type = col_spec,
+                     locale = locale(encoding = "ISO-8859-1"))
+enlace <- bind_rows(enlace_1, enlace_2)
+names(enlace) <- c("estado", "clave", "tipo", "mate_6",  "num_evaluados_total", "marginacion")
+table(enlace$tipo)
+enlace <- enlace %>% mutate(tipo = ifelse(tipo == "INDêGENA", "INDÍGENA", tipo))
+write_csv(enlace, "datos/enlace.csv")
+```
+
+Con estos datos a la mano, podemos hacer unos primeros resúmenes de los datos. El rango
+de la calificación de matemáticas para un alumno es de 0-800, y aproximadamente
+la mitad de los alumnos califica en el rengo de 450 a 550. Vemos dispersión
+considerable en las calificaciones de las escuelas, y diferencias considerables 
+entre tipo de escuelas:
+
+```{r, message = FALSE, echo = FALSE}
+
+enlace <- read_csv("datos/enlace.csv")
+enlace <- enlace %>%  filter(num_evaluados_total > 0, mate_6 > 0) %>% 
+    mutate(tipo = fct_reorder(tipo, mate_6, mean)) %>% 
+    mutate(marginacion = fct_reorder(marginacion, mate_6, median))
+```
+
+```{r, message = FALSE}
+enlace_tbl <- enlace %>% group_by(tipo) %>% 
+    summarise(n_escuelas = n(),
+              cuantiles = list(cuantil(mate_6, c(0.05, 0.25, 0.5, 0.75, 0.95)))) %>% 
+    unnest %>% mutate(valor = round(valor)) 
+enlace_tbl %>% spread(cuantil, valor) %>% formatear_tabla()
+```
+
+Podemos graficar de varias maneras, por ejemplo:
+
+
+```{r, fig.width = 10, fig.height = 6, echo = FALSE}
+g_medianas <- ggplot(enlace_tbl %>% filter(cuantil == 0.50), aes(x = tipo, y = valor)) +
+    geom_point(colour = "red") + ylim(c(150,880)) + labs(subtitle = "Gráfica 1")
+g_80 <- ggplot(enlace_tbl  %>% spread(cuantil,valor), 
+                                     aes(x = tipo, y = `0.5`)) +
+    geom_linerange(aes(ymin= `0.05`, ymax = `0.95`), colour = "gray40") +
+    geom_point(colour = "red", size = 3) + ylim(c(150,880)) + 
+    labs(subtitle = "Gráfica 1") +
+    ylab("Promedios Matemáticas")
+    
+g_80_p <- ggplot(enlace_tbl  %>% spread(cuantil,valor), aes(x = tipo, y = `0.5`)) +
+    geom_linerange(aes(ymin= `0.05`, ymax = `0.95`), colour = "gray40") +
+    geom_linerange(aes(ymin= `0.25`, ymax = `0.75`), size = 2, colour = "white") +
+    geom_point(colour = "red", size = 3) +
+     ylim(c(150,880)) + labs(subtitle = "Gráfica 2")+
+    ylab("Promedios Matemáticas")
+
+g_boxplot <- ggplot(enlace  , aes(x = tipo, y = mate_6)) + 
+    geom_boxplot(outlier.size = 0.7) +
+    labs(subtitle = "Gráfica 3")+ ylim(c(150,930))+
+    ylab("Promedios Matemáticas")
+
+g_cuantil <- ggplot(enlace, aes(sample = mate_6, colour = tipo)) +
+  geom_qq(distribution = stats::qunif, size = 1) + ylab("Promedios Matemáticas") +
+  xlab("orden")
+
+gridExtra::grid.arrange(g_80, g_80_p, g_boxplot, g_cuantil, nrow = 2)
+```
+
+En términos de comparaciones, podemos discutir qué tan apropiada es cada gráfica. Graficar más
+cuantiles es más útil para hacer comparaciones. Por ejemplo, en la Gráfica 2 podemos ver que la
+mediana de las escuelas generales está cercano al cuantil 5\% de las escuelas particulares. Por otro
+lado, el diagrama de caja y brazos muestra también valores "atípicos". 
+
+La diferencia es considerable entre tipos de escuela, y el principio 1 funciona bien con 
+estas gráficas. Sin embargo, sabemos que podemos mejorar en las principios 2 y 3. Podemos comenzar
+por agregar, por ejemplo, el nivel del marginación del municipio donde se encuentra la escuela.
+
+```{r}
+enlace_tbl_marg <- enlace %>% 
+    group_by(tipo, marginacion) %>% 
+    summarise(n_alumnos = sum(num_evaluados_total),
+              cuantiles = list(cuantil(mate_6, c(0.05, 0.25, 0.5, 0.75, 0.95)))) %>% 
+    unnest %>% mutate(valor = round(valor)) %>% 
+    filter( n_alumnos > 20)
+```
+
+```{r, fig.width = 10, fig.height = 4, echo = FALSE}
+g_80_p <- ggplot(enlace_tbl_marg  %>% spread(cuantil, valor), 
+                                     aes(x = marginacion, y = `0.5`)) +
+    geom_linerange(aes(ymin= `0.05`, ymax = `0.95`), colour = "gray40") +
+    geom_linerange(aes(ymin= `0.25`, ymax = `0.75`), size = 2, colour = "white") +
+    geom_point(colour = "red", aes(size = log10(n_alumnos/1000))) +
+    ylab("Promedios Matemáticas") + facet_wrap(~tipo, nrow = 1) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+    scale_size_continuous(name = "Miles de \nAlumnos",
+                          breaks = c(-0.3, 0, 1, 2, 2.7),
+                          labels = c(0.5, 1, 10, 100, 500)) 
+g_80_p
+```
+
+Esta gráfica nos ayuda a mejorar nuestra pregunta inicial:
+
+- Las escuelas en municipios de marginación más baja tienden a tener mejores resultados. 
+- Escuelas particulares en municipios de marginación alta y media tienen resultados
+comparables con escuelas generales en municipios de marginación baja. 
+- Esto *indica* que hay factores asociados al desempeño que no tienen que ver con
+el tipo de "sistema", sino del entorno de las escuelas.
+- Por ejemplo los estudiantes que acuden a escuelas particulares 
+probablemente provienen de familias que tienen
+más recursos mejores niveles de bienestar (pueden pagar la escuela). 
+¿Qué otras variables nos ayudaría a completar este análisis?
+- Produjimos preguntas más difíciles, pero más relevantes para lo que queremos entender.
+
+## Estados y calificaciones en SAT {-}
+
+¿Cómo se relaciona el gasto por alumno, a nivel estatal, 
+con sus resultados académicos? Hay trabajo
+considerable en definir estos términos, pero supongamos que tenemos el
+[siguiente conjunto de datos](http://jse.amstat.org/datasets/sat.txt) (@Guber2011), que son
+datos oficiales agregados por estado de Estados Unidos. Tenemos las variables
+*sat*, por ejemplo, que es la calificación promedio de los alumnos en cada estado
+(para 1997), y la variable *expend*, que es el gasto en miles de dólares
+por estudiante en (1994-1995), además de algunas otras variables. 
+
+
+```{r, message = FALSE}
+sat <- read_csv("datos/sat.csv")
+sat_tbl <- sat %>% select(state, expend, sat) %>% 
+    gather(variable, valor, expend:sat) %>% 
+    group_by(variable) %>% 
+    summarise(cuantiles = list(cuantil(valor))) %>% unnest %>% 
+    spread(cuantil, valor)
+sat_tbl %>% formatear_tabla
+```
+
+
+Esta variación considerable es considerable para promedios del SAT: 
+el percentil 75 es alrededor de 1050 puntos, mientras que el percentil 33 corresponde a alrededor de 800, 
+e igualmente hay diferencias considerables de gasto por alumno (miles de dólares) a lo largo 
+de los estados.
+
+Ahora hacemos nuestro primer ejericico de comparación: ¿Cómo se ven las
+calificaciones para estados en distintos niveles de gasto? Podemos
+usar una gráfica de dispersión:
+
+
+```{r}
+ ggplot(sat, aes(x = expend, y = sat, label = state)) + 
+  geom_point(colour = "red", size = 2) + geom_text_repel(colour = "gray50") +
+  xlab("Gasto por alumno (miles de dólares)") +
+  ylab("Calificación promedio en SAT")
+```
+
+Estas comparaciones no son de muy alta calidad, solo estamos usando 2 variables (pocas),
+y no hay mucho que podamos decir en cuanto explicación.
+
+**Las unidades que estamos comparando pueden diferir fuertemente en otras 
+dimensiones importantes, lo cual hace interpretar la gráfica muy difícil**
+
+Sabemos que es posible que el IQ difiera en los estados, pero no como producir
+diferencias de este tipo. Sin embargo, descubrimos que existe una variable adicional, 
+que es el porcentaje de alumnos de cada estado
+que toma el SAT. Podemos agregar como sigue:
+
+```{r}
+ ggplot(sat, aes(x = expend, y = math, label=state, colour = frac)) + 
+  geom_point() + geom_text_repel() +
+  xlab("Gasto por alumno (miles de dólares)") +
+  ylab("Calificación en matemáticas") 
+```
+
+
+Y vemos entonces por qué nuestra comparación inicial es relativamente pobre:
+los estados con mejores resultados promedio en el SAT son aquellos donde una
+fracción relativamente baja de los estudiantes toma el examen. La diferencia
+es considerable.
+
+En este punto podemos hacer varias cosas. Una primera idea es intentar comparar
+estados más similares en cuanto a la población de alumnos que asiste. Podríamos hacer
+grupos como sigue:
+
+```{r, echo = FALSE, fig.width = 6, fig.height = 3}
+set.seed(991)
+sat$clase <- kmeans(sat %>% select(frac), 
+                    centers = 4,  nstart = 100, iter.max = 100)$cluster
+sat$clase <- fct_reorder(factor(sat$clase), sat$frac, mean)
+sat <- sat %>% mutate(rank_p = rank(frac, ties= "first") / length(frac))
+ggplot(sat, aes(x = rank_p, y = frac, label = state, colour = factor(clase))) +
+  geom_point(size = 2) + 
+  #geom_text_repel(colour = "gray80", size = 3) +
+  paleta
+```
+
+Estos resultados indican que es más probable que buenos alumnos decidan hacer
+el SAT - y esto ocurre de manera diferente en cada estado (en algunos estados
+era más común otro examen, el ACT). 
+
+Si hacemos clusters de estados
+según el % de alumnos, empezamos a ver otra historia. Ajustamos rectas
+de mínimos cuadrados como referencia:
+
+```{r, echo = FALSE}
+ggplot(sat, aes(x = expend, y = math, label=state, colour = factor(clase))) + 
+  geom_point(size = 3) + 
+  geom_smooth(method = "lm", se = FALSE) +
+  xlab("Gasto por alumno (miles)") +
+  ylab("Calificación en matemáticas") + paleta +
+  geom_text_repel(colour = "gray70") 
+```
+
+
+
+Sin embargo, el resultado puede variar considerablemente si categorizamos de distintas maneras.
+
+Otra idea es más útil es *factorizar* o *controlar*
+el efecto de el % de alumnos que toma el examen, y hacer una comparación de la variación
+restante. Para hacer esto, podemos examinar primero la relación entre la fracción de
+alumnos que toma el examen del SAT y las calificaciones:
+
+```{r, fig.width =5, fig.height = 3, echo = FALSE}
+#sat <- sat %>% mutate(cuant = qnorm(frac / 100, 500, 100))
+ggplot(sat, aes(x = frac, y = sat, label = state)) + geom_point() +
+    geom_smooth(method = "loess", span = 0.5, method.args = list(degree = 1)) +
+    annotate("text", x = 40, y = 1050, label = "Desempeño por \n encima del esperado", colour = "gray30") +
+    annotate("text", x = 15, y = 900, label = "Desempeño por \n abajo del esperado", colour  = "gray30") 
+
+```
+
+Y podemos podemos extraer la diferencia entre cada observación y el esperado, representado
+por el suavizador azul. 
+
+```{r}
+suavizador <- loess(sat ~ frac, sat, degree = 1, span = 0.5)
+sat <- sat %>% mutate(residual = residuals(suavizador))
+ ggplot(sat, aes(x = expend, y = residual, label = state)) + 
+  geom_point(colour = "red", size = 2) + geom_text_repel(colour = "gray50") +
+  xlab("Gasto por alumno (miles de dólares)") +
+  ylab("Residual SAT (vs fracción de alumnos)")
+```
+
+La indicación que obtenemos es diferente: ahora parece haber cierta 
+evicencia de  que estados con más gasto
+tienden a tener mejores resultados, controlando por la fracción de estudiantes que toma el SAT,
+aunque hay variación considerable para cada nivel de gasto.
+Nótese que esto nos muestra que nuestra pregunta original tiene una respuesta
+simple pero poco útil. con este análisis podemos pensar en mejores preguntas, pero todas
+son mucho más difíciles de contestar!
+
+### Ejercicio: suavizadores
+
+Puedes practicar y entender cómo funcionan los suavidaores con **esta app**, cuya idea
+es tomada de [este libro](https://rafalab.github.io/dsbook/smoothing.html#local-weighted-regression-loess). El suavizamiento
+**loess** es diferente de promedios móviles centrados usuales, y a veces ayuda a obtener mejores
+suavizados (cuando hay estructura lineal en el problema):
+
+```{r, fig.width = 10, fig.height = 6, echo = FALSE}
+
+w_loess <- function(x){
+  ifelse(abs(x) < 1, (1 - abs(x)^3)^3, 0.0)
+}
+lm_ponderado <- function(...) {
+  geom_smooth(method = "lm", se = FALSE, ...)
+}
+
+crear_local <- function(frac_val = 10, alpha = 0.5){
+  num_datos = floor(alpha * nrow(sat)) + 1
+  sat_g <- sat %>% 
+    mutate(activos = rank(abs(frac - frac_val)) < num_datos,
+         max_dist = max(activos*abs(frac - frac_val)),
+         peso = w_loess((frac - frac_val)/max_dist))
+ggplot(sat_g, aes(x = frac, y = sat, label = state, size = peso)) + 
+  geom_point(colour = "gray") +
+  scale_size(range = c(0.5, 4)) +
+    geom_smooth(method = "loess", method.args = list(degree = 1), span = alpha, se = FALSE,
+              size = 1, colour = "red") +
+  lm_ponderado(data = sat_g %>% filter(peso > 0), aes(weight = peso^2)) +
+  geom_vline(xintercept = frac_val, colour = "gray") +
+  theme(legend.position = "none") 
+
+}
+grafs <- map(c(10, 20, 30, 40, 50, 60), ~ crear_local(.x, alpha = 0.6))
+gridExtra::grid.arrange(grobs = grafs,ncol = 3)
+```
+
+
+Promedios móviles (ponderados por distancia) dan resultados más ruidosos si queremos
+capturar la estructura lineal local:
+
+```{r, fig.width = 10, fig.height = 6, echo = FALSE}
+
+w_loess <- function(x){
+  ifelse(abs(x) < 1, (1 - abs(x)^3)^3, 0.0)
+}
+lm_ponderado <- function(...) {
+  geom_smooth(method = "lm", formula = y ~ 1, se = FALSE, ...)
+}
+
+crear_local <- function(frac_val, alpha = 0.5){
+  num_datos = floor(alpha * nrow(sat)) 
+  sat_g <- sat %>% 
+    mutate(activos = rank(abs(frac - frac_val)) < num_datos,
+         max_dist = max(activos*abs(frac - frac_val)),
+         peso = w_loess((frac - frac_val)/max_dist))
+ggplot(sat_g, aes(x = frac, y = sat, label = state, size = peso)) + 
+  geom_point(colour = "gray") +
+  scale_size(range = c(0.5, 4)) +
+    geom_smooth(method = "loess", method.args = list(degree = 0), 
+                span = alpha, se = FALSE,
+              size = 1, colour = "red") +
+  lm_ponderado(data = sat_g %>% filter(peso > 0), aes(weight = peso)) +
+  geom_vline(xintercept = frac_val, colour = "gray") +
+  theme(legend.position = "none") 
+
+}
+grafs <- map(c(10, 20, 30, 40, 50, 60), ~ crear_local(.x, alpha = 0.3))
+gridExtra::grid.arrange(grobs = grafs,ncol = 3)
+```
+
+
+
+## Ajuste y residuales {-}
+
+Esta técnica de análisis en la que controlamos por variables para "escarbar en los datos",
+se puede resumir como sigue. Intentamos ajustar patrones conocidos en los datos, "quitarlos de
+los datos", y examinar la variación restante:
+
+$$ datos = ajuste + residual $$
+
+En un principio, ajuste y residuales requieren de nuestra atención. El objetivo de este proceso
+es hacer más datos, no menos, con la idea de que hacer comparaciones más finas que las que los
+datos sin procesar nos dan. Es una técnica que repetiremos varias veces.
+
+## Ejemplo: tablas agregadas {-}
+
+```{r}
+
+```
+
+## Comparaciones multiplicativas {-}
+
+Hay dos maneras de hacer comparaciones:
+
+- En escala **aditivas**: por ejemplo, el grupo A tiene 50 personas más que el grupo B
+- En escala **multiplicativas**: el grupo A tiene 25\% más personas que el grupo B
+
+¿Cuáles son más apropiadas?
+
+Distintos aspectos del análisis aparecen dependiendo de qué tipo de comparaciones queramos
+hacer, pero muy frecuentemente una tipo comparación es preferible al otro. Por ejemplo,
+si queremos comparar incrementos de precios a lo largo de distintos tipos de productos, es
+natural usar escalas multiplicativas. 
+
+La elección de la comparación apropiada mejora la calidad de las comparaciones, y
+simplifica el análisis y su interpretación. 
+
+En el siguiente ejemplo, consideramos cómo varía el precio de un conjunto de casas
+dependiendo de la calificación de calidad:
+
+
+```{r, message = FALSE, echo = FALSE}
+source("R/casas_preprocesamiento.R")
+set.seed(21)
+casas_completo <- casas
+casas <- casas_completo %>% sample_frac(0.9)
+casas_holdout <- casas_completo %>% anti_join(casas)
+```
+
+```{r, echo = FALSE}
+casas_ejemplo <- casas %>% filter(calidad_gral > 3) %>% 
+           mutate(nombre_zona = fct_reorder(nombre_zona, calidad_gral))
+ggplot(casas_ejemplo, aes(x = factor(calidad_gral), y = precio_miles)) + 
+    geom_boxplot(outlier.alpha = 0) +
+    geom_jitter(width =0.1, height = 0, alpha = 0.2) 
+```
+
+En esta gráfica podemos hacer comparaciones entre precios de casas de manera
+aditiva: por ejemplo, las casa más cara de Somerset es de 50 mil dólares más cara que la
+siguiente más cara. O en IDOTRR las casas son 100 mil dólares más baratas que en CollgCr.
+
+Sin embargo, una comparación multiplicativa puede ser más adecuada y simplifica la descripción
+de los datos. Por ejemplo, una variación de 20 mil dólares en casas de NridgHt no es 
+muy considerable (con rango de 200 a 600 mil dólares), pero sí es importante para una casa
+de IDOTRR (con rango de 50 a 150 mil dólares).
+
+¿Cómo convertimos una escala aditiva a una multiplicativa? Buscamos una función $f$ tal que
+
+$$f(y) - f(x) = f(x+ \Delta x) - f(x) \approx \frac{\Delta x }{x}$$
+para cualquier $\Delta x$. Esto implica que la derivada de $f$ tiene que ser $1/x$,
+y por lo tanto la transformación que buscamos es el logaritmo. En escala logarítmica, 
+las comparaciones son:
+
+$$\log(y) - \log(x) = \log(y/x) = \log \left(1 + \frac{\Delta x}{x}\right) \approx \frac{\Delta x}{x}$$
+
+y esta aproximación es buena cuando $|\frac{\Delta x}{x}| < 0.25$ (y muy buena si es menor a 0.1).
+
+
+Veamos entonces cómo se ven los datos de casas en escala logarítmica. A la izquierda
+mostramos una gráfica más apropiada para análisis, y a la derecha una que quizá prefereríamos
+usar para presentación
+
+```{r, fig.width = 9, fig.height = 3, echo = FALSE}
+g_1 <- ggplot(casas_ejemplo, 
+       aes(x = factor(calidad_gral), y = log(precio_miles))) +
+     geom_boxplot(outlier.alpha = 0) + 
+    geom_jitter(width =0.1, height = 0, alpha = 0.1)  + 
+    scale_y_continuous(breaks = seq(3, 7, 0.5))
+g_2 <- ggplot(casas_ejemplo, 
+       aes(x = factor(calidad_gral), y = precio_miles)) +
+     geom_boxplot(outlier.alpha = 0) + 
+    geom_jitter(width =0.1, height = 0, alpha = 0.1) + 
+    scale_y_log10(breaks = c(50, 100, 200, 400)) 
+gridExtra::grid.arrange(g_1, g_2, ncol = 2)
+```
+
+La variación es más similar a lo largo de cada categoría de calidad. En la escala logarítmica,
+las cajas (cuartil inferior a cuartil superior) está alrededor de tamaño 0.25, y la mediana
+está aproximadamente centrada en cada caja. Así que la variación entre el cuartil superior
+e inferior respecto a la mediana es de 12\% aproximadamente. *Esto es aproximadamente
+cierto en cada grupo de calidad*. Podemos calcular cuantiles adicionales:
+
+```{r}
+casas_tbl <- casas_ejemplo %>% group_by(calidad_gral) %>% 
+    summarise(cuantiles = list(cuantil(log(precio_miles), c(0.1, 0.25, 0.5, 0.75, 0.9)))) %>% 
+    unnest
+g_80_p <- ggplot(casas_tbl  %>% spread(cuantil,valor), aes(x = calidad_gral, y = `0.5`)) +
+    geom_linerange(aes(ymin= `0.1`, ymax = `0.9`), colour = "gray40") +
+    geom_linerange(aes(ymin= `0.25`, ymax = `0.75`), size = 2, colour = "white") +
+    geom_point(colour = "red", size = 3) +
+    scale_y_continuous(breaks = seq(4, 6.5, by =0.25))
+g_80_p
+```
+
+```{r}
+casas_tbl <- casas_ejemplo %>% group_by(calidad_gral) %>% 
+    summarise(cuantiles = list(cuantil((precio_miles), c(0.1, 0.25, 0.5, 0.75, 0.9)))) %>% 
+    unnest
+ggplot(casas_tbl  %>% spread(cuantil,valor), aes(x = calidad_gral, y = `0.5`)) +
+    geom_linerange(aes(ymin= `0.1`, ymax = `0.9`), colour = "gray40") +
+    geom_linerange(aes(ymin= `0.25`, ymax = `0.75`), size = 2, colour = "white") +
+    geom_point(colour = "red", size = 3) + scale_y_log10()
+```
+
+
+Esta es una comparación superior, pues descubrimos una regularidad importante en los
+datos (principio 3). En este caso, lo logramos cambiando a una escala más apropiada para
+el problema.
+
+Podemos examinar los residuales de distintas maneras. Para describir estas gráficas
+de manera cuantitativa, por ejemplo, podemos hacer lo siguiente:
+
+$$ precio (log) = mediana\_calidad + residual $$
+
+Primero vemos las medianas por grupo:
+
+```{r}
+medianas <- casas_ejemplo %>% group_by(calidad_gral) %>% 
+    summarise(mediana = median(precio_miles)) %>% 
+    arrange(desc(mediana)) %>% 
+    mutate(incremento = mediana / lead(mediana) - 1)
+medianas
+```
+
+Como los residuales son similares en cada grupo, los agrupamos para resumir:
+
+```{r, echo = FALSE, message = FALSE}
+residuales <- casas_ejemplo %>% left_join(medianas) %>% 
+    group_by(calidad_gral) %>% 
+    mutate(residual = log(precio_miles) - log(mediana)) 
+quantile(residuales$residual, 
+         c(0, 0.10, 0.25, 0.5, 0.75, 0.9, 1)) %>% kable
+```
+
+Así que nuestro resumen sería la tabla de arriba, junto con esta distribución de residuales. Diríamos:
+
+- Cada punto adiconal de calidad, la mediana del precio aumenta larededor de 20\%. Dentro de cada grupo
+de calidad, el 50\% de las casas está a una diferencia máxima de +/- 12% del precio mediano de la categoría,
+y 80\% de las casas alrededor de +/- 27%. En algunos casos observamos diferencias de 60 - 130 \% del precio mediano.
+
+
+
+## Ejemplo: tiempos de fusión {-}
+
+Veamos el siguiente ejemplo, que es un experimento donde se midió el tiempo
+que tardan distintas personas en fusionar un estereograma para ver una imagen 3D.
+Existen dos condiciones: en una se dio indicaciones de qué figura tenían que
+buscar (VV) y en otra no se dio esa indicación. ¿Las instrucciones verbales
+ayudan a fusionar más rápido el estereograma?
+
+```{r, message = FALSE, echo = FALSE}
+fusion <- read_delim("./datos/fusion_time.txt", delim = " ", trim_ws = TRUE)
+ggplot(fusion, aes(x = nv.vv, y = time)) + geom_boxplot() + geom_jitter()
+```
+
+
+Lo primero que observamos es que hay una variabilidad grande entre el tiempo que tardan
+en fusionar: los rangos van de menos de 5 segundos hasta 20 - 40 segundos. Esto sugiere dos
+posibilidades:
+
+- Hay personas que son mucho más hábiles que otras para fusionar estereogramas
+- Cada persona puede tardar una cantidad muy variable de tiempo para fusionar un estereograma
+
+En cualquier caso, tiene más sentido pensar en diferencias relativas: si alguien tarda 8 segundos,
+tardó el doble que alguien que tardó 4 segundos, iugal que la comparación de alguien que tarda 16 vs 8 segundos.
+
+
+```{r, message = FALSE, echo = FALSE}
+fusion <- read_delim("./datos/fusion_time.txt", delim = " ", trim_ws = TRUE)
+g_1 <- ggplot(fusion, aes(x = nv.vv, y = log(time))) + geom_boxplot() + geom_jitter() 
+g_2 <- ggplot(fusion, aes(x = nv.vv, y = time)) + geom_boxplot() + geom_jitter() +
+     scale_y_log10()
+gridExtra::grid.arrange(g_1, g_2, ncol = 2)
+```
+
+De la gráfica, vemos que la distribución VV está desplazada alrededor de 0.3 unidades (en logaritmo)
+hacia abajo. Esto implica que el tiempo bajo VV es alrededor de 66% los tiempos bajo NV. La variación
+dentro de cada grupo es considerable.
+
+Gráficas de cuantiles puedes ser más efetivas para 
+
+```{r}
+ggplot(fusion, aes(sample = log(time), colour = nv.vv)) + 
+  geom_qq(distribution = stats::qunif) 
+```
+
+
+
+## Cuándo la elección es menos importante {-}
+
+En algunos casos, la diferencia no es muy importante. Supongamos
+que tenemos pares de números positivos $(a_i, b_i)$, tales que las $b_i$ varían relativamente
+poco con respecto a las diferencias $a_i - b_i$. Entonces podemos aproximar:
+
+$$\frac{a_i - b_i}{b_i} = \frac{a_i - b_i}{A z_i + B}\approx  \frac{1}{B} (a_i - b_i),$$
+
+de forma que las comparaciones aditivas y multipicativas son similares, y *la elección se 
+reduce a una preferencia de la escala*. Esto se muestra en la primera gráfica en la siguiente
+ilustración. Por otro lado, cuando hay más variación en el denominador, las comparaciones pueden dar
+resultados muy diferentes:
+
+```{r, fig.width =6, fig.height = 5}
+set.seed(81)
+tab_1 <- tibble(b = runif(100, 45,55),   a = b * runif(100, 0, 2), tipo = "b var chica", error = "multiplicativo")
+tab_2 <- tibble(b = runif(100, 10, 100), a = b * runif(100, 0, 2), tipo = "b var grande", error = "multiplicativo")
+tab_3 <- tibble(b = runif(100, 45,55),   a = b + runif(100, -1, 1), tipo = "b var chica", error = "aditivo")
+tab_4 <- tibble(b = runif(100, 10, 100), a = b + runif(100, -1, 1), tipo = "b var grande", error = "aditivo")
+tab <- bind_rows(tab_1, tab_2)
+g_1 <- ggplot(tab, aes(x = a-b, y = (a-b)/b, colour = b)) + geom_point() +
+    facet_wrap(error ~ tipo)
+tab <- bind_rows(tab_3, tab_4)
+g_2 <- ggplot(tab, aes(x = a-b, y = (a-b)/b, colour = b)) + geom_point() +
+    facet_wrap(error ~ tipo)
+gridExtra::grid.arrange(g_1, g_2, ncol = 1)
+```
+
+
+## Ejemplo (tablas)
+
+```{r}
+tea <- read_csv(("datos/tea.csv"))
+te <- tea %>% select(how, price, sugar)
+```
+
+Nos interesa ver qué personas compran té suelto, y de qué tipo:
+
+```{r}
+precio <- te %>% group_by(price) %>% tally() %>% mutate(prop = round(100 * n / sum(n))) %>% 
+  select(-n)
+
+tipo <- te %>% group_by(how) %>% tally() %>% mutate(prop = round(100 * n / sum(n)))
+tipo 
+tipo <- tipo %>% select(how, prop_how = prop)
+```
+
+La mayor parte de las personas toma té en bolsas. Sin embargo, el tipo de té que compran es
+muy distinto:
+
+
+```{r}
+te %>% group_by(how, price) %>% tally() %>% group_by(how) %>% mutate(prop = round(100 * n / sum(n))) %>% 
+  select(-n) %>% spread(how, prop, fill = 0) 
+```
+
+```{r}
+tabla <- te %>% group_by(how, price) %>% tally() %>% group_by(how) %>% 
+  mutate(prop_price = (100 * n / sum(n))) %>% 
+  group_by(price) %>% mutate(prom_prop = mean(prop_price)) %>% 
+  mutate(perfil = (prop_price / prom_prop - 1) %>% round(2))  
+precio_prom <- tabla %>% select(price, prom_prop) %>% unique %>% 
+  mutate(promedio = round(prom_prop)) %>% select(price, promedio)
+tabla_perfil <- tabla %>%   
+  select(how, price, perfil) %>% spread(how, perfil, fill = -1) 
+tabla_2 <- tabla_perfil %>% 
+  gather(how, prop_price, -price)
+if_profile <- function(x){
+  any(x < 0) & any(x > 0)
+}
+marcar <- marcar_tabla_fun(0.25, "red", "black")
+tab_out <- tabla_perfil %>% left_join(precio_prom) %>%
+  arrange(desc(promedio)) %>% 
+  mutate_if(if_profile, marcar) %>% 
+  knitr::kable(format = "html", escape = F, digits = 2) %>% 
+  kableExtra::kable_styling(bootstrap_options = c( "hover", "condensed"), full_width = FALSE)
+tab_out
+```
+
+```{r, fig.width = 6, fig.height = 2}
+tabla_ordenada <- tabla %>% ungroup %>% 
+  left_join(tabla %>% ungroup %>% filter(how == "tea bag") %>% select(price, perfil_tea = perfil)) %>% 
+  mutate(precio = fct_reorder(price, perfil_tea))
+g_perfil <- ggplot(tabla_ordenada,
+  aes(x = precio, xend = precio, y = perfil, yend = 0, group = how)) + 
+  geom_point() + geom_segment() + facet_wrap(~how) +
+  geom_hline(yintercept = 0 , colour = "gray")+ coord_flip()
+g_props <- ggplot(precio, aes(y = price, x = 1, label = prop, fill = 1)) + 
+    scale_fill_gradient(low = "white", high = "white") +
+  geom_tile() + geom_text() + theme(axis.text.x = element_blank(), legend.position = "none") +
+  xlab(" ") 
+g_perfil
+```
+
+
+
+```{r}
+ggplot(tabla_2 %>% ungroup %>% mutate(price = fct_reorder(price, prop_price)),
+  aes(x = price, y = prop_price, group = how, colour = how)) + 
+  geom_point() + coord_flip() + geom_line()
+```
+
+```{r}
+ganado <- read_csv("./datos/livestock.csv")
+ganado
+```
+
+```{r}
+ganado_2 <- ganado %>% mutate(count_miles = count / 1e6) %>%  
+  select(-count) %>% 
+  spread(livestock.type, count_miles) 
+ggplot(ganado_2, aes(x = Cattle, y = Poultry)) + geom_point()
+```
+
+```{r}
+ganado <- ganado %>% 
+  ungroup %>% 
+  mutate(media = mean(log(count))) %>% 
+  group_by(country) %>% 
+  mutate(por_pais = mean(log(count)) - media) %>% 
+  group_by(livestock.type) %>% 
+  mutate(por_tipo = mean(log(count)) - media) %>% 
+  mutate(residual = log(count) - (media + por_pais + por_tipo)) %>% 
+  mutate(ajustado = media + por_pais + por_tipo)
+ggplot(ganado, aes(x=ajustado, y=residual)) + geom_point()
+```
+
+```{r}
+
+marcar_g <- marcar_tabla_fun_doble(-0.4, 0.4, "red", "black")
+ganado_ancha <- 
+  ganado %>% select(livestock.type, country, residual) %>% 
+  mutate(residual = round(residual, 2)) %>% 
+  spread(livestock.type, residual) 
+orden <- princomp(ganado_ancha  %>% select(-country))$scores[,1] %>% round(2)
+#orden <- kmeans(ganado_ancha  %>% select(-country), centers = 6)$cluster
+ganado_ancha %>% 
+  mutate(orden = orden) %>% 
+  arrange(orden) %>% 
+  mutate_if(if_profile, marcar_g) %>%
+  knitr::kable(format = "html", escape = F, digits = 2) %>% 
+  kableExtra::kable_styling(bootstrap_options = c( "hover", "condensed"), full_width = FALSE)
+```
+
+Y podemos resumir:
+
+```{r}
+aov_ganado <- ganado %>% select(livestock.type, country, por_pais:residual) %>% 
+  gather(tipo, valor, por_pais:residual) %>% 
+  mutate(etiqueta = ifelse(tipo == "residual", paste(livestock.type, country), "")) %>% ungroup %>% 
+  mutate(etiqueta = ifelse(abs(valor)> 2, etiqueta, ""))
+ggplot(aov_ganado, aes(sample = valor)) + geom_qq(distribution = stats::qunif) +
+  facet_wrap(~tipo) 
+
+```
+
+
+<!--chapter:end:02-principios-ejemplos.Rmd-->
+
+# Ejemplo: nacimientos en México
+
+Este ejemplo sigue es tomado de un análisis de [A. Vehtari y A. Gelman](https://statmodeling.stat.columbia.edu/2016/05/18/birthday-analysis-friday-the-13th-update/)
+
+Usaremos los datos de nacimientos registrados por día en México, desde 1999. Haremos una pregunta
+como ¿cuáles son los cumpleaños más frecuentes?, o ¿Qué mes del año hay más nacimientos?
+
+Una gráfica popular (ver por ejemplo [esta visualización](http://thedailyviz.com/2016/09/17/how-common-is-your-birthday-dailyviz/)):
+
+```{r}
+knitr::include_graphics("./figuras/heatmapbirthdays1.png")
+```
+
+¿Cómo criticarías este análisis desde el punto de vista de los tres primeros principios del
+diseño analítico? ¿Las comparaciones son útiles? ¿Hay aspectos multivariados? ¿Qué tan bien
+explica o sugiere estructura, mecanismos o causalidad?
+
+
+## Datos de natalidad para México
+
+Agreagmos por día el número de nacimientos registrados.
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(ggthemes)
+theme_set(theme_minimal(base_size = 14))
+natalidad <- readRDS("./datos/nacimientos/natalidad.rds") %>% 
+    mutate(dia_semana = weekdays(fecha)) %>% 
+    mutate(dia_año = yday(fecha)) %>% 
+    mutate(año = year(fecha)) %>% 
+    mutate(mes = month(fecha))
+```
+
+Podemos hacer una primera gráfica que no es muy útil
+
+```{r, fig.width = 10, fig.height=3}
+ggplot(natalidad, aes(x = fecha, y = n)) + 
+    geom_line(alpha = 0.2) + geom_point(alpha = 0.5) +
+    ylab("Nacimientos")
+```
+
+Hay varias características que notamos: la tendencia ligeramente decreciente de número de nacimientos
+a lo largo de los años, un patrón anual, dispersión producida por los días de la semana. La comparación
+entre días que esta gráfica muestra es una difícil de interpretar. ¿Cuántos nacimientos hay
+en el viernes 13 de un año dado, por ejemplo? ¿Qué pasa si lo comparamos con otros viernes en otros
+años y en otros meses?
+
+La idea del siguiente análisis es aislar las componentes que observamos en la serie de tiempo. Extraemos
+primero la tendencia, haciendo promedios locales con vecindad grande:
+
+Primero quitamos la tendencia:
+
+```{r}
+mod_1 <- loess(n ~ as.numeric(fecha), data = natalidad, span = 0.2, degree = 2)
+datos_dia <- natalidad %>% ungroup %>% 
+    mutate(ajuste_1 = fitted(mod_1)) %>% 
+    mutate(res_1 = n - ajuste_1)
+ggplot(datos_dia, aes(x = fecha)) +
+    geom_point(aes(y = n), alpha = 0.2, size = 1) +
+    geom_line(aes(y = ajuste_1), colour = "red", size = 1.2) 
+```
+
+Restamos a la serie la tendencia, y así obtenemos mejores comparaciones controlando por tendencia
+(por ejemplo, comparar un día de 2000 y de 2015 tendria más sentido):
+
+```{r}
+mod_anual <- loess(res_1 ~ as.numeric(fecha), data = datos_dia, 
+               degree = 0, family = "symmetric", span = 0.002)
+datos_dia <- datos_dia %>%
+    mutate(ajuste_2 = fitted(mod_anual)) %>% 
+    mutate(res_2 = res_1 - ajuste_2)
+ggplot(datos_dia, aes(x = fecha)) +
+    geom_point(aes(y = res_1), alpha = 0.2, size = 1) +
+    geom_line(aes(y = ajuste_2), colour = "red", size = 1.2) 
+```
+
+Ahora podemos capturar el efecto de día de la semana. Podemos hacer suavizamiento
+loess para cada serie independiente
+
+```{r}
+datos_dia <- datos_dia %>% group_by(dia_semana) %>% nest() %>% 
+    mutate(ajuste_mod = map(data, ~ loess(res_2 ~ as.numeric(fecha), data = .x, 
+                                          span = 0.1, degree = 1, family = "symmetric"))) %>% 
+    mutate(ajuste_3 =  map(ajuste_mod, fitted)) %>% 
+    select(-ajuste_mod) %>% 
+    unnest() %>% 
+    mutate(res_3 = res_2 - ajuste_3) %>% ungroup
+ggplot(datos_dia, aes(x = fecha)) + geom_point(aes(y = res_2), alpha = 0.5)  +
+    geom_line(aes(y = ajuste_3, colour = dia_semana), size = 1) + paleta 
+```
+
+Finalmente, examinamos los residuales finales:
+```{r}
+ggplot(datos_dia, aes(x = fecha, y = res_3)) + geom_line() +
+    geom_smooth(method = "loess", span = 0.03, 
+                method.args = list(degree=2, family = "symmetric"))
+```
+
+
+Nótese que con estas estimaciones de distintos efectos, podemos regresar a la serie
+original para hacer mejores estimaciones, más suavizadas:
+
+```{r}
+datos_dia <- datos_dia %>% mutate(n_1 = n - ajuste_2 - ajuste_3)
+mod_1 <- loess(n_1 ~ as.numeric(fecha), data = datos_dia, 
+               span = 0.1, degree = 2, family = "symmetric")
+datos_dia <- datos_dia %>% ungroup %>% 
+    mutate(ajuste_4 = fitted(mod_1)) %>% 
+    mutate(res_4 = n - ajuste_4) %>% 
+    mutate(n_2 = n - ajuste_4 - ajuste_3)
+ggplot(datos_dia, aes(x = fecha)) +
+    geom_point(aes(y = n_1), alpha = 0.3, size = 1) +
+    geom_line(aes(y = ajuste_4), colour = "red")
+```
+
+
+```{r}
+mod_anual <- loess(n_2 ~ as.numeric(fecha), data = datos_dia, 
+               degree = 2, family = "symmetric", span = 0.01)
+datos_dia <- datos_dia %>%
+    mutate(ajuste_5 = fitted(mod_anual)) %>% 
+    mutate(res_5 = n_2 - ajuste_5) %>%
+    mutate(n_3 = n - ajuste_4 - ajuste_5)
+ggplot(datos_dia, aes(x = fecha)) +
+    geom_point(aes(y = n_2), alpha = 0.2, size = 1) +
+    geom_line(aes(y = ajuste_5), colour = "red", size = 1.5) 
+
+```
+
+
+
+
+```{r}
+datos_dia <- datos_dia %>% group_by(dia_semana) %>% nest() %>% 
+    mutate(ajuste_mod = map(data, ~ loess(n_3 ~ as.numeric(fecha), data = .x, span = 0.05, 
+                                          degree=2, family = "symmetric"))) %>% 
+    mutate(ajuste_6 =  map(ajuste_mod, fitted)) %>% 
+    select(-ajuste_mod) %>% 
+    unnest() %>% 
+    mutate(res_6 = n_3 - ajuste_6)
+ggplot(datos_dia, aes(x = fecha, y = n_3, group = dia_semana)) + geom_point(aes(y = n_3))  +
+    geom_line(aes(y = ajuste_6), colour = "red")
+```
+
+
+
+
+
+Y ahora graficamos junto:
+
+```{r}
+datos_l <- datos_dia %>% select(fecha, dia_semana, n, ajuste_4, ajuste_5, ajuste_6, res_6) %>% 
+    gather(variable, valor, ajuste_4:res_6)
+(100 * quantile(datos_dia$res_6, seq(0, 1, 0.1)) / mean(datos_dia$n)) %>% round(2)
+```
+
+```{r}
+ggplot(datos_l, aes(x = fecha, y = valor, colour = dia_semana)) + 
+    facet_wrap(~variable,  ncol = 1, scales = "free_y") +
+    geom_point(size=0.5) + scale_colour_colorblind() 
+
+```
+
+
+
+Ahora podemos examinar los residuales
+
+```{r}
+pascua <- ymd(as.character(timeDate::Easter(2000:2017)))
+pascua_m1 <- ymd(as.character(timeDate::Easter(2000:2017))) - days(1)
+pascua_m2 <- ymd(as.character(timeDate::Easter(2000:2017))) - days(2)
+pascua_m3 <- ymd(as.character(timeDate::Easter(2000:2017))) - days(3)
+pascua_m4 <- ymd(as.character(timeDate::Easter(2000:2017))) - days(4)
+pascua_m5 <- ymd(as.character(timeDate::Easter(2000:2017))) - days(5)
+pascua_m6 <- ymd(as.character(timeDate::Easter(2000:2017))) - days(6)
+
+datos_dia$pascua <- as.numeric(datos_dia$fecha %in% pascua)
+datos_dia$pascua_m1 <- as.numeric(datos_dia$fecha %in% pascua_m1)
+datos_dia$pascua_m2 <- as.numeric(datos_dia$fecha %in% pascua_m2)
+datos_dia$pascua_m3 <- as.numeric(datos_dia$fecha %in% pascua_m3)
+datos_dia$pascua_m4 <- as.numeric(datos_dia$fecha %in% pascua_m4)
+datos_dia$pascua_m5 <- as.numeric(datos_dia$fecha %in% pascua_m5)
+datos_dia$pascua_m6 <- as.numeric(datos_dia$fecha %in% pascua_m6)
+datos_dia <- datos_dia %>% mutate(semana_santa = pascua + pascua_m1 +
+                                      pascua_m2 + pascua_m3 + pascua_m4 + pascua_m5 + pascua_m6)
+```
+
+
+```{r}
+datos_dia$dia_mes <- day(datos_dia$fecha)
+datos_dia$viernes_13 <- datos_dia$dia_mes == 13 & datos_dia$dia_semana == "Friday"
+ggplot(datos_dia %>% filter(dia_semana == "Friday"), 
+    aes(x = fecha, y = res_6, colour = factor(semana_santa))) +
+    geom_point() +
+    facet_wrap(~viernes_13) + scale_color_colorblind()
+```
+
+Podemos calcular cuántos nacimientos se "evitan" en Viernes 13:
+
+```{r}
+
+```
+
+```{r}
+datos_dia %>% arrange(res_6)
+datos_dia %>% arrange(desc(res_6))
+```
+
+```{r}
+sept_1 <- ymd(paste0(2000:2016, "-09-01")) %>% yday
+s_v <- ymd(paste0(2000:2016, "-02-14")) %>% yday
+datos_dia$antes_2006 <- datos_dia$año < 2006
+ggplot(datos_dia , aes(x = dia_año, y = res_6, 
+                                             group = factor(año))) + 
+    geom_line() +
+    geom_vline(xintercept = sept_1, alpha = 0.3) +
+    geom_vline(xintercept = s_v, alpha = 0.3, colour="red", alpha = 0.3) +
+    facet_wrap( ~ antes_2006, ncol = 1) 
+    
+```
+
+
+```{r}
+datos_da <- datos_dia %>% 
+    mutate(bisiesto = (año %in% c(2002, 2004, 2008, 2012, 2016))) %>% 
+    mutate(periodo_años = ifelse(antes_2006, "Hasta 2005", "Después de 2005")) %>% 
+    group_by(dia_año, periodo_años, bisiesto) %>% 
+    summarise(residual_prom = mean(res_6)) %>% 
+    mutate(dia_año_p = (dia_año + 150) %% 365) %>% 
+    mutate(grupo = cut(residual_prom, c(-2000,-200, 200,2000))) 
+label_y <- -1000
+ggplot(datos_da, aes(x = dia_año_p, y = residual_prom,
+                     colour = grupo, group=1)) +
+    theme(legend.position = "none") +
+     geom_line(colour = "gray80") +
+    geom_point(size = 1.2) + scale_color_colorblind() +
+    facet_grid(bisiesto ~ periodo_años, labeller = label_both) +
+   # geom_vline(xintercept = 195, colour="red", alpha = 0.5) +
+        annotate("text", x = yday("2014-02-14") +  150, y = label_y, label = "San Valentín", 
+             colour="black", alpha = 0.5, angle = 90, vjust = -0.5) +
+#    geom_vline(xintercept = yday("2013-03-01") +  150, colour="red", alpha = 0.5) +
+    annotate("text", x = yday("2013-03-01") + 150, y = label_y, label = "Marzo 1", 
+             colour="black", alpha = 0.5, angle = 90, vjust = -0.5) +
+ #   geom_vline(xintercept = (yday("2013-09-16") +  150) %% 365, colour="red", alpha = 0.5) +
+    annotate("text", x = (yday("2013-09-16") +  150) %% 365, y = label_y, label = "Día de Independencia", 
+             colour="black", alpha = 0.5, angle = 90, vjust = -0.5) +
+  #  geom_vline(xintercept = (yday("2013-11-02") +  150) %% 365, colour="red", alpha = 0.5) +
+        annotate("text", x = (yday("2013-11-02") +  150) %% 365, y = label_y, label = "Día de Muertos", 
+             colour="black", alpha = 0.5, angle = 90, vjust = -0.5) +
+   # geom_vline(xintercept = (yday("2013-12-25") +  150) %% 365, colour="red", alpha = 0.5)+
+        annotate("text", x = (yday("2013-12-25") +  150) %% 365, y = label_y, label = "Navidad", 
+             colour="black", alpha = 0.5, angle = 90, vjust = -0.5) +
+#    geom_vline(xintercept = (yday("2013-01-01") +  150) %% 365, colour="red", alpha = 0.5)+
+    annotate("text", x = (yday("2013-01-01") +  150) %% 365, y = label_y, label = "Año Nuevo", 
+             colour="black", alpha = 0.5, angle = 90, vjust = -0.5) +
+ #   geom_vline(xintercept = (yday("2013-05-01") +  150) %% 365, colour="red", alpha = 0.5)+
+    annotate("text", x = (yday("2013-05-01") +  150) %% 365, y = label_y, label = "Mayo 1", 
+             colour="black", alpha = 0.5, angle = 90, vjust = -0.5) +
+  #  geom_vline(xintercept = (yday("2013-09-01") +  150) %% 365, colour="red", alpha = 0.5) +
+    annotate("text", x = (yday("2013-09-01") +  150) %% 365, y = label_y, label = "Septiembre 1", 
+             colour="black", alpha = 0.5, angle = 90, vjust = -0.5) 
+```
+
+
+
+```{r}
+datos_dia %>% arrange(res_6)
+datos_dia %>% arrange(desc(res_6))
+```
+
+
+
+### Semana santa {-}
+```{r}
+pascuas <- tibble(pascua_dia = ymd(as.character(timeDate::Easter(1999:2017)))) %>% 
+    mutate(año = year(pascua_dia))
+datos_dia <- left_join(datos_dia, pascuas, by = "año") %>% 
+    mutate(dias_para_pascua = fecha - pascua_dia) %>% 
+    mutate(dias_para_pascua = as.numeric(dias_para_pascua))
+datos_dia_p <- datos_dia %>% filter(abs(dias_para_pascua) < 20)
+ggplot(datos_dia_p, aes(x = dias_para_pascua, y = res_6)) + 
+    geom_line(aes(group=año), colour ="gray") + geom_point(colour = "gray") +
+    geom_smooth(data = datos_dia_p, aes(x=dias_para_pascua, y = res_6), 
+                se = FALSE, span = 0.12, method = "loess", col = "red") +
+    geom_hline(yintercept = 0)
+```
+
+```{r}
+datos_dia_p %>% group_by(año) %>% 
+    summarise(suma_res = sum(res_6), suma_total = sum(n)) %>% 
+    mutate( prop = suma_res / suma_total)
+sum(datos_dia_p$n)
+sum(datos_dia_p$res_6)
+100 * sum(datos_dia_p$res_6) / sum(datos_dia_p$n)
+```
+
+
+```{r}
+acf(datos_dia$res_6, lag.max = 600)
+```
+
+
+<!--chapter:end:03-caso-nacimientos.Rmd-->
+
+# Comparaciones basadas en modelos
+
+En los ejemplos anteriores, hicimos ejercicios de análisis guiados por los
+primeros tres principios analíticos: buscábamos comparaciones interpretables, que consideraran
+aspectos multivariados, y que nos provean de expiicaciones y descubrimiento de
+estructura en nuestros datos.
+
+En problemas multivariados, los construcción de comparaciones más refinadas requiere
+de introducir alguna estructura mediante modelos. En el ejemplo más simple,
+consideremos que queremos comparar x con y: cómo interpolamos en el siguiente ejemplo?
+
+
+
+## Ejemplo {-}
+
+```{r}
+air <- airquality %>% 
+    mutate(Wind_cat = cut(Wind, quantile(Wind, c(0, 0.33, 0.66, 1)), labels = FALSE, include.lowest = T)) 
+ggplot(air, aes(x = Solar.R, y = Ozone,  colour = Temp)) + geom_point() +
+    facet_wrap(~Wind_cat, ncol = 1) + 
+    scale_colour_gradientn(colours = terrain.colors(10))
+```
+
+
+En estos datos, observamos una relación entre radiación solar y niveles de Ozono, especialmente
+en condiciones de vineto bajo. En general, temperaturas más altas son predictivas de niveles de
+Ozono más alto. Quisiéramoso hacer comparaciones de este tipo:
+
+- Si la Temperatura es constante y baja (alrededor de 60, por ejemplo), en condiciones media-alta
+de viento
+- Cómo cambian los niveles de Ozono si la radiación ambia de 100 a 200 unidades
+
+Aunque podríamos intentar hacer algunos cálculos para obtener una idea de cómo se ve esta comparación,
+difícilmente podremos hacer promedios simples de datos para obtener respuestas confiables.
+
+---
+
+## Modelos {-}
+
+Una manera de evitar este problema es mediante la construcción de modelos predictivos. En uno de los
+casos más simples, consideramos 
+$$E(Y|X_1,\ldots, X_p) = f(X_1,\ldots, X_p),$$
+y con la función $f$ podríamos construir la comparación predictiva que nos interese. Adicinoalmente, podemos
+buscar describir cómo esperamos que se comporte la observación $Y$ alrededor de esta media: ¿tiene mucha/poca
+dispersión, etc).
+
+
+## Ejemplo {-}
+
+En el caso más simple, podemos construir:
+
+```{r}
+library(ranger)
+mod_1 <- lm(Ozone ~ Temp*Wind + Solar.R*Wind + Solar.R*Temp, data = air)
+summary(mod_1)
+#mod_1 <- ranger(Ozone ~ Temp + Solar.R + Wind,  mtry = 2,
+#                data = air %>% filter(!is.na(Ozone) & !is.na(Solar.R)),
+#                num.trees = 20000,  min.node.size = 20)
+```
+
+Y podemos dibujar nuestro modelo sobre los datos:
+
+````{r}
+pred_grid <- expand.grid(Wind = c(5,10,14), Temp = seq(60, 90, 10), Solar.R = seq(20, 300, by = 10)) %>% 
+    mutate(Wind_cat = cut(Wind, quantile(airquality$Wind, c(0, 0.33, 0.66, 1)), labels = FALSE, include.lowest = T))
+pred_grid$Ozone <- predict(mod_1, pred_grid)#$predictions
+ggplot(air, aes(x = Solar.R, y = Ozone,  colour = Temp)) + geom_point() +
+    facet_wrap(~Wind_cat) + 
+    scale_colour_gradientn(colours = terrain.colors(10)) +
+    geom_line(data = pred_grid, aes(group = interaction(Temp, Wind_cat)), size = 1)
+```
+
+
+
+¿Qué tan bueno es el ajuste?
+
+```{r}
+library(nullabor)
+air_na <- air %>% filter(!is.na(Ozone) & !is.na(Solar.R))
+reps <- lineup(null_lm(Ozone ~ Temp*Wind + Solar.R*Wind + Solar.R*Temp), air_na)
+ggplot(reps, aes(x = Solar.R, y = Ozone,  colour = Temp)) + geom_point() +
+    facet_wrap(~.sample) + 
+    scale_colour_gradientn(colours = terrain.colors(10)) 
+    #geom_line(data = pred_grid, aes(group = interaction(Temp, Wind_cat)), size = 1)
+```
+
+<!--chapter:end:04-modelos-1.Rmd-->
+
+# Dimensión alta
+
+Dependiendo del tamaño de los datos, trabajar en dimensiones altas es más difícil porque
+típicamente hay pocos datos en cada región en el espacio donde estamos trabajando. 
+
+En estos casos, obtener resultados buenos requiere de encontrar estructura particular al problema
+y explotarla. 
+
+## Ejemplo
+
+Índice de marginación, descomposición en valores singulares
+
+## Ejemplo 
+
+Construir modelos.
+
+```{r}
+library(rfinterval)
+set.seed(9912)
+casas_t <- casas %>% sample_frac(0.8) %>% as.data.frame
+casas_p <- casas %>% anti_join(casas_t) %>% as.data.frame
+intervals_sc <- rfinterval(precio_miles ~ area_habitable_sup_m2 + calidad_gral +
+                               nombre_zona + condicion_gral + aire_acondicionado +
+                               area_lote_m2 + baños_completos + calidad_calefaccion, 
+                   train_data = casas_t, test_data = casas_p,
+                   params_ranger = list(mtry = 5),
+                   method = "quantreg")
+sc_i <- intervals_sc$quantreg_interval
+#sc_i <- intervals_sc$oob_interval
+preds <- intervals_sc$testPred
+sc_i$precio_miles <- casas_p$precio_miles
+sc_i$area <- casas_p$area_habitable_sup_m2
+sc_i$pred <- preds
+mean(abs(sc_i$pred - sc_i$precio_miles)) / mean(sc_i$precio_miles)
+ggplot(sc_i, aes(x = pred, ymin = lower, ymax = upper, y = precio_miles)) +
+    geom_point(colour = "red") +
+    geom_linerange(colour = "gray")
+sc_i %>% summarise(cobertura = mean(precio_miles < upper & precio_miles > lower))
+```
+
+
+Ahora podemos hacer comparaciones predictivas controlando de distintas maneras
+
+```{r}
+casas_tm <- casas_t %>% 
+    filter(nombre_zona %in% c("IDOTRR", "Edwards", "BrkSide", "NridgHt", "NoRidge", "NAmes", "CollgCr")) %>% 
+    mutate(nombre_zona = factor(nombre_zona))
+modelo <- ranger::ranger(precio_miles ~ area_habitable_sup_m2 + calidad_gral +
+                               nombre_zona + condicion_gral + aire_acondicionado +
+                               area_lote_m2 + baños_completos + calidad_calefaccion,
+                data = casas_tm  , 
+                mtry = 3, num.trees = 1000)
+```
+
+
+```{r}
+pd <- pdp::partial(modelo,pred.var =  c("area_habitable_sup_m2", "nombre_zona", "calidad_gral"),
+              plot = FALSE)
+ggplot(pd , 
+     aes(x = area_habitable_sup_m2, y = yhat, colour = factor(nombre_zona))) +
+    geom_line() +
+        facet_wrap(~ calidad_gral)
+```
+
+<!--chapter:end:045-multivariable.Rmd-->
+
+# Remuestreo: el bootstrap
+
+El bootstrap es una técnica para evaluar la variabilidad de estimaciones basadas en muestra.
+La situación más simple donde podemos aplicar bootstrap es la siguiente:
+
+- Supongamos que tomamos una muestra de una población
+- Por *muestra* entendemos que cada unidad de la población se selecciona con cierta probabilidad fija,
+independientemente de las elecciones que hayamos o no seleccionado en cada momento (es una muestra iid). También
+podemos pensar que cada observación se extrae de una distribución fija $F$ de manera independiente a las otras.
+- Una estadística es un proceso que se aplica a la muestra. 
+- Nos interesa saber qué tanto puede variar el valor de la estadística cuando lo aplicamos a distintas muestras.
+
+
+## Ejemplo (teórico)
+
+Supongamos que tenemos la siguiente población de escuelas:
+
+```{r}
+enlace <- read_csv("datos/enlace.csv") %>% filter(mate_6 > 0)
+nrow(enlace)
+```
+
+Y nos interesa saber, para la población, cuál es la mediana de calificaciones de matemáticas.
+Nuestra estadística es:
+
+```{r}
+fun_muestra <- function(x){
+    mean(x)
+}
+```
+
+Distintas muestras dan distintos resultados:
+
+```{r}
+enlace %>% sample_n(50) %>% summarise(mediana = fun_muestra(mate_6))
+enlace %>% sample_n(50) %>% summarise(mediana = fun_muestra(mate_6))
+```
+
+La *distribución* de muestreo son los valores que puede tomar la estadística bajo todas las posibles
+muestras. Podemos aproximarla tomando un número grande de muestras:
+
+```{r}
+medianas_muestras <- map_dbl(1:100, ~ enlace %>% sample_n(50) %>% summarise(mediana = fun_muestra(mate_6)) %>% pull(mediana))
+plot(sort(medianas_muestras))
+```
+
+```{r}
+medianas_muestras <- map_dbl(1:2000, ~ enlace %>% sample_n(50, replace = T) %>% summarise(mediana = fun_muestra(mate_6)) %>% pull(mediana))
+valor_poblacional <- median(enlace$mate_6)
+g_1 <- qplot(sort(medianas_muestras)) + geom_vline(xintercept = valor_poblacional)
+g_1
+```
+
+Cuyos cuantiles son: 
+
+```{r}
+quantile(medianas_muestras - valor_poblacional , c(0.025, 0.975))
+```
+
+Esto quiere decir que si estimamos con una muestra el valor poblacional, esperamos
+con 95\% de probabilidad que el error sea menos de unas 30 unidades. Esta es la precisión
+de nuestro estimador.
+
+Si usamos una muestra más grande podemos obetner un resultado más preciso:
+
+```{r}
+medianas_muestras_2 <- map_dbl(1:2000, ~ enlace %>% sample_n(300, replace = T) %>% summarise(mediana = fun_muestra(mate_6)) %>% pull(mediana))
+valor_poblacional <- median(enlace$mate_6)
+dist_muestreo <- bind_rows(tibble(mediana = medianas_muestras, n = 50), tibble(mediana = medianas_muestras_2, n = 300))
+ggplot(dist_muestreo, aes(x = mediana)) + geom_histogram() + facet_wrap(~ n)
+```
+
+Y como es de esperarse, vemos que muestras más grandes resultan en menos variablidad, y menor error de estimación.
+
+Sin embargo, normalmente solo tenemos una muestra disponible, y no necesariamente tenemos una
+manera práctica de calcular su distribución de muestreo que nos ayude a entender su variabilidad.
+
+Lo segundo mejor que podemos hacer es *considerar la muestra como si fuera nuestra población*, y repetir
+el proceso de arriba para estimar la distribución de muestreo. Veamos que sucede para dos muestras
+en este primer ejemplo:
+
+```{r}
+set.seed(8)
+muestras_boot <- function(x, B = 1000, fun_muestra){
+    muestra_1 <- enlace %>% sample_n(50)
+    muestra_2 <- enlace %>% sample_n(300)
+    medianas_muestras <- map_dbl(1:B, ~ muestra_1 %>% sample_n(50, replace = T) %>% 
+                                 summarise(mediana = fun_muestra(mate_6)) %>% pull(mediana))
+    medianas_muestras_1 <- map_dbl(1:B, ~ muestra_2 %>% sample_n(300, replace = T) %>% summarise(mediana = fun_muestra(mate_6)) %>% pull(mediana))
+    remuestreo_2 <- bind_rows(tibble(mediana = medianas_muestras, n = 50), tibble(mediana = medianas_muestras_1, n = 300)) %>% mutate(rep = x)    
+    
+}
+rep_remuestreo <- map(1:20, ~ muestras_boot(.x, B = 1000, fun_muestra = fun_muestra)) %>% bind_rows
+```
+
+
+```{r}
+dat <- bind_rows(dist_muestreo %>% mutate(rep = "pob"), rep_remuestreo %>% mutate(rep = as.character(rep)))
+ggplot(dat, aes(sample =  mediana, colour = rep == "pob", group = rep)) + 
+    geom_qq(distribution = stats::qunif, size = 0.1) + facet_wrap(~n)
+```
+
+Y notamos que la distribución bootstrap es un estimador razonable de la distribución de muestreo
+de nuestra estadística. Usando esta estimación podemos darnos una idea de la variabilidad
+de nuestro estimador.
+
+Por ejemplo, podríamos construir intervalos de confianza. Usamos la distribución bootstrap
+para construir una estimación de intervalo:
+
+```{r}
+intervalos <- rep_remuestreo %>% 
+    group_by(n, rep) %>% 
+    summarise(inf =  quantile(mediana, 0.05), sup = quantile(mediana, 0.95)) %>% 
+    mutate(valor_poblacional = median(enlace$mate_6))
+ggplot(intervalos, aes(x = rep, ymin = inf, ymax = sup)) + 
+    geom_hline(yintercept = median(enlace$mate_6), colour = "salmon") +
+    geom_linerange() +
+    facet_wrap(~n) 
+```
+
+La cobertura para nuestros intervalos es:
+
+```{r}
+intervalos %>% mutate(cubre = valor_poblacional > inf & valor_poblacional < sup) %>% 
+     group_by(n) %>% summarise(cobertura = mean(cubre))
+```
+
+Para este número de repeticiones, estos números son consistentes con la cobertura *nominal*
+de 90\%
+
+
+** Referencias acerca de cobertura, y mejoras a a construcción de intervalos **
+
+
+El bootstrap se puede usar para una variedad grande de estadísticas. Esto incluye, por ejemplo,
+suavizadores.
+
+-- Ejemplo: suavizadores
+
+-- Ejemplo: análisis de componentes principales
+
+## Suavizadores
+
+```{r}
+
+```
+
+
+<!--chapter:end:05-inferencia-bootstrap.Rmd-->
+
+# Modelos predictivos
+
+
+<!--chapter:end:05-modelos-1.Rmd-->
+
+# Modelos y Simulación
+
+Las técnicas de permutaciones y bootstrap, como se utilizan usualmente,
+pueden verse como casos particualres de simulación. Sin embargo, el enfoque de
+simulación es mucho más amplio, y nos permite atacar problemas más complejos e
+interesantes.
+
+Un enfoque poderoso del análisis de datos se basa en modelos estadísticos. Supongamos
+que queremos entender (o comparar) una respuesta $Y$ en funcion de varias variables
+$X_1,X_2,\ldots, X_p$.  Existe un proceso generador de datos. 
+
+En uno de los casos más simpes (pero también uno de los más importantes), nos interesa
+enteder cómo varía 
+$Y$ en términos de las $X_i's$ (por ejemplo para predecir o a hacer comparaciones),
+
+Para problemas determinísticos, 
+$Y = f(X_1, X_2, \ldots, X_p)$
+y buscamos "descubrir" la forma de $f$. En muchos casos, tal ecuación no
+es posible de construir, porque hay variables que influyen en $Y$ que no 
+hemos medido. Esas variables las modelamos como un proceso aleatorio:
+
+$Y_i = f(X_i) + \epsilon_i$
+
+donde $\epsilon_i$ tiene una distribución que típicamente depende de las $X_i$'s. Con los
+datos disponibles, quisiéramos encontrar como es $\epsilon_i$, y cómo es la $f$.
+
+Este problema no está bien definido, tanto $f$ como $\epsilon_i$ depende de las $X_i$'s
+Un supuesto usual, por ejemplo, es que la media de cada $\epsilon_i$, condicional a las
+$X_i$, es igual a 0, y esto a su vez implica que $f(X_i)$ es el valor esperado 
+condicional de $Y_i$ dada su correspondiente $X_i$.
+
+## Ejemplo {-}
+
+Consideramos la relación de peso de coches con su rendimiento, usando los datos de..
+mtcars.
+
+USamos un suavizador para nuestra estimación de la función $f$:
+
+```{r}
+f_estimada <- loess(propina ~ cuenta_total, propinas, span = 0.5, degree = 1)
+f_estimada <- lm(mpg ~ wt, mtcars)
+
+```
+
+En este caso, supondremos que todas las $\epsilon_i$ son normales con media cero y desviación estándar
+
+```{r}
+s <- sd(resid(f_estimada))
+s
+```
+
+Ahora tenemos que considerar si nuestro modelo es razonable. Como el modelo está definido,
+podemos simular de él y comparar con los datos para evaluar el ajuste:
+
+```{r}
+simular_mod <- function(i, data, f, s){
+    y_sim <- fitted(f) + rnorm(nrow(data), 0, s)
+    data$y <- y_sim 
+    data %>% mutate(rep = i) %>% 
+    mutate(fitted = fitted(f), resid = y - fitted)
+}
+crear_lineup <- function(datos, simular_mod, n = 10){
+   reps <- map(1:9, ~ simular_mod(.x, propinas, f_estimada, s)) %>% 
+   bind_rows %>% ,
+    bind_rows(propinas %>% mutate(rep = 10) %>% 
+                  mutate(resid = resid(f_estimada), y = propina,
+                                                     fitted = fitted(f_estimada))) %>% 
+    mutate(rep_codif = (rep*653 + 12) %% 10 + 1) 
+}
+
+ggplot(reps, aes(x = cuenta_total, y = y)) + geom_point(size= 1, alpha = 0.5) + 
+    facet_wrap(~rep_codif) 
+```
+
+```{r}
+ggplot(reps, aes(x = fitted, y = resid)) + geom_point(size= 1) + 
+    facet_wrap(~rep_codif) + theme_gray()  + geom_smooth(se=FALSE, span =1,
+                                                         method = "loess",
+                                                         method.args = list(degree = 1))
+```
+
+
+¿Cuáles son los datos?
+
+```{r}
+filter(reps %>% select(rep, rep_codif) %>% unique, rep == 10)
+```
+
+
+
+
+
+
+Por ejemplo, supongamos que tiramos una pelota desde distintas alturas dada. La pelota
+tiene distintos pesos también. Obtenemos los siugientes resultados de la velocidad final
+de caída:
+
+```{r}
+simular_experimento <- function(n) {
+    tibble(altura_real = runif(n, 2,100), peso = runif(n, 1, 4)) %>% 
+    mutate(altura = altura_real * runif(n, 0.9999,1.0001)) %>% 
+    mutate(tiempo = sqrt(2*altura_real / 9.7760)*runif(n, 0.999,1.001), 
+           v_final = sqrt(2*9.7760*altura_real))
+    }
+datos <- simular_experimento(50)
+head(datos)
+ggplot(datos, aes(x = tiempo, y = v_final)) + geom_point() +
+    geom_smooth()
+```
+
+Como la velocidad inicial es igual a cero, esto es consistente con una aceleración constante, de aproximadamente
+
+igual a:
+```{r}
+quantile(datos$v_final / datos$tiempo)
+```
+
+En la realidad, muchas veces no tenemos todas las variables disponibles. En este ejemplo
+particular, quizá 
+
+
+
+
+
+## Datos falsos
+
+- Generar datos falsos de un modelo, ver si el proceso de ajuste
+recupera los datos.
+
+
+## Validación de predicciones: simulación
+
+¿Cómo se ven los datos simulados, y cómo se ven los reales?
+
+- Podemos usar el lineup, con todos los conjuntos simulados
+
+## Validación de predicciones: calibración
+
+- Podemos checar predicciones individuales y cobertura - conjunto de prueba.
+
+
+## Más diagnósticos de modelos
+
+En resumen: verificación empírica - los supuestos pueden fallar de muchas
+formas, a veces difíciles de detectar. Las pruebas las enfocamos a la tarea
+que el modelo se supone debe cumplir.
+
+
+
+
+
+
+
+
+
+--
+
+Consdieremos el siguiente problema:
+
+1. Tenemos una población de clientes. Mediante algún modelo, hemos estimado la
+probabilidad de que un cliente cancele su suscripción en los siguientes 3 meses.
+2. Tenemos una estimación del valor de cada uno de los clientes. Supongamos por ejemplo que
+usamos sus compras en el último año
+3. Tenemos planeado un incentivo para retener clientes. Este incentivo fue probado con algunos
+de los clientes, y se determinó que ayuda en la retención. La prueba fue relativamente chica, así
+que tenemos información no muy precisa de la tasa de retención.
+4. Sabemos cuánto cuesta el incentivo (por ejemplo, un descuento). 
+
+
+```{r}
+bootstrap_efectividad <- rbeta(1000, 200*2, 60*2)
+plot(sort(bootstrap_efectividad))
+```
+
+```{r}
+clientes <- tibble(id = 1:2000, valor = rgamma(2000, 2, 1 / 10000)) %>% 
+    mutate(prob = runif(length(valor), 0.1, 0.95)) %>% 
+    mutate(rankeo = rank(prob * valor) / length(prob))
+ggplot(clientes, aes(valor, prob)) + geom_point()
+```
+
+```{r}
+# perdida respecto a ninguna acción
+perdida <- function(corte, factor_ret, costo){
+    perdida_nt <- filter(clientes, rankeo < corte) %>% 
+        mutate(costo = ifelse(rbinom(length(prob), 1, prob) == 1, valor, 0)) %>% 
+        summarise(total = sum(costo)) %>% 
+        pull(total)
+    perdida_t <- filter(clientes, rankeo >= corte) %>% 
+        mutate(costo = ifelse(rbinom(length(prob), 1, prob*factor_ret) == 1, valor, 0)) %>% 
+        summarise(total = sum(costo)) %>% 
+        pull(total)
+    perdida_nt_2 <- filter(clientes, rankeo >= corte) %>%  
+        mutate(costo = ifelse(rbinom(length(prob), 1, prob) == 1, valor, 0)) %>% 
+        summarise(total = sum(costo)) %>% 
+        pull(total)
+    perdida_nt +  perdida_t + costo*nrow(filter(clientes, rankeo > corte)) - 
+        (perdida_nt + perdida_nt_2)
+}
+perdidas_1 <- map_dfr(rep(seq(0,1, 0.1), 100), function(x){
+    factor_ret <- sample(bootstrap_efectividad, 1)
+    perdida_sim <- perdida(x, factor_ret, 2000)
+    tibble(perdida = perdida_sim, corte = x)
+}) %>% bind_rows %>% mutate(costo = 2000)
+perdidas_2<- map_dfr(rep(seq(0,1, 0.1), 100), function(x){
+    factor_ret <- sample(bootstrap_efectividad, 1)
+    perdida_sim <- perdida(x, factor_ret*0.75, 5000)
+    tibble(perdida = perdida_sim, corte = x)
+}) %>% bind_rows %>% mutate(costo = 5000)
+
+datos_graf <- bind_rows(perdidas_1, perdidas_2) %>% 
+    group_by(costo, corte) %>% 
+    summarise(media = mean(perdida/1e6), inf = quantile(perdida/1e6, 0.05),
+              sup = quantile(perdida/1e6, 0.95))
+ggplot(bind_rows(perdidas_1, perdidas_2), aes(x = factor(corte), 
+                                              y = - perdida/1e6, colour=factor(costo))) + 
+    geom_boxplot(position = "dodge") + ylab("Ganancia vs Ninguna acción (millones)")
+# ggplot(datos_graf, aes(x = factor(corte), y = -media, ymin = -sup, ymax = -inf, 
+#                        colour = factor(costo))) +
+#     geom_linerange(position = position_dodge(width = 0.3)) +
+#     geom_point()
+```
+
+
+<!--chapter:end:06-simulacion.Rmd-->
+
+# Causalidad
+
+(sección breve)
+
+- El problema fundamental de la inferencia causal
+
+- Es un problema de comparaciones mucho más delicado: 
+
+Hablar de variables observadas y no observadas, cómo afectan
+(Gary King)
+
+- Diseño experimental (ideal)
+- Matching
+- Modelos
+
+es posible combinarlos para hacer aproximaciones más robustas.
+Si no hay aleatorización siempre estamos expuestos a confounders
+para los que no tenemos datos. 
+
+Y depenemos también de la forma del modelo (por ejemplo, ver
+caso de Gelman)
+
+- Obtener unos ejemplos de Google ?
+
+- Causal Impact.
+
+
+
+<!--chapter:end:07-causalidad.Rmd-->
+
+# Inferencia y predicción
+
+Una buena parte de los problemas de análisis de datos tratan de una manera u otra 
+generalizar observaciones obtenidas de una muestra a la población de donde se extrajo la muestra. 
+
+En todos los casos, el paso importante es intentar separar señales útiles (para explicar, predecir,
+o mostrar estructura) de otros aspectos como el hecho de que tenemos información limitada,
+o existen en general otros factores para los cuales no tenemos información.
+
+En esta parte presentaremos las ideas para lidear con esta observación utilizando técnicas
+de remuestreo.
+
+
+## Comparación con distribuciones de referencia {-}
+
+Supongamos que tenemos un sistema para el cual hemos acumulado un número grande de datos.
+Obtenemos una nueva observación, y nos preguntamos si el sistema sigue funcionando de manera 
+similar o existe evidencia de que algo haya cambiado. Para hacer esto, podríamnos comparar
+nuestra observación con alguna *distribución de referencia* asociada a nuestros datos acumulados,
+y ver si el valor observado es extremo en comparación a esta referencia.
+
+Por ejemplo:
+
+```{r}
+
+```
+
+
+
+
+### Ejemplo {-}
+
+En el siguiente ejemplo, tenemos tres grupos de datos de un sistema 
+operando bajo 3 condiciones distintas: a, b y c. Podemos pensar que son muestras de
+tres poblaciones distintas, por ejemplo.
+
+Nos interesa saber qué tan distintos son los datos que produce cada condición - no solamente
+qué tan diferentes son las muestras. Hay muchos aspectos
+que podríamos cuestionar acerca de cómo son diferentes los tres sistemas. En este caso,
+nos preguntamos, por ejemplo, si las distribuciones son similares o no.
+
+```{r, fig.width = 6, fig.height = 3, echo = FALSE}
+library(tidyverse)
+library(ggrepel)
+library(nullabor)
+library(knitr)
+theme_set(theme_minimal(base_size = 14))
+paleta <- scale_colour_manual(values = c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
+source("R/funciones_auxiliares.R")
+```
+
+```{r, echo = FALSE}
+set.seed(8)
+pob_tab <- tibble(id = 1:2000, x = rgamma(2000, 4, 1), 
+    grupo = sample(c("a","b", "c"), 2000, prob = c(4,2,1), replace = T))
+muestra_tab <- pob_tab %>% sample_n(125)
+g_1 <- ggplot(muestra_tab, aes(x = grupo, y = x)) + geom_boxplot(outlier.alpha = 0) +
+    geom_jitter(alpha = 0.3) + 
+    coord_flip() +  labs(subtitle = "Muestra")
+#g_2 <- ggplot(pob_tab, aes(x= grupo, y = x)) + geom_boxplot(outlier.alpha = 0) +
+#    coord_flip() +  labs(subtitle = "Población")
+#gridExtra::grid.arrange(g_1, g_2, ncol = 2) 
+g_1
+```
+
+En la muestra observamos diferencias entre los grupos. Pero notamos adicionalmente que
+hay mucha variación dentro de cada grupo. Nos podríamos preguntar entonces si las diferencias
+que observamos se debe a que tenemos información incompleta de los grupos
+
+```{r}
+muestra_tab %>% group_by(grupo) %>% 
+    summarise(mediana = median(x) %>% round(2), n = n())
+```
+
+En la muestra, la mediana del grupo c es menor que la de b, por ejemplo. 
+Las dispersiones parecen ser también ditintas. Las muestras son relativamente chicas.
+
+Podemos construir ahora una *hipótesis nula*, que establece que las observaciones
+de los procesos son intercambiables:
+
+- Los tres procesos son prácticamente indistiguibles desde el punto de vista del sistema. La variación
+que observamos se debe a que tenemos información incompleta: si observáramos todos los posibles
+datos que cada proceso genera, veríamos que sus distribuciones son muy similares.
+
+
+## Permutaciones y el lineup
+
+Para atacar este problema podemos pensar de la siguiente forma: si los grupos producen
+datos similares, entonces los grupos a, b, c solo son etiquetas que no contienen información.
+Podríamos entonces **permutar** las etiquetas y observar qué pasa. La muestra con las etiquetas
+permutadas es igualmente verosímil que la que obtuvimos, bajo la hipótesis nula.
+
+Si repetimos el proceso de permutación muchas veces, podemos comparar las diferencias que observamos
+en la muestras. Si las diferencias en las muestras no tienen ninguna característica sistemática
+que las distinga de las otras muestras obtenidas por permutaciones, entonces tenemos poca
+evidencia de que las diferencias que observamos en nuestra muestra sean sistemáticas.
+
+Vamos a intentar esto, por ejemplo usando una gráfica de cuantiles. Hacemos un *lineup*, o una
+*rueda de sospechosos*, donde 11 de los acusados son generados mediante permutaciones al azar,
+y el culpable (los verdaderos datos) están en una posición escogida al azar.
+
+```{r}
+set.seed(11)
+reps <- lineup(null_permute("grupo"), muestra_tab, n = 12)
+grafica_cuantiles(reps %>%  mutate(grupo_1 = factor(digest::digest2int(grupo) %% 177)), 
+                             grupo_1, x) + facet_wrap(~.sample) + ylab("x")
+```
+
+Y la pregunta que hacemos es **podemos distinguir nuestra muestra entre todas las 
+replicaciones producidas con permutaciones**? Nota: para evitar en parte hacer trampa, reetiquetamos
+las letras, y usamos otra gráfica diferente.
+
+En este ejemplo, es difícil indicar cuáles son los datos. Los grupos tienen distribuciones
+similares y es factible que las diferencias que observamos se deban a variación muestral.  
+
+Consideremos algunos cálculos: si los verdaderos datos son consistentes con nuestra hipótesis
+nula, entonces la probabilidad de escoger al verdadero culpable es de 1/12 = 0.08. Esta se
+llama *significancia de nuestra prueba de lineup*.
+
+- Si la persona escoge los verdaderos datos, rechazamos la hipótesis nula (equivalencia entre los
+tres bonches de datos), y decimos que los datos son *significativamente diferentes* al nivel 0.08.
+
+- Si la persona escoge uno de los datos permutados, no rechazamos la hipótesis nula. Esto usualmente
+implica que es razonable proceder en nuestro análisis de estos datos bajo la hipótesis de trabajo
+de que no hay diferencia entre los grupos.
+
+Por ejemplo, como los datos son consistentes con la hipótesis de que todos los grupos provienen de la
+mismo proceso, podemos resumir haciendo *pooling* o agregación de todos los grupos. Sobre todos los datos,
+los percentiles son
+
+```{r}
+muestra_tab %>% pull(x) %>% quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.9))
+```
+
+Comparando con los datos poblacionales:
+
+```{r}
+pob_tab %>% pull(x) %>%  quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.9))
+```
+
+Como el pooling es razonable, obtenemos mejores estimaciones utilizando la muestra completa,
+agregada sobre los tres procesos a, b, c.
+
+## Cuando la estadística es numérica {-}
+
+Ahora suupongamos que hacemos una pregunta mucho más específica, que se refiere a un número particular:
+¿la media del grupo b puede ser considerablemente es diferente de la del grupo c? En lugar de usar 
+gráfica, podemos calcular la estadística de interés para cada grupo, y tomar la diferencia. Comparamos
+el valor observado con los resultados de las muestras obtenidas por permutación:
+
+```{r, fig.width = 5, fig.height = 2.5}
+set.seed(118)
+reps <- lineup(null_permute("grupo"), muestra_tab, n = 10000)
+dif_obs <- muestra_tab %>% group_by(grupo) %>% 
+    summarise(mediana  = median(x)) %>% 
+    spread(grupo, mediana) %>% 
+    mutate(diferencia = b - c) %>% pull(diferencia)
+
+reps_media <- reps %>% 
+    group_by(grupo, .sample) %>% 
+    summarise(mediana  = median(x)) %>% 
+    spread(grupo, mediana) %>% 
+    mutate(diferencia = b - c)
+dist_acumulada_perm <- ecdf(reps_media$diferencia)
+percentil_obs <- dist_acumulada_perm(dif_obs) %>% round(2)
+g_1 <- ggplot(reps_media, aes(sample = diferencia)) + geom_qq(distribution = stats::qunif) +
+    geom_hline(yintercept = dif_obs, colour = "red") +
+    annotate("text", x = 0.25, y = dif_obs + 0.1, label = "diferencia observada", colour = "red")
+g_2 <- ggplot(reps_media, aes(x = diferencia)) + geom_histogram(binwidth = 0.1 ) +
+    geom_vline(xintercept = dif_obs, colour = "red") +
+    annotate("text", x = dif_obs, y = 300, label = percentil_obs, hjust = -0.2, colour = "red")
+gridExtra::grid.arrange(g_1, g_2, ncol = 2) 
+```
+
+
+Y notamos que el resultado obtenido en nuestra muestra no es excepcionalmente grande. Otra vez, no
+rechazamos la hipótesis nula.
+
+Nótese que calculamos una cantidad adicional, que es el percentil donde nuestra observación cae
+en la distribución generada por las permutación. Esta cantidad puede usarse para calcular un 
+valor-p. Podemos calcular, por ejemplo:
+
+- Valor p de una cola: Si la hipótesis nula es cierta, 
+¿cuál es la probabilidad de haber observado un valor tan grande o más que el que observamos? La 
+respuesta es `r 1- percentil_obs`, es decir, no muy baja. Es relativamente común observar un valor
+de tal magnitud bajo la hipótesis nula.
+
+- Valor p de dos colas: Si la hipótesis nula es cierta, ¿cuál es la
+probabilidad de observar una diferencia en valor absoluto tan o más extremo de lo que observamos? Podemos calcular
+la respuesta como `r (1 - dist_acumulada_perm(dif_obs)) + dist_acumulada_perm(-dif_obs) ` 
+
+
+Repitimos el ejemplo con un cambio
+
+```{r}
+set.seed(72)
+muestra_tab <- pob_tab %>% sample_n(90) %>% 
+    mutate(x = ifelse(grupo == "b", 1.5 * x + 1, x))
+g_1 <- ggplot(muestra_tab, aes(x = grupo, y = x)) + geom_boxplot(outlier.alpha = 0) +
+    geom_jitter(alpha = 0.3) + 
+    coord_flip() + ylim(c(0, 15)) + labs(subtitle = "Muestra")
+g_2 <- ggplot(pob_tab, aes(x= grupo, y = x)) + geom_boxplot(outlier.alpha = 0) +
+    coord_flip() + ylim(c(0, 15)) + labs(subtitle = "Población")
+g_1
+```
+
+Por ejemplo, obtenemos para la muestra:
+
+```{r}
+muestra_tab %>% group_by(grupo) %>% summarise(mediana = median(x))
+```
+
+```{r}
+set.seed(9012)
+reps <- lineup(null_permute("grupo"), muestra_tab, n = 12)
+grafica_cuantiles(reps %>%  mutate(grupo_escondido = factor(digest::digest2int(grupo) %% 177)), 
+                             grupo_escondido, x) + facet_wrap(~.sample) + ylab("x") +
+    coord_flip() 
+```
+
+
+Podemos distinguir más o menos claramente que está localizada en valores
+más altos y tiene mayor dispersión. Por ejemplo, podríamos considerar una
+prueba para ver qué tan excepcional es la diferencia entre c y b:
+
+```{r, fig.width = 5, fig.height = 2.5}
+set.seed(118)
+reps <- lineup(null_permute("grupo"), muestra_tab, n = 3000)
+dif_obs <- muestra_tab %>% group_by(grupo) %>% 
+    summarise(mediana  = median(x)) %>% 
+    spread(grupo, mediana) %>% 
+    mutate(diferencia = b - c) %>% pull(diferencia)
+reps_media <- reps %>% 
+    group_by(grupo, .sample) %>% 
+    summarise(mediana  = median(x)) %>% 
+    spread(grupo, mediana) %>% 
+    mutate(diferencia = b - c)
+g_1 <- ggplot(reps_media, aes(sample = diferencia)) + geom_qq(distribution = stats::qunif) +
+    geom_hline(yintercept = dif_obs, colour = "red") +
+    annotate("text", x = 0.4, y = dif_obs + 0.2, label = "diferencia observada", colour = "red")
+g_2 <- ggplot(reps_media, aes(x = diferencia)) + geom_histogram(binwidth = 0.1 ) +
+    geom_vline(xintercept = dif_obs, colour = "red")
+gridExtra::grid.arrange(g_1, g_2, ncol = 2) 
+```
+
+La diferencia observada es extrema, y es muy poco probable que hayamos observado tal diferencia
+por variación muestra. Tenemos evidencia de que la mediana del grupo "c" es más alta en la población que
+"b".
+
+
+## Ejemplo: casas
+
+Las medianas de las casas son claramente diferentes:
+
+```{r}
+casas_f <- casas %>% filter(nombre_zona %in% 
+            c( "Crawfor", "CollgCr", "Edwards", "IDOTRR", "NoRidge", "NridgHt", "NAmes"))
+reps <- lineup(null_permute("nombre_zona"), casas_f, n = 6)
+grafica_casas <- function(data){
+    ggplot(data %>% mutate(nombre_zona = fct_reorder(nombre_zona, precio_miles, median)), 
+           aes(x = nombre_zona, y = precio_miles)) + #geom_boxplot(outlier.alpha = 0, width = 0.3) +
+         geom_boxplot(alpha = 0.5)  + scale_y_log10()
+}
+#grafica_casas(reps) + facet_wrap(~ .sample, ncol = 2) + coord_flip()
+grafica_cuantiles(reps, nombre_zona, precio_miles) + facet_wrap(~.sample) + 
+    coord_flip() + scale_y_log10()
+
+```
+
+
+Que nos indica varias cosas:
+
+- Las medianas de las zonas son diferentes, y sus distribuciones están recorridas respecto
+a la media
+
+En este ejemplo, es´ más interesante averiguar si los cuantiles representados tienen distribución 
+similar.
+
+```{r, echo = FALSE}
+pos_datos <- sample(12, 1)
+```
+
+```{r, fig.height = 6, fig.width = 6}
+casas_f <- casas_f %>% 
+    group_by(nombre_zona) %>% mutate(mediana = median((precio_m2_miles)), 
+                                     residual = (precio_m2_miles) - mediana) %>% ungroup
+reps <- lineup(null_permute("residual"), casas_f, n = 12, pos = pos_datos)
+reps <- reps %>% mutate(nombre_zona = fct_reorder(nombre_zona, mediana, median)) %>% 
+               mutate(precio_miles_perm = mediana + residual) %>% 
+    mutate(mediana_perm = median((precio_miles_perm)), residual = (precio_miles_perm) - mediana_perm) %>% ungroup
+#grafica_casas(reps) + facet_wrap(~ .sample, ncol = 2) + coord_flip()
+grafica_cuantiles(reps, nombre_zona, residual) + facet_wrap(~.sample) + 
+    coord_flip() 
+```
+
+La aproximación es razonable, y por esto nos da una razón sólida para
+la observación que hicimos en la sección anterior
+
+
+---
+
+
+## Ejemplo: tiempos de fusión
+
+Consideremos el ejemplo de fusión de estereogramas que vimos anteriormente. Una pregunta 
+que podríamos hacer es: considerando que hay mucha variación en el tiempo de fusión dentro
+de cada tratamiento, necesitamos calificar la evidencia de nuestra conclusión (el tiempo de fusión se reduce al 66\% aproximadamente).
+
+
+
+```{r, fig.width = 6, fig.height = 5}
+set.seed(113)
+reps <- lineup(null_permute("nv.vv"), fusion, 20)
+ggplot(reps, aes(sample = time, colour = nv.vv)) +
+    #geom_boxplot(colour = "black") +
+    geom_qq(distribution = stats::qunif, size = 0.5) +
+    #geom_jitter(width = 0.1, height = 0, alpha = 0.5, size = 1) + 
+    facet_wrap(~.sample) + scale_y_log10()
+```
+
+
+```{r}
+stat_fusion <- function(x){
+    (quantile(x, 0.75) + quantile(x, 0.25))/2
+}
+reps <- lineup(null_permute("nv.vv"), fusion, 10000)
+dif <- fusion %>% group_by(nv.vv) %>% 
+    summarise(mediana = stat_fusion(time)) %>% 
+    spread(nv.vv, mediana) %>% mutate(dif = VV / NV ) %>% pull(dif)
+cocientes_perm <- reps  %>%  group_by(.sample, nv.vv) %>% 
+    summarise(mediana = stat_fusion(time)) %>% 
+    spread(nv.vv, mediana) %>% 
+    summarise(cociente = (VV / NV))
+ggplot(cocientes_perm, aes(x = cociente)) + 
+    geom_histogram(binwidth = 0.05) +
+    geom_vline(xintercept = dif)
+ecdf(cocientes_perm$cociente)(dif)
+```
+
+Lo que muestra evidencia considerable de la instrucción verbal ayuda a reducir el tiempo
+de fusión de los estereogramas.
+
+
+
+
+
+
+<!--chapter:end:08-inferencia.Rmd-->
+
+# Remuestreo: el bootstrap
+
+El bootstrap es una técnica para evaluar la variabilidad de estimaciones basadas en muestra.
+La situación más simple donde podemos aplicar bootstrap es la siguiente:
+
+- Supongamos que tomamos una muestra de una población
+- Por *muestra* entendemos que cada unidad de la población se selecciona con cierta probabilidad fija,
+independientemente de las elecciones que hayamos o no seleccionado en cada momento (es una muestra iid). También
+podemos pensar que cada observación se extrae de una distribución fija $F$ de manera independiente a las otras.
+- Una estadística es un proceso que se aplica a la muestra. 
+- Nos interesa saber qué tanto puede variar el valor de la estadística cuando lo aplicamos a distintas muestras.
+
+
+## Ejemplo (teórico)
+
+Supongamos que tenemos la siguiente población de escuelas:
+
+```{r}
+enlace <- read_csv("datos/enlace.csv") %>% filter(mate_6 > 0)
+nrow(enlace)
+```
+
+Y nos interesa saber, para la población, cuál es la mediana de calificaciones de matemáticas.
+Nuestra estadística es:
+
+```{r}
+fun_muestra <- function(x){
+    mean(x)
+}
+```
+
+Distintas muestras dan distintos resultados:
+
+```{r}
+enlace %>% sample_n(50) %>% summarise(mediana = fun_muestra(mate_6))
+enlace %>% sample_n(50) %>% summarise(mediana = fun_muestra(mate_6))
+```
+
+La *distribución* de muestreo son los valores que puede tomar la estadística bajo todas las posibles
+muestras. Podemos aproximarla tomando un número grande de muestras:
+
+```{r}
+medianas_muestras <- map_dbl(1:100, ~ enlace %>% sample_n(50) %>% summarise(mediana = fun_muestra(mate_6)) %>% pull(mediana))
+plot(sort(medianas_muestras))
+```
+
+```{r}
+medianas_muestras <- map_dbl(1:2000, ~ enlace %>% sample_n(50, replace = T) %>% summarise(mediana = fun_muestra(mate_6)) %>% pull(mediana))
+valor_poblacional <- median(enlace$mate_6)
+g_1 <- qplot(sort(medianas_muestras)) + geom_vline(xintercept = valor_poblacional)
+g_1
+```
+
+Cuyos cuantiles son: 
+
+```{r}
+quantile(medianas_muestras - valor_poblacional , c(0.025, 0.975))
+```
+
+Esto quiere decir que si estimamos con una muestra el valor poblacional, esperamos
+con 95\% de probabilidad que el error sea menos de unas 30 unidades. Esta es la precisión
+de nuestro estimador.
+
+Si usamos una muestra más grande podemos obetner un resultado más preciso:
+
+```{r}
+medianas_muestras_2 <- map_dbl(1:2000, ~ enlace %>% sample_n(300, replace = T) %>% summarise(mediana = fun_muestra(mate_6)) %>% pull(mediana))
+valor_poblacional <- median(enlace$mate_6)
+dist_muestreo <- bind_rows(tibble(mediana = medianas_muestras, n = 50), tibble(mediana = medianas_muestras_2, n = 300))
+ggplot(dist_muestreo, aes(x = mediana)) + geom_histogram() + facet_wrap(~ n)
+```
+
+Y como es de esperarse, vemos que muestras más grandes resultan en menos variablidad, y menor error de estimación.
+
+Sin embargo, normalmente solo tenemos una muestra disponible, y no necesariamente tenemos una
+manera práctica de calcular su distribución de muestreo que nos ayude a entender su variabilidad.
+
+Lo segundo mejor que podemos hacer es *considerar la muestra como si fuera nuestra población*, y repetir
+el proceso de arriba para estimar la distribución de muestreo. Veamos que sucede para dos muestras
+en este primer ejemplo:
+
+```{r}
+set.seed(8)
+muestras_boot <- function(x, B = 1000, fun_muestra){
+    muestra_1 <- enlace %>% sample_n(50)
+    muestra_2 <- enlace %>% sample_n(300)
+    medianas_muestras <- map_dbl(1:B, ~ muestra_1 %>% sample_n(50, replace = T) %>% 
+                                 summarise(mediana = fun_muestra(mate_6)) %>% pull(mediana))
+    medianas_muestras_1 <- map_dbl(1:B, ~ muestra_2 %>% sample_n(300, replace = T) %>% summarise(mediana = fun_muestra(mate_6)) %>% pull(mediana))
+    remuestreo_2 <- bind_rows(tibble(mediana = medianas_muestras, n = 50), tibble(mediana = medianas_muestras_1, n = 300)) %>% mutate(rep = x)    
+    
+}
+rep_remuestreo <- map(1:20, ~ muestras_boot(.x, B = 1000, fun_muestra = fun_muestra)) %>% bind_rows
+```
+
+
+```{r}
+dat <- bind_rows(dist_muestreo %>% mutate(rep = "pob"), rep_remuestreo %>% mutate(rep = as.character(rep)))
+ggplot(dat, aes(sample =  mediana, colour = rep == "pob", group = rep)) + 
+    geom_qq(distribution = stats::qunif, size = 0.1) + facet_wrap(~n)
+```
+
+Y notamos que la distribución bootstrap es un estimador razonable de la distribución de muestreo
+de nuestra estadística. Usando esta estimación podemos darnos una idea de la variabilidad
+de nuestro estimador.
+
+Por ejemplo, podríamos construir intervalos de confianza. Usamos la distribución bootstrap
+para construir una estimación de intervalo:
+
+```{r}
+intervalos <- rep_remuestreo %>% 
+    group_by(n, rep) %>% 
+    summarise(inf =  quantile(mediana, 0.05), sup = quantile(mediana, 0.95)) %>% 
+    mutate(valor_poblacional = median(enlace$mate_6))
+ggplot(intervalos, aes(x = rep, ymin = inf, ymax = sup)) + 
+    geom_hline(yintercept = median(enlace$mate_6), colour = "salmon") +
+    geom_linerange() +
+    facet_wrap(~n) 
+```
+
+La cobertura para nuestros intervalos es:
+
+```{r}
+intervalos %>% mutate(cubre = valor_poblacional > inf & valor_poblacional < sup) %>% 
+     group_by(n) %>% summarise(cobertura = mean(cubre))
+```
+
+Para este número de repeticiones, estos números son consistentes con la cobertura *nominal*
+de 90\%
+
+
+** Referencias acerca de cobertura, y mejoras a a construcción de intervalos **
+
+
+El bootstrap se puede usar para una variedad grande de estadísticas. Esto incluye, por ejemplo,
+suavizadores.
+
+-- Ejemplo: suavizadores
+
+-- Ejemplo: análisis de componentes principales
+
+## Suavizadores
+
+```{r}
+
+```
+
+
+<!--chapter:end:09-inferencia-bootstrap.Rmd-->
+
+`r if (knitr::is_html_output()) '
+# References {-}
+'`
+
+<!--chapter:end:99-referencias.Rmd-->
+

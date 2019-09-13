@@ -69,7 +69,7 @@ Estas gráfica no pierde información, su forma es informativa.
 
 **Dispersión y Valores centrales**
 
-- El *rango* de datos va de unos 3 dólares hasta 45 dólares
+- El *rango* de datos va de unos 3 dólares hasta 50 dólares
 - Los **valores centrales** (del cuantil 0.25 al 0.75, por ejemplo), están
 entre unos 13 y 25 dólares
 - Podemos usar el cuantil 0.5 (**mediana**) para dar un valor *central* de esta distribución,
@@ -151,7 +151,47 @@ g_1
 ```
 
 
+## Casas{-}
 
+```{r}
+zonas <- nombres[table(casas$nombre_zona) > 30]
+casas_x <- casas %>% mutate(nombre_zona = fct_reorder(nombre_zona, precio_miles)) %>% 
+  filter(nombre_zona %in% zonas)
+ggplot(casas_x, aes(x = nombre_zona, y = precio_miles)) + geom_boxplot() + coord_flip()
+```
+
+```{r}
+casas_x <- casas %>% mutate(nombre_zona = fct_reorder(nombre_zona, precio_m2_miles)) %>% 
+  filter(nombre_zona %in% zonas)
+ggplot(casas_x, aes(x = nombre_zona, y = precio_m2_miles)) + geom_boxplot() + coord_flip()
+```
+
+Podemos cuantificar la variación que observamos de zona a zona y la variación que hay dentro de zonas,
+por ejemplo, tomando
+
+```{r}
+quantile(casas_x %>% group_by(nombre_zona) %>% summarise(mediana = median(precio_m2_miles)) %>% pull(mediana)) 
+```
+
+```{r}
+quantile(casas_x %>% group_by(nombre_zona) %>% mutate(residual = precio_m2_miles - median(precio_m2_miles)) %>% pull(residual))
+```
+
+Esta última cantidad tiene más sentido interpretar debido a que las dispersiones dentro
+de cada grupo son similares.
+
+
+```{r}
+ggplot(casas_x %>% mutate(ind_calidad = cut(calidad_gral, c(0, 5, 8,10))), aes(y = precio_m2_miles, x = nombre_zona, 
+        colour=factor(ind_calidad))) + 
+  geom_hline(yintercept = c(1, 2), colour = "gray") +
+  geom_boxplot(outlier.shape = NA) +
+  coord_flip() + scale_colour_tableau() +
+  facet_wrap(~ind_calidadvb gtttttf)
+
+```
+
+Con esta descomposición,
 
 
 ## Enlace {-}
@@ -184,7 +224,6 @@ considerable en las calificaciones de las escuelas, y diferencias considerables
 entre tipo de escuelas:
 
 ```{r, message = FALSE, echo = FALSE}
-
 enlace <- read_csv("datos/enlace.csv")
 enlace <- enlace %>%  filter(num_evaluados_total > 0, mate_6 > 0) %>% 
     mutate(tipo = fct_reorder(tipo, mate_6, mean)) %>% 
@@ -262,6 +301,22 @@ g_80_p <- ggplot(enlace_tbl_marg  %>% spread(cuantil, valor),
                           labels = c(0.5, 1, 10, 100, 500)) 
 g_80_p
 ```
+
+```{r, echo = FALSE}
+enlace_tbl <- 
+  enlace %>% mutate(tipo = ifelse(tipo %in% c("GENERAL", "PARTICULAR"), as.character(tipo), "INDIGENA/CNFE")) %>% 
+  mutate(tipo = fct_reorder(tipo, mate_6))
+g_1 <- ggplot(enlace_tbl, 
+       aes(x = marginacion, y = mate_6, colour = tipo)) +
+  geom_boxplot(outlier.alpha = 0) + scale_color_colorblind() +
+  theme(legend.position = "none") + ylim(c(200,800))
+g_2 <- ggplot(enlace_tbl, 
+       aes(x = "Total", y = mate_6, colour = tipo)) +
+  geom_boxplot(outlier.alpha = 0) + scale_color_colorblind() + ylab("") + xlab("") +
+   ylim(c(200,800))
+gridExtra::grid.arrange(g_1, g_2, ncol =2, widths = c(9, 7.5))
+```
+
 
 Esta gráfica nos ayuda a mejorar nuestra pregunta inicial:
 
@@ -721,7 +776,7 @@ gridExtra::grid.arrange(g_1, g_2, ncol = 1)
 ## Ejemplo (tablas)
 
 ```{r}
-data(tea)
+tea <- read_csv(("datos/tea.csv"))
 te <- tea %>% select(how, price, sugar)
 ```
 
@@ -750,17 +805,19 @@ tabla <- te %>% group_by(how, price) %>% tally() %>% group_by(how) %>%
   mutate(prop_price = (100 * n / sum(n))) %>% 
   group_by(price) %>% mutate(prom_prop = mean(prop_price)) %>% 
   mutate(perfil = (prop_price / prom_prop - 1) %>% round(2))  
+precio_prom <- tabla %>% select(price, prom_prop) %>% unique %>% 
+  mutate(promedio = round(prom_prop)) %>% select(price, promedio)
 tabla_perfil <- tabla %>%   
   select(how, price, perfil) %>% spread(how, perfil, fill = -1) 
-tabla <- tabla_perfil %>% 
-  gather(how, perfil, -price)
 tabla_2 <- tabla_perfil %>% 
   gather(how, prop_price, -price)
 if_profile <- function(x){
   any(x < 0) & any(x > 0)
 }
 marcar <- marcar_tabla_fun(0.25, "red", "black")
-tab_out <- tabla_perfil %>% left_join(precio) %>% mutate_if(if_profile, marcar) %>% 
+tab_out <- tabla_perfil %>% left_join(precio_prom) %>%
+  arrange(desc(promedio)) %>% 
+  mutate_if(if_profile, marcar) %>% 
   knitr::kable(format = "html", escape = F, digits = 2) %>% 
   kableExtra::kable_styling(bootstrap_options = c( "hover", "condensed"), full_width = FALSE)
 tab_out
@@ -809,17 +866,20 @@ ganado <- ganado %>%
   mutate(por_pais = mean(log(count)) - media) %>% 
   group_by(livestock.type) %>% 
   mutate(por_tipo = mean(log(count)) - media) %>% 
-  mutate(residual = log(count) - (media + por_pais + por_tipo))
+  mutate(residual = log(count) - (media + por_pais + por_tipo)) %>% 
+  mutate(ajustado = media + por_pais + por_tipo)
+ggplot(ganado, aes(x=ajustado, y=residual)) + geom_point()
 ```
 
 ```{r}
-orden <- princomp(ganado_ancha  %>% select(-country))$scores[,1] %>% round(2)
-#orden <- kmeans(ganado_ancha  %>% select(-country), centers = 6)$cluster
+
 marcar_g <- marcar_tabla_fun_doble(-0.4, 0.4, "red", "black")
 ganado_ancha <- 
   ganado %>% select(livestock.type, country, residual) %>% 
   mutate(residual = round(residual, 2)) %>% 
   spread(livestock.type, residual) 
+orden <- princomp(ganado_ancha  %>% select(-country))$scores[,1] %>% round(2)
+#orden <- kmeans(ganado_ancha  %>% select(-country), centers = 6)$cluster
 ganado_ancha %>% 
   mutate(orden = orden) %>% 
   arrange(orden) %>% 
@@ -831,5 +891,12 @@ ganado_ancha %>%
 Y podemos resumir:
 
 ```{r}
-ganado
+aov_ganado <- ganado %>% select(livestock.type, country, por_pais:residual) %>% 
+  gather(tipo, valor, por_pais:residual) %>% 
+  mutate(etiqueta = ifelse(tipo == "residual", paste(livestock.type, country), "")) %>% ungroup %>% 
+  mutate(etiqueta = ifelse(abs(valor)> 2, etiqueta, ""))
+ggplot(aov_ganado, aes(sample = valor)) + geom_qq(distribution = stats::qunif) +
+  facet_wrap(~tipo) 
+
 ```
+

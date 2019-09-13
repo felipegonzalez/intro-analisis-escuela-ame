@@ -11,6 +11,7 @@ podemos pensar que cada observación se extrae de una distribución fija $F$ de 
 - Nos interesa saber qué tanto puede variar el valor de la estadística cuando lo aplicamos a distintas muestras.
 
 
+
 ## Ejemplo (teórico)
 
 Supongamos que tenemos la siguiente población de escuelas:
@@ -125,7 +126,8 @@ intervalos %>% mutate(cubre = valor_poblacional > inf & valor_poblacional < sup)
      group_by(n) %>% summarise(cobertura = mean(cubre))
 ```
 
-Para este número de repeticiones, 
+Para este número de repeticiones, estos números son consistentes con la cobertura *nominal*
+de 90\%
 
 
 ** Referencias acerca de cobertura, y mejoras a a construcción de intervalos **
@@ -138,8 +140,9 @@ suavizadores.
 
 -- Ejemplo: análisis de componentes principales
 
+## Suavizadores
 
+```{r}
 
-
-
+```
 

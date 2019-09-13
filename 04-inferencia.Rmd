@@ -1,37 +1,103 @@
-# Inferencia y predicción
+# Inferencia y Remuestreo
 
+
+```{r, message = FALSE}
+library(tidyverse)
+library(lubridate)
+library(ggthemes)
+theme_set(theme_minimal(base_size = 14))
+```
 Una buena parte de los problemas de análisis de datos tratan de una manera u otra 
 generalizar observaciones obtenidas de una muestra a la población de donde se extrajo la muestra. 
 
 En todos los casos, el paso importante es intentar separar señales útiles (para explicar, predecir,
-o mostrar estructura) de otros aspectos como el hecho de que tenemos información limitada,
-o existen en general otros factores para los cuales no tenemos información.
-
-En esta parte presentaremos las ideas para lidear con esta observación utilizando técnicas
-de remuestreo.
-
+o mostrar estructura) de *fluctuaciones* que resultan de variables de las que no tenemos información.
 
 ## Comparación con distribuciones de referencia {-}
 
-Supongamos que tenemos un sistema para el cual hemos acumulado un número grande de datos.
-Obtenemos una nueva observación, y nos preguntamos si el sistema sigue funcionando de manera 
-similar o existe evidencia de que algo haya cambiado. Para hacer esto, podríamnos comparar
-nuestra observación con alguna *distribución de referencia* asociada a nuestros datos acumulados,
-y ver si el valor observado es extremo en comparación a esta referencia.
+Supongamos que tenemos una población o sistema para el cual hemos acumulado un número grande de datos.
+Obtenemos nuevas observaciones de otra población, y nos preguntamos si las observaciones son 
+consistentes con nuestra población de referencia.
 
-Por ejemplo:
-
-```{r}
-
-```
-
-
+En este casos, diremos que la *hipótesis nula* es que los nuevos datos son consistentes 
+con la población de referencia. Si desacreditamos la hipótesis nula con nuestro análisis,
+entonces diremos que observamos *diferencia significativa* (ver @box78).
 
 
 ### Ejemplo {-}
 
-En el siguiente ejemplo, tenemos tres grupos de datos de un sistema 
-operando bajo 3 condiciones distintas: a, b y c. Podemos pensar que son muestras de
+Por ejemplo, supongamos que estamos considerando cambios rápidos en una serie de tiempo. Consideramos
+10 observaciones de nuestra serie de tiempo, y calculamos su pendiente. Hemos observado al sistema
+en un periodo largo, y resumimos nuestras observaciones de las pendientes de 10 puntos consecutivos:
+
+
+```{r}
+simular_serie <- function(n = 1000, lambda = 1){
+    x <- numeric(n)
+    pendiente <- numeric(n)
+    x[1] <- 3
+    for(i in 2:n){
+        x[i] <-  0.5*(x[i - 1]) + rgamma(1, 1, 1 / lambda)
+        if(i >= 10){
+            x_s <- x[i - seq(9, 0, -1)]
+            t_s <- seq(0, 9, 1)
+            s <- lm.fit(cbind(1, t_s), x_s)$coefficients[2]
+            pendiente[i] <- s
+        }
+    }
+    tibble(t = 1:n, obs = x, pendiente = pendiente)
+}
+tbl <- simular_serie(2000, 1)
+```
+
+
+```{r}
+set.seed(9)
+tbl_2 <- simular_serie(100) 
+ggplot(tbl, aes(sample = pendiente)) + geom_qq(distribution = stats::qunif) +
+    geom_hline(yintercept = tbl_2$pendiente[100])
+```
+
+La observación está alrededor del cuantil 0.25. 
+
+Este no es cuantil muy extremo, así que desde este punto de vista, esto no aporta evidencia
+en contra de la hipótesis nula es verdadera: el sistema sigue funcionando de manera usual.
+
+Por el contrario, si observáramos:
+```{r}
+set.seed(91)
+tbl_2 <- simular_serie(100, lambda = 3) 
+obs <- tbl_2$pendiente[100]
+ggplot(tbl, aes(sample = pendiente)) + geom_qq(distribution = stats::qunif) +
+    geom_hline(yintercept = obs)
+```
+
+entonces tendríamos evidencia para descartar la hipótesis nula: las nuevas observaciones
+son poco consistentes con la distribución de referencia.
+
+Podemos cuantificar qué tan extrema es nuestra observación mediante el cálculo de un *valor p*. 
+El cuantil de la observación es
+
+```{r}
+dist_acum <- ecdf(tbl$pendiente)
+dist_acum(obs)
+```
+
+Si la observación fuera extraída de la población original (es decir, se cumple
+la hipótesis nula),  una observación tan extrema o más de lo que observamos tendría probabilidad
+de ocurrir de
+
+```{r}
+2*dist_acum(obs)
+```
+
+La cual es muy baja, y aporta evidencia en contra de la hipótesis nula
+
+
+### Ejemplo {-}
+
+En el siguiente ejemplo, tenemos mediciones para tres grupos 
+a, b y c. Podemos pensar que son muestras de
 tres poblaciones distintas, por ejemplo.
 
 Nos interesa saber qué tan distintos son los datos que produce cada condición - no solamente
@@ -50,7 +116,7 @@ source("R/funciones_auxiliares.R")
 ```
 
 ```{r, echo = FALSE}
-set.seed(72)
+set.seed(8)
 pob_tab <- tibble(id = 1:2000, x = rgamma(2000, 4, 1), 
     grupo = sample(c("a","b", "c"), 2000, prob = c(4,2,1), replace = T))
 muestra_tab <- pob_tab %>% sample_n(125)
@@ -141,6 +207,11 @@ pob_tab %>% pull(x) %>%  quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.9))
 Como el pooling es razonable, obtenemos mejores estimaciones utilizando la muestra completa,
 agregada sobre los tres procesos a, b, c.
 
+Este tipo de análisis es especialmente útil cuando trabajamos con muestras relativamente
+chicas, donde mayor varianza implica que muchas veces nos podemos distraer en sobre estimaciones
+de diferencias. Si vimos los datos, el lineup no es tan útil, pero siempre podemos probar
+con más personas (en estos casos es posible incluso calcular un valor p).
+
 ## Cuando la estadística es numérica {-}
 
 Ahora suupongamos que hacemos una pregunta mucho más específica, que se refiere a un número particular:
@@ -150,7 +221,7 @@ el valor observado con los resultados de las muestras obtenidas por permutación
 
 ```{r, fig.width = 5, fig.height = 2.5}
 set.seed(118)
-reps <- lineup(null_permute("grupo"), muestra_tab, n = 3000)
+reps <- lineup(null_permute("grupo"), muestra_tab, n = 10000)
 dif_obs <- muestra_tab %>% group_by(grupo) %>% 
     summarise(mediana  = median(x)) %>% 
     spread(grupo, mediana) %>% 
@@ -198,9 +269,9 @@ muestra_tab <- pob_tab %>% sample_n(90) %>%
     mutate(x = ifelse(grupo == "b", 1.5 * x + 1, x))
 g_1 <- ggplot(muestra_tab, aes(x = grupo, y = x)) + geom_boxplot(outlier.alpha = 0) +
     geom_jitter(alpha = 0.3) + 
-    coord_flip() + ylim(c(0, 15)) + labs(subtitle = "Muestra")
+    coord_flip() + ylim(c(0, 20)) + labs(subtitle = "Muestra")
 g_2 <- ggplot(pob_tab, aes(x= grupo, y = x)) + geom_boxplot(outlier.alpha = 0) +
-    coord_flip() + ylim(c(0, 15)) + labs(subtitle = "Población")
+    coord_flip() + ylim(c(0, 20)) + labs(subtitle = "Población")
 g_1
 ```
 
@@ -248,57 +319,6 @@ por variación muestra. Tenemos evidencia de que la mediana del grupo "c" es má
 "b".
 
 
-## Ejemplo: casas
-
-Las medianas de las casas son claramente diferentes:
-
-```{r}
-casas_f <- casas %>% filter(nombre_zona %in% 
-            c( "Crawfor", "CollgCr", "Edwards", "IDOTRR", "NoRidge", "NridgHt", "NAmes"))
-reps <- lineup(null_permute("nombre_zona"), casas_f, n = 6)
-grafica_casas <- function(data){
-    ggplot(data %>% mutate(nombre_zona = fct_reorder(nombre_zona, precio_miles, median)), 
-           aes(x = nombre_zona, y = precio_miles)) + #geom_boxplot(outlier.alpha = 0, width = 0.3) +
-         geom_boxplot(alpha = 0.5)  + scale_y_log10()
-}
-#grafica_casas(reps) + facet_wrap(~ .sample, ncol = 2) + coord_flip()
-grafica_cuantiles(reps, nombre_zona, precio_miles) + facet_wrap(~.sample) + 
-    coord_flip() + scale_y_log10()
-
-```
-
-
-Que nos indica varias cosas:
-
-- Las medianas de las zonas son diferentes, y sus distribuciones están recorridas respecto
-a la media
-
-En este ejemplo, es´ más interesante averiguar si los cuantiles representados tienen distribución 
-similar.
-
-```{r, echo = FALSE}
-pos_datos <- sample(12, 1)
-```
-
-```{r, fig.height = 6, fig.width = 6}
-casas_f <- casas_f %>% 
-    group_by(nombre_zona) %>% mutate(mediana = median((precio_m2_miles)), 
-                                     residual = (precio_m2_miles) - mediana) %>% ungroup
-reps <- lineup(null_permute("residual"), casas_f, n = 12, pos = pos_datos)
-reps <- reps %>% mutate(nombre_zona = fct_reorder(nombre_zona, mediana, median)) %>% 
-               mutate(precio_miles_perm = mediana + residual) %>% 
-    mutate(mediana_perm = median((precio_miles_perm)), residual = (precio_miles_perm) - mediana_perm) %>% ungroup
-#grafica_casas(reps) + facet_wrap(~ .sample, ncol = 2) + coord_flip()
-grafica_cuantiles(reps, nombre_zona, residual) + facet_wrap(~.sample) + 
-    coord_flip() 
-```
-
-La aproximación es razonable, y por esto nos da una razón sólida para
-la observación que hicimos en la sección anterior
-
-
----
-
 
 ## Ejemplo: tiempos de fusión
 
@@ -310,6 +330,7 @@ de cada tratamiento, necesitamos calificar la evidencia de nuestra conclusión (
 
 ```{r, fig.width = 6, fig.height = 5}
 set.seed(113)
+fusion <- read_delim("./datos/fusion_time.txt", delim = " ", trim_ws = TRUE)
 reps <- lineup(null_permute("nv.vv"), fusion, 20)
 ggplot(reps, aes(sample = time, colour = nv.vv)) +
     #geom_boxplot(colour = "black") +
@@ -318,6 +339,9 @@ ggplot(reps, aes(sample = time, colour = nv.vv)) +
     facet_wrap(~.sample) + scale_y_log10()
 ```
 
+Otro enfoque sería probar una característica específica de las muestras. En
+este ejemplo, podríamos tomar, por ejemplo, el promedio de los dos cuantiles
+(superior e inferior). 
 
 ```{r}
 stat_fusion <- function(x){
@@ -334,11 +358,151 @@ cocientes_perm <- reps  %>%  group_by(.sample, nv.vv) %>%
 ggplot(cocientes_perm, aes(x = cociente)) + 
     geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = dif)
-ecdf(cocientes_perm$cociente)(dif)
+2*ecdf(cocientes_perm$cociente)(dif)
 ```
 
-Lo que muestra evidencia considerable de la instrucción verbal ayuda a reducir el tiempo
-de fusión de los estereogramas.
+Lo que muestra evidencia considerable, aunque no muy fuerte, de que la instrucción verbal ayuda a reducir el tiempo de fusión de los estereogramas.
+
+
+
+## Ejemplo (dimensión alta)
+Referencia de Diane Cook
+
+En el siguiente ejemplo, tenemos 4 grupos de avispas (50 individuos en total),
+y para cada individuo se miden expresiones
+de 42 genes distintos. La pregunta es: ¿Podemos separar a los grupos de avispas 
+dependiendo de sus mediciones. 
+
+En este caso podemos usar análisis discriminante, que busca proyecciones de los
+datos en dimensión baja de forma que los grupos sean lo más compactos y separados posibles.
+
+Para probar qué tan bien funciona este método, podemos hacer una prueba de permutación, aplicamos
+LDA y observamos los resultados:
+
+```{r}
+data(wasps)
+
+wasp.lda <- MASS::lda(Group~., data=wasps[,-1])
+wasp.ld <- predict(wasp.lda, dimen=2)$x
+true <- data.frame(wasp.ld, Group=wasps$Group)
+
+wasp.sim <- data.frame(LD1=NULL, LD2=NULL, Group=NULL, .n=NULL)
+for (i in 1:19) {
+  x <- wasps
+  x$Group <- sample(x$Group)
+  x.lda <- MASS::lda(Group~., data=x[,-1])
+  x.ld <- predict(x.lda, dimen=2)$x
+  sim <- data.frame(x.ld, Group=x$Group, .n=i)
+  wasp.sim <- rbind(wasp.sim, sim)
+}
+pos <- sample(1:20, 1)
+d <- lineup(true=true, samples=wasp.sim, pos=pos)
+ggplot(d, aes(x=LD1, y=LD2, colour=Group)) + 
+  facet_wrap(~.sample, ncol=5) +
+  geom_point() + theme(aspect.ratio=1)
+```
+
+Y vemos que incluso permutando los grupos, es generalmente posible separarlos en grupos
+bien definidos: Existen combinaciones lineales que los separan. Que no podamos distinguir
+los datos verdaderos de las replicaciones nulas indica que este método difícilmente puede
+servir para separar los grupos claramente.
+
+
+Otro enfoque sería separar los datos:
+
+```{r}
+set.seed(8)
+wasps_1 <- wasps %>% mutate(u = runif(nrow(wasps), 0, 1))
+wasps_entrena <- wasps_1 %>% filter(u <= 0.8)
+wasps_prueba <- wasps_1 %>% filter(u > 0.8)                            
+                            
+wasp.lda <- MASS::lda(Group ~ ., data=wasps_entrena[,-1])
+wasp_ld_entrena <- predict(wasp.lda,  dimen=2)$x %>% 
+    as_tibble(.name_repair = "universal") %>%
+     mutate(tipo = "entrenamiento") %>% 
+    mutate(grupo = wasps_entrena$Group)
+wasp_ld_prueba <- predict(wasp.lda, newdata = wasps_prueba, dimen=2)$x  %>% 
+    as_tibble(.name_repair = "universal") %>%
+    mutate(tipo = "prueba")%>% 
+    mutate(grupo = wasps_prueba$Group)
+wasp_lda <- bind_rows(wasp_ld_entrena, wasp_ld_prueba)
+ggplot(wasp_lda, aes(x = LD1, y = LD2, colour = grupo)) + geom_point(size = 3) +
+    facet_wrap(~tipo) + scale_color_colorblind()
+```
+
+
+
+## El jardín de los senderos que se bifurcan
+
+Recientemente (aunque muchos estadísticos lo han repetido desde hace mucho tiempo), se ha reconocido
+en campos como la sicología la "crisis de replicabilidad". Esta crisis aparece con la
+observación de que muchos estudios que recibieron mucha publicidad (por ejemplo, el efecto positivo
+de hacer "poses poderosas" antes de hacer una entrevista, etc.) inicialmente, no han podido ser replicados
+posteriormente por otros investigadores. Por ejemplo:
+
+- Hacer "poses poderosas" produce cambios fisiológicos que mejoran nuestro desempeño en ciertas tareas
+- Patrones de ovulación de las mujeres influyen en los candidatos que escogen para votar
+- Mostrar palabras relacionadas con "viejo" hacen que las personas caminen más lento (efectos de *priming*) 
+En todos estos casos, la evidencia de estos efectos fue respaldada finalmente (pues es requisito para
+publicación) por una prueba de hipótesis nula con un valor p menor a 0.05. Este estándar de publicación
+es seguido por varias revistas. Este problema de replicabilidad parece ser más frecuente cuando:
+
+1. Se trata de estudios de potencia baja (mediciones ruidosas y  tamaños de muestra chicos)
+2. El plan de análisis no está claramente definido desde un principio (lo cual es difícil cuando
+se están investigando "fenómenos no estudiados antes")
+
+ Como vimos en ejemplos anteriores, hay varias decisiones, todas razonables, que podemos tomar cuando 
+estamos buscando las comparaciones correctas:
+
+- Transformar los datos (tomar o no logaritmos, u otra transformación)
+- Editar datos atípicos (razonable si los equipos pueden fallar, o hay errores de captura, por ejemplo)
+- Distintas maneras de interpretar los criterios de inclusión (por ejemplo, el estudio se planeó
+para personas entre 20 y 30 años, y tenemos tres casos con 33 años. ¿Los dejamos o los usamos?)
+
+Dado un juego de datos, las justificaciones de las decisiones que se toman en cada paso se justifican
+y son razonables. Esto invalida en parte el uso valores p como criterio de evidencia contra la hipótesis nula.
+
+## Ejemplo:
+En el ejemplo de datos de fusión, decidimos probar, por ejemplo, el promedio de
+los cuartiles inferior y superior, lo cual no es una decisión típica pero usamos como
+ilustración.
+
+
+```{r}
+set.seed(8812)
+media_cuartiles <- function(x){
+    (quantile(x, 0.75) + quantile(x, 0.25))/2
+}
+
+valor_p_fusion <- function(fusion, stat_fusion = stat_fusion, trans = identity, comp = VV / NV){
+    pos <- 1
+    reps <- lineup(null_permute("nv.vv"), pos =1, fusion, n = 10000)
+    dif <- fusion %>% group_by(nv.vv) %>% 
+        summarise(valor_est = {{ stat_fusion }}(time)) %>% 
+        spread(nv.vv, valor_est) %>% mutate(dif = {{ comp }} ) %>% pull(dif)
+    cocientes_perm <- reps  %>%  group_by(.sample, nv.vv) %>% 
+        summarise(valor_est = {{ stat_fusion }} (time)) %>% 
+        spread(nv.vv, valor_est) %>% 
+        summarise(cociente = ({{ comp }}))
+    2*ecdf(cocientes_perm$cociente)(dif)
+}
+valor_p_fusion(fusion %>% sample_frac(0.8), stat_fusion = mean, trans = identity, comp = VV - NV)
+valor_p_fusion(fusion %>% sample_frac(0.8), stat_fusion = median, trans = identity, comp = VV / NV)
+valor_p_fusion(fusion %>% sample_frac(0.8), stat_fusion = media_cuartiles, trans = identity, 
+               comp = VV / NV)
+valor_p_fusion(fusion %>% sample_frac(0.8), stat_fusion = median, trans = log, comp = VV - NV)
+valor_p_fusion(fusion %>% sample_frac(0.8), stat_fusion = mean, trans = log, comp = VV - NV)
+
+```
+
+Si existen grados de libertad - muchas veces necesarios para hacer un análisis exitoso-, entonces
+los valores p pueden tener poco significado.
+
+
+En áreas como la sicología, existen ahora movimientos fuertes en favor de la replicación. Este movimiento
+sugiere dar valor a los estudios exploratorios que no reportan valor p, y posteriormente, si el estudio
+es de interés, puede intentarse una replicación confirmatoria, con potencia más alta y con planes de análisis predefinidos.
+
 
 
 
