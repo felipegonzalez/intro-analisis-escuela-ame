@@ -1,28 +1,138 @@
 # Modelación predictiva
 
-En esta parte discutiremos las ideas básicas de los modelos predictivos. 
-Hacer modelación
-de datos muchas veces se requiere para extraer la mayor parte de información útil para poder
-hacer predicciones acerca de: 
+En esta parte discutiremos las ideas básicas de los modelación predictiva. La tarea básica
+del análisis predictivo es la siguiente: 
 
-- Unidades sobre las que no tenemos información sobre la variable de interés
-- Unidades que no hemos visto todavía
+Tenemos un conjunto de datos observado 
 
-En análisis exploratorio usamos algunos modelos para ayudarnos a entender los datos,
-pero se basa principalmente en hacer resúmenes relativamente simples de los datos.
-En contraste, en modelación 
-predictiva el modelo juega un papel más central: si queremos
-extraer la información y patrones eficientemente, necesitamos buscar 
-más sistemáticamente estructuras apropiadas
-para generalizar la información de la muestra a nuevas unidades sobre las que queremos
-hacer predicciones.
+ $$\mathcal L = \{(\mathbf{x}_i, y_i)\}_{i=1}^n,$$
+donde cada $\mathbf{x} = (x_1, x_2, \ldots, x_p)$ es un conjunto de variables observadas
+(que llamamos covariables). 
+
+Cuando observamos un nuevo conjunto de covariables $\mathbf{x}^0$,
+cómo podemos utilizar la información de $\mathcal L$ para contestar:
+
+- ¿Cómo podemos predecir su correspondiente valor $y$, o más generalmente, 
+- ¿Qué podemos decir acerca de los posibles valores que podría tomar $y$ dado que conocemos sus covariables asociadas?
+
+** Comparaciones predictivas **
+
+En análisis exploratorio vimos varios ejemplos donde buscábamos hacer **comparaciones**
+del comportamiento de alguna variable dependiendo de distintos niveles de otras variables
+(de forma **multivariada**).
+En ese caso usamos métodos relativamente simples para hacer esas comparaciones que nos
+ayudan a **entender** los datos. 
+
+Podemos ver cómo el análisis predictivo es una extensión natural de este procedimiento. La
+diferencia principal es que en este tipo de análisis nos concentramos principalmente
+en **desempeño predictivo** y cómo evaluar correctamente este desempeño. 
+
+Ejemplos: ingresos de hogares, niveles de contaminantes, comportamiento de clientes (cancelaciones,
+valor presente).
+
+### Ejemplo {-}
+
+Considéremos los siguientes dátos clásicos de Radiación Solar, Temperatura, Velocidad del Viento y 
+Ozono para distintos días en Nueva York (@chambers83):
+
+```{r}
+library(tidyverse)
+air_data <- airquality %>% 
+    mutate(Wind_cat = cut(Wind, quantile(Wind, c(0, 0.33, 0.66, 1)), include.lowest = T)) %>% 
+    filter(!is.na(Ozone) & !is.na(Solar.R))
+air <- air_data
+```
+
+```{r, fig.width = 6, fig.height = 3}
+ggplot(air, aes(x = Solar.R, y = Ozone,  colour = Temp)) + geom_point() +
+    facet_wrap(~Wind_cat, ncol = 3) + 
+    scale_colour_gradientn(colours = terrain.colors(10))
+```
+
+Esta una gráfica exploratoria útil,
+qué nos permite entender estructura en los datos y hacer comparaciones útiles,
+pero también sugiere qué podríamos intentar para predecir niveles de Ozono dependiendo de la resto
+de las variables (Radiación Solar, Velocidad del viento y Temperatura).
+
+## Predicciones puntuales
+
+Por definición, en los problemas **determinísticos** existe una función $f$ tal que la respuesta
+se puede calcular casi exacta de las observaciones:
+
+$$Y \approx f(X_1, \ldots, X_p) $$
+
+En este caso, nuestra tarea es construir una aproximación $\hat{f}$ de la función $f$ a partir de los datos observados, que llamamos **datos de entrenamiento**:
+
+$$\mathcal{L} = \{(\mathbf{x}_i, y_i)\}_{i=1}^n \to \hat{f} \approx f$$
+Con $\hat{f}$ construimos predicciones: si $\mathbf{x}_0$ es un nuevo conjunto de entradas, nuestra
+predicción es 
+
+$$\hat{y_0} = \hat{f}(\mathbf{x}_0)$$
+
+Y nuestro propósito es que la función $\hat{f}$ se desempeñe bien en la predicción. Idealmente,
+quiséramos que
+$$\max_{\mathbf{x}} |\hat{f}(\mathbf{x}) - f(\mathbf{x})| \approx 0$$
+pero esto generalmente es muy difícil. En lugar de eso, buscamos buen desempeño sobre una
+la distribución de entradas que puede producir el sistema o es de interés particular. 
+Por ejemplo, buscamos que
+
+$$E_{\mathbf{x}} \left (|\hat{f}(\mathbf{x}) - y)|\right ) \approx 0$$
+
+La cantidad de la izquierda es teórica, y da un promedio del error sobre datos producidos por el sistema. 
+Usualmente la estimamos con un conjunto de datos de prueba, diferente al conjunto de entrenamiento:
+
+$$\frac{1}{m} \sum_{i = 1}^m |\hat{f}(\mathbf{x}) - f(\mathbf{x})|$$
+
+así que buscamos que esta cantidad sea chica.
+
+**Observación 1**: en este desarrollo, utilizamos el valor absoluto de las diferencias entre
+predicciones y observados como medidad de error. En general, podemos considerar funciones
+de pérdida generales. 
+
+- L(\hat{f}(x), f(x)) = (\hat{f}(x) - f(x))^2 (pérdida cuadrática)
+- L(\hat{f}(x), f(x)) = |\hat{f}(x) - f(x))| (pérdida absoluta)
+- L(\hat{f}(x), f(x)) tiene una forma especial adaptada al problema particular (por ejemplo, puede ser una cantidad evaluada en pesos dependiendo de decisiones que se tomen con $\hat{f}(x)$)
+- La función $\hat{f}$ que da las predicciones puntuales puede diferir dependiendo de la función de perdida.
+
+## La tarea del análisis predictivo
+
+En resumen, la tarea del análisis predictivo es la siguiente: dados 
+
+- Una función de pérdida $L(predicción, observado)$,
+- Datos de entrenamiento $\mathcal{L} = \{(\mathbf{x}_i, y_i)\}_{i=1}^n$
+- Datos de prueba $\mathcal{T} = \{(\mathbf{x'}_i, y'_i)\}_{i=1}^m$
+
+Queremos construir un $\mathcal{L} \to \hat{f} $ (sólo depende de datos de entrenamiento) tal que
+
+$$\hat{Err} = \frac{1}{m} \sum_{i = 1}^m L(\hat{f}(\mathbf{x'}_i) , y'_i))$$
+
+sea lo más chico posible. Buscamos buen desempeño **fuera de la muestra** con la que construimos
+el modelo.
+
+Esta formulación de la tarea del análisis predictivo ha sido muy productiva (@donoho50), y ha permitido
+avances grandes en muchos problemas interesantes desde hace una cuantas décadas.
+
+Otra ventaja de esta formulación es que es relativamente fácil de implementar
+para agregar contribuciones de muchas personas. Sitios como [Kaggle](https://www.kaggle.com/) son implementaciones donde:
+
+- Hay un conjunto de datos disponibles, con los que cualquiera puede construir modelos
+- Existen competidores que se inscriben y producen reglas de predicción
+- Hay un referee que evalúa las reglas de los concursantes usando datos a los que sólo el referee
+tiene acceso.
+- (En algunos casos) Al final del concurso, los competidores muestran su metodología.
+
+**Ejemplo**: el concurso de Netflix (2009) siguió este patrón. De este concurso se desarrolló 
+parcialmente el área ahora floreciente de sistemas de recomendación.
+
+
+## Comparaciones predictivas
 
 El análisis predictivo lo podemos ver también como un ejercicio más fino de comparación. 
 Muchas veces con los datos a la mano es difícil de producir las comparaciones apropiadas 
 que quisiéramos hacer, pues con métodos simples es difícil refinar las comparaciones controlando
-por muchas variables. Con un modelo adecuado, podemos parcialmente suplir esta dificultad.
+por muchas variables. 
 
-
+Con un modelo adecuado, podemos parcialmente suplir esta dificultad.
 
 ## Vecinos más cercanos
 
@@ -37,33 +147,29 @@ $$\hat{f}(x_1^0,x_2^0, \ldots, x_p^0) = \frac{1}{k} \sum_{i \in N_k(x_0)} y_i$$
 ## Ejemplo 
 
 ```{r, fig.width = 6, fig.height = 3}
-library(tidyverse)
-library(ranger)
-library(pdp)
-air_data <- airquality %>% 
-    mutate(Wind_cat = cut(Wind, quantile(Wind, c(0, 0.33, 0.66, 1)), labels = FALSE, include.lowest = T)) %>% 
-    filter(!is.na(Ozone) & !is.na(Solar.R))
-air <- air_data
+
 ggplot(air, aes(x = Solar.R, y = Ozone,  colour = Temp)) + geom_point() +
     facet_wrap(~Wind_cat, ncol = 3) + 
-    scale_colour_gradientn(colours = terrain.colors(10))
+    scale_colour_gradientn(colours = heat.colors(10))
 ```
 
 Consideremos cómo haríamos comparaciones predictivas usand $k$ vecinos más cercanos.
 
 ```{r}
 pred_grid <- expand.grid(Wind = c(5,10,14), Temp = seq(60, 90, 10), Solar.R = seq(20, 300, by = 10)) %>% 
-    mutate(Wind_cat = cut(Wind, quantile(airquality$Wind, c(0, 0.33, 0.66, 1)), labels = FALSE, include.lowest = T))
+    mutate(Wind_cat = cut(Wind, quantile(airquality$Wind, c(0, 0.33, 0.66, 1)), include.lowest = T))
 air <- air_data
 
 ajustar_modelo <- function(air, pred_grid, k = 25){
-    air_s <- scale(air)
-    air_s[, "Ozone"] <- air$Ozone
+    #vars <- c("Wind", "Temp", "Solar.R")
+    air_s <- scale(air %>% select_if(is.numeric))
     air_medias <- attributes(air_s)$`scaled:center`
     air_scale  <- attributes(air_s)$`scaled:scale`
+    air_s[, "Ozone"] <- air$Ozone
     mod_knn <- caret::knnreg(Ozone ~ Wind + Temp + Solar.R, data = air_s, k = k)
-    vars <- c("Wind", "Temp", "Solar.R")
-    new_data <- scale(pred_grid, center = c(air_medias[vars],0), scale = c(air_scale[vars], 1)) %>%     as.data.frame
+    new_data <- scale(pred_grid %>% select_if(is.numeric), 
+                      center = air_medias[vars], scale = air_scale[vars]) %>% as.data.frame
+    new_data <- bind_cols(new_data, pred_grid %>% select_if(negate(is.numeric)))
     pred_grid$Ozone <- predict(mod_knn, newdata = new_data)
     pred_grid
 }
@@ -75,9 +181,16 @@ pred_grid_mod <- ajustar_modelo(air, pred_grid, k = 27)
 ```{r}
 ggplot(air, aes(x = Solar.R, y = Ozone,  colour = Temp)) + geom_point() +
     facet_wrap(~Wind_cat) + 
-    scale_colour_gradientn(colours = terrain.colors(10)) +
+    scale_colour_gradientn(colours = heat.colors(10, rev = TRUE)) +
     geom_line(data = pred_grid_mod, aes(y = Ozone, group = interaction(Temp, Wind_cat)), size = 1) 
 ```
+
+En este caso particular, estamos graficando $hat{f}$ en las líneas. Estas líneas nos
+permiten hacer mejores comoparaciones dependiendo de distintos valores de las variables
+de entrada, además de construir predicciones puntuales basadas en promedios locales.
+
+
+
 
 ```{r}
 reps <- map(1:500, function(i){
@@ -97,13 +210,18 @@ ggplot(reps_sum, aes(x = Solar.R, y = Ozone_mean,  colour = Temp)) +
     geom_point(alpha = 0.5) +
     facet_wrap(~Wind_cat) + 
     geom_linerange(aes(ymax = ymax, ymin = ymin)) +
-    scale_colour_gradientn(colours = terrain.colors(10))
+    scale_colour_gradientn(colours = heat.colors(10))
 ```
 
 Estos son los niveles medios esperados, usando bootstrap para obtener intervalos 
 para el valor esperado.
 
 ** Es posible construir intervalos de predicción ** - discutir después
+
+## Aproximación de funciones
+
+
+
 
 
 ## La maldición de la dimensionalidad
@@ -198,7 +316,8 @@ modelos estadísticos del lenguaje (probabilidades de ocurrencia de palabras dad
 información secuencialmente cercana.
 
 
-## Construcción de modelos
+
+## La terea fundamental en modelación predictiva.
 
 
 
