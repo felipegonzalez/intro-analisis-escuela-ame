@@ -1,120 +1,3 @@
---- 
-title: "Una introducción al Análisis de Datos"
-author: "Felipe González"
-date: "`r Sys.Date()`"
-site: bookdown::bookdown_site
-documentclass: book
-bibliography: [book.bib]
-biblio-style: apalike
-link-citations: yes
-description: "Notas para el taller de intro a análisis de datos de la Escuela AME 2019"
----
---- 
-title: "Una introducción al Análisis de Datos"
-author: "Felipe González"
-date: "`r Sys.Date()`"
-site: bookdown::bookdown_site
-documentclass: book
-bibliography: [book.bib]
-biblio-style: apalike
-link-citations: yes
-description: "Notas para el taller de intro a análisis de datos de la Escuela AME 2019"
----
-
-# Temario
-
-Notas y materiales para el taller de intro al análisis de datos de la Escuela
-AME 2019: Ciencia de datos
-
-## Temas
-
-1. Principios de análisis
-2. Inferencia y causalidad
-3. Modelos
-
-
-## Referencias importantes
-
-## Instrucciones
-
-<!--chapter:end:index.Rmd-->
-
-
-# Introducción {#intro}
-
-Placeholder
-
-
-## Tukey y análisis de datos {-}
-## Preguntas vagas {-}
-## Principios del diseño analítico {-}
-## Gráfica de Minard {-}
-
-<!--chapter:end:01-introduccion.Rmd-->
-
-
-# Principios y ejemplos
-
-Placeholder
-
-
-## Algunos conceptos básicos {-}
-### Ejemplo {-}
-### Ejercicio
-## Casas{-}
-## Enlace {-}
-## Estados y calificaciones en SAT {-}
-### Ejercicio: suavizadores
-## Ajuste y residuales {-}
-## Ejemplo: tablas agregadas {-}
-## Comparaciones multiplicativas {-}
-## Ejemplo: tiempos de fusión {-}
-## Cuándo la elección es menos importante {-}
-## Ejemplo (tablas)
-
-<!--chapter:end:02-principios-ejemplos.Rmd-->
-
-
-# Ejemplo: nacimientos en México
-
-Placeholder
-
-
-## Datos de natalidad para México
-### Semana santa {-}
-
-<!--chapter:end:03-caso-nacimientos.Rmd-->
-
-
-# Inferencia y Remuestreo
-
-Placeholder
-
-
-## Pruebas de hipótesis
-### Ejemplo {-}
-## Comparación con distribuciones de referencia {-}
-### Ejemplo {-}
-## Permutaciones y el lineup
-## Cuando la estadística es numérica {-}
-## Ejemplo: tiempos de fusión
-## Ejemplo (dimensión alta)
-## El jardín de los senderos que se bifurcan
-## Ejemplo:
-
-<!--chapter:end:04-inferencia.Rmd-->
-
-
-# Remuestreo: el bootstrap
-
-Placeholder
-
-
-## Ejemplo (teórico)
-## Suavizadores
-
-<!--chapter:end:05-inferencia-bootstrap.Rmd-->
-
 # Modelación predictiva
 
 En esta parte discutiremos las ideas básicas de los modelos predictivos. 
@@ -169,7 +52,6 @@ ggplot(air, aes(x = Solar.R, y = Ozone,  colour = Temp)) + geom_point() +
 Consideremos cómo haríamos comparaciones predictivas usand $k$ vecinos más cercanos.
 
 ```{r}
-library(caret)
 pred_grid <- expand.grid(Wind = c(5,10,14), Temp = seq(60, 90, 10), Solar.R = seq(20, 300, by = 10)) %>% 
     mutate(Wind_cat = cut(Wind, quantile(airquality$Wind, c(0, 0.33, 0.66, 1)), labels = FALSE, include.lowest = T))
 air <- air_data
@@ -323,13 +205,4 @@ información secuencialmente cercana.
 
 
 
-
-
-<!--chapter:end:06-modelos-predictivos.Rmd-->
-
-`r if (knitr::is_html_output()) '
-# References {-}
-'`
-
-<!--chapter:end:99-referencias.Rmd-->
 
