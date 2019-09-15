@@ -154,6 +154,12 @@ g_1
 ## Casas{-}
 
 ```{r}
+source("R/casas_preprocesamiento.R")
+set.seed(21)
+casas_completo <- casas
+casas <- casas_completo %>% sample_frac(0.9)
+casas_holdout <- casas_completo %>% anti_join(casas)
+nombres <- casas %>% group_by(nombre_zona) %>% tally %>% pull(nombre_zona)
 zonas <- nombres[table(casas$nombre_zona) > 30]
 casas_x <- casas %>% mutate(nombre_zona = fct_reorder(nombre_zona, precio_miles)) %>% 
   filter(nombre_zona %in% zonas)
@@ -187,7 +193,7 @@ ggplot(casas_x %>% mutate(ind_calidad = cut(calidad_gral, c(0, 5, 8,10))), aes(y
   geom_hline(yintercept = c(1, 2), colour = "gray") +
   geom_boxplot(outlier.shape = NA) +
   coord_flip() + scale_colour_tableau() +
-  facet_wrap(~ind_calidadvb gtttttf)
+  facet_wrap(~ind_calidad)
 
 ```
 
@@ -577,15 +583,10 @@ En el siguiente ejemplo, consideramos cómo varía el precio de un conjunto de c
 dependiendo de la calificación de calidad:
 
 
-```{r, message = FALSE, echo = FALSE}
-source("R/casas_preprocesamiento.R")
-set.seed(21)
-casas_completo <- casas
-casas <- casas_completo %>% sample_frac(0.9)
-casas_holdout <- casas_completo %>% anti_join(casas)
-```
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, message =FALSE}
+
+
 casas_ejemplo <- casas %>% filter(calidad_gral > 3) %>% 
            mutate(nombre_zona = fct_reorder(nombre_zona, calidad_gral))
 ggplot(casas_ejemplo, aes(x = factor(calidad_gral), y = precio_miles)) + 

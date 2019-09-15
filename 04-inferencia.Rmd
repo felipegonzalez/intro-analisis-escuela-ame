@@ -82,7 +82,7 @@ Repetimos el ejercicio con nuevos datos: ¿cuál de los siugientes es diferente?
 
 
 ```{r}
-obs <- simular_serie(500, x_inicial = last(obs_tbl$obs))
+obs <- simular_serie(500, x_inicial = last(obs$obs))
 prueba_tbl <- muestrear_ventanas(tbl, obs[1:20, ], n_ventana = 20)
 ggplot(prueba_tbl$lineup, aes(x = t_0, y = obs)) + geom_line() + 
      facet_wrap(~rep, nrow = 4) + scale_y_log10()
@@ -94,7 +94,7 @@ ggplot(prueba_tbl$lineup, aes(x = t_0, y = obs)) + geom_line() +
 Ahora contrastemos con  un ejemplo donde ocurre un cambio considerable:
 
 ```{r}
-obs_dif <- simular_serie(500, lambda = 3, ac = 0.3, x_inicial = last(obs_tbl$obs))
+obs_dif <- simular_serie(500, lambda = 3, ac = 0.3, x_inicial = last(obs$obs))
 prueba_tbl <- muestrear_ventanas(tbl, obs_dif[1:20, ], n_ventana = 20)
 ggplot(prueba_tbl$lineup, aes(x = t_0, y = obs)) + geom_line() + 
    facet_wrap(~rep, nrow = 4) + scale_y_log10()

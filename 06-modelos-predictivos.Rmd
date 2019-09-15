@@ -1,6 +1,6 @@
 # Modelación predictiva
 
-```{r, message = FALSE}
+```{r setup6, message = FALSE}
 library(tidyverse)
 library(lubridate)
 library(ggthemes)
@@ -117,7 +117,7 @@ pred_grid <- expand.grid(Wind = c(5,10,15), Temp = seq(60, 90, 10), Solar.R = se
 air <- air_data
 
 ajustar_modelo <- function(air, pred_grid, k = 25){
-    #vars <- c("Wind", "Temp", "Solar.R")
+    vars <- c("Wind", "Temp", "Solar.R")
     air_s <- scale(air %>% select_if(is.numeric))
     air_medias <- attributes(air_s)$`scaled:center`
     air_scale  <- attributes(air_s)$`scaled:scale`
@@ -322,7 +322,7 @@ ggplot(dat %>% mutate(x_1 = map_dbl(x, 1), x_2 = map_dbl(x, 2)),
 
 La mejor predicción en $x_0 = (0,0)$ es $f((0,0)) = 1$. Eñ vecino más
 cercano al origen es
-```{r}
+```{r vmcbajadim}
 dat <- dat %>% mutate(dist_origen = map_dbl(x, ~ sqrt(sum(.x^2)))) %>% 
   arrange(dist_origen)
 mas_cercano <- dat[1, ]
@@ -333,7 +333,7 @@ es bastante cercano al valor verdadero (1).
 
 Ahora intentamos hacer lo mismo para dimensión $p=8$.
 
-```{r}
+```{r vmcalta}
 x <- map(1:1000, ~ runif(8, -1, 1))
 dat <- tibble(x = x) %>% 
        mutate(y = map_dbl(x, fun_exp))
@@ -448,7 +448,7 @@ donde el valor esperado es sobre el conjunto de entrenamiento ${\mathcal L}$ y $
 ```{r}
 x_0 <- 7
 ```
-En nuestro ejemplo anterior, consideremos qué pasa cuando hacemos predicciones en x = `r x`. Usaremos
+En nuestro ejemplo anterior, consideremos qué pasa cuando hacemos predicciones en x = `r x_0`. Usaremos
 varias muestras de entrenamiento y vemos cómo cambia la predicción:
 
 
