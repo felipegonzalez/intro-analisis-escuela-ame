@@ -125,7 +125,8 @@ no son marcas o sellos de un análisis de datos exitoso.
 
 La ilustración que Tufte usa para mostrar excelencia en diseño analítico es
 una gráfica de Minard que sirve para entender la campaña de Napoleón (1812) 
-en Rusia:
+en Rusia. Es un ejemplo atípico, pero representa bien los principios y también muestra 
+la importancia del ingenio en la construcción de un anállsis:
 
 ```{r, echo = FALSE, fig.cap = "Marcha de Napoleón de Charles Minard. Tomado de [Wikipedia](https://en.wikipedia.org/wiki/Charles_Joseph_Minard)"}
 knitr::include_graphics("figuras/Minard.png")
