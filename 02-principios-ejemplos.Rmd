@@ -528,6 +528,16 @@ toma el examen):
 
 
 
+```{r, echo = FALSE, message = FALSE}	
+suavizador <- loess(sat ~ frac, sat, degree = 1, span = 0.5)	
+sat <- sat %>% mutate(residual = residuals(suavizador), ajustado = fitted(suavizador))	
+mediana <- median(fitted(suavizador))	
+# ggplot(sat %>% select(ajustado, residual, state) %>% gather(tipo, valor, residual:ajustado),	
+#   aes(sample = valor - (tipo=="ajustado")*mediana)) + geom_qq(distribution = stats::qunif) + 	
+#   facet_wrap(~tipo)	
+```
+
+
 ```{r}
  ggplot(sat, aes(x = expend, y = residual + mediana, label = state)) + 
   geom_point(colour = "red", size = 2) + geom_text_repel(colour = "gray50") +
