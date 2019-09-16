@@ -1,7 +1,7 @@
 # Inferencia y Remuestreo
 
 
-```{r, message = FALSE}
+```{r, message = FALSE, echo = FALSe}
 library(tidyverse)
 library(lubridate)
 library(ggthemes)
@@ -9,14 +9,14 @@ theme_set(theme_minimal(base_size = 14))
 ```
 
 Una buena parte de los problemas de análisis de datos tratan de separar señales útiles
-para el problema que nos interesa de ruido producido por variación de variables que no tenemos
-control. Por ejemplo:
+para el problema que nos interesa de ruido producido por variación sobre la que no tenemos
+información directa. Por ejemplo:
 
 - Si usamos una muestra de una población para generalizar a la población, queremos separar de
 aspectos que generalizan a la población de otros que sólo dependen de variación muestral
 - Cuando queremos juzgar si un conjunto de datos observados es consistente con un modelo o
 con otro conjunto de datos observados, considerando que hay variables que no controlamos que
-afectan a ambos conjunots de datos.
+afectan a ambos conjuntos de datos.
 
 En todos los casos, el paso importante es intentar separar señales útiles (para explicar, predecir,
 o mostrar estructura) de *fluctuaciones* que resultan de variables de las que no tenemos información.
@@ -24,16 +24,21 @@ o mostrar estructura) de *fluctuaciones* que resultan de variables de las que no
 
 ## Pruebas de hipótesis
 
-La primera herramienta que veremos tiene como propósito 
+Las primeras técnicas que veremos intentan contestar la siguiente pregunta: si observamos
+cierto patrón en los datos, ¿cómo podemos cuantificar o apreciar la evidencia de que es un
+patrón notable y no sólo debido a fluctuaciones en los datos particulares que tenemos?
 
 ### Ejemplo {-}
 
-Por ejemplo, supongamos que estamos considerando cambios rápidos en una serie de tiempo de alta frecuencia. Hemos observado la serie en su estado "normal" durante un tiempo considerable, y cuando observamos nuevos
+Supongamos que estamos considerando cambios rápidos en una serie de tiempo de alta frecuencia. Hemos observado la serie en su estado "normal" durante un tiempo considerable, y cuando observamos nuevos
 datos quisiéramos juzgar si hay indicaciones o evidencia en contra de que el sistema sigue funcionando
-de manera similar. Digamos que monitoreamos ventanas de tamaño 20 y necesitamos tomar una decisión. Abajo
-mostramos cinco ejemplos donde el sistema opera normalmente, y un ejemplo de los datos más recientes:
+de manera similar. Digamos que monitoreamos ventanas de tiempo de tamaño 20 y necesitamos tomar una decisión. Abajo
+mostramos cinco ejemplos donde el sistema opera normalmente. Para comparar efectivamente:
 
-```{r}
+- Eextraemos al azar 5 ventanas de los datos históricos
+- Agregamos un panel con los datos nuevos
+
+```{r, echo = FALSE}
 simular_serie <- function(n = 1000, lambda = 1, ac = 0.7, x_inicial = 1){
     x <- numeric(n)
     pendiente <- numeric(n)
@@ -43,14 +48,15 @@ simular_serie <- function(n = 1000, lambda = 1, ac = 0.7, x_inicial = 1){
         if(i >= 10){
             x_s <- x[i - seq(9, 0, -1)]
             t_s <- seq(0, 9, 1)
-            s <- sd(lm.fit(cbind(1, t_s), x_s)$residuals)
-            #s <- sd(x_s)
-            pendiente[i] <- s
         }
     }
-    tibble(t = 1:n, obs = x, pendiente = pendiente) %>% filter(t > 50)
+    tibble(t = 1:n, obs = x %>% filter(t > 50)
 }
-tbl <- simular_serie(2000)
+históricos <- simular_serie(2000)
+```
+
+
+```
 muestrear_ventanas <- function(control, obs, n_ventana = 20, long = 20){
     n_control <- nrow(control)
     inicios <- sample(1:(nrow(control) - long), n_ventana - 1)
@@ -74,14 +80,14 @@ ggplot(ventanas_tbl$lineup, aes(x = t_0, y = obs, colour = factor(rep==ventanas_
 
 Cuando nos señalan cuáles son los datos nuevos, 
 es fácil encontrar aspectos particulares que distinguen
-las nuevas observaciones de las anteriores. Pero hay variabilidad considerable en el
-proceso usual, de forma que nos preguntamos si no estamos sobreinterpretando 
+las nuevas observaciones de las anteriore. Pero hay variabilidad considerable en el
+proceso usual, de forma que nos preguntamos si no estamos **sobreinterpretando **
 variaciones que son parte normal del proceso.
 
-Repetimos el ejercicio con nuevos datos: ¿cuál de los siugientes es diferente?
+Repetimos el ejercicio con nuevos datos, y otros 19 páneles escogidos con datos históricos. En un panel
+están los datos recientemente observados.  ¿Hay algo en los datos que distinga al patrón nuevo?
 
-
-```{r}
+```{r, echo = FALSE}
 obs <- simular_serie(500, x_inicial = last(obs$obs))
 prueba_tbl <- muestrear_ventanas(tbl, obs[1:20, ], n_ventana = 20)
 ggplot(prueba_tbl$lineup, aes(x = t_0, y = obs)) + geom_line() + 
@@ -91,9 +97,9 @@ ggplot(prueba_tbl$lineup, aes(x = t_0, y = obs)) + geom_line() +
 **Ejercicio**: ¿cuáles son los datos nuevos (solo hay un panel con los nuevos datos)? ¿Las elecciones tomadas son consistentes con el azar, o se desvían hacia un panel donde no están los datos nuevos?
 
 
-Ahora contrastemos con  un ejemplo donde ocurre un cambio considerable:
+Ahora contrastemos con  un ejemplo donde ocurre un cambio considerable. En el siguiento caso,
 
-```{r}
+```{r, message=FALSE}
 obs_dif <- simular_serie(500, lambda = 3, ac = 0.3, x_inicial = last(obs$obs))
 prueba_tbl <- muestrear_ventanas(tbl, obs_dif[1:20, ], n_ventana = 20)
 ggplot(prueba_tbl$lineup, aes(x = t_0, y = obs)) + geom_line() + 
