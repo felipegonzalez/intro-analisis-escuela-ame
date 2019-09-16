@@ -383,27 +383,6 @@ recientemente hay muchos éxitos. Los métodos de reducción de dimensionalidad 
 modelos estadísticos del lenguaje (probabilidades de ocurrencia de palabras dadas el contexto, *embeddings*) son usados de manera general, así como redes neuronales que buscan capturar y utilizar
 información secuencialmente cercana.
 
-## Regresión lineal
-
-Un tipo de estructura muchas veces exitosa es la lineal. Si tenemos entradas $X_1,\ldots, X_p$, buscamos
-predictores que son promedios ponderados de las variables de entrada:
-
-$$f(X_1,\ldots, X_p) = \beta_0 + \beta_1 X_1 + \cdots + \beta_p X_p$$
-
-Ajustar modelo significa en primer lugar encontrar valores apropiados para los coeficientes
-$\beta_0,\beta_1, \ldots, \beta_p$. Es posible hacer esto con mínimos cuadrados. Si tenemos
-la muestra de entrenamiento $\mathcal L$, intentamos encontrar coeficientes que minimicen
-el error de entrenamiento:
-
-$$\min_{\beta_0,\beta_1,\ldots, \beta_p} \sum_{i=1}^n (y_i - f(x_i))$$
-
-donde $x_i = (x_i^(1), \ldots, x_i^(p)$ son las variables de entrada para cada caso de entrenamiento.
-
-Esto parece ser un poco contrario a lo que discutimos arriba: intentamos minimizar el error de entrenamiento,
-cuando realmente quisiéramos tener error de predicción bajo. Los mismo podemos decir acerca
-de k vecinos más cercanos. Cuando tenemos modelos chicos (pocas variables, muchos vecinos más cercanos) y muchos datos
-(n grande), no es un problema muy grande. En parte lo es, y veremos más adelante cómo mitigar este
-problema.
 
 ## ¿Por qué pueden ser malas las predicciones? {-}
 
