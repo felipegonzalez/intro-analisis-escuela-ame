@@ -22,13 +22,13 @@ En todos los casos, el paso importante es intentar separar señales útiles (par
 o mostrar estructura) de *fluctuaciones* que resultan de variables de las que no tenemos información.
 
 
-## Pruebas de hipótesis
+## Pruebas de hipótesis {-}
 
 Las primeras técnicas que veremos intentan contestar la siguiente pregunta: si observamos
 cierto patrón en los datos, ¿cómo podemos cuantificar o apreciar la evidencia de que es un
 patrón notable y no sólo debido a fluctuaciones en los datos particulares que tenemos?
 
-### Ejemplo {-}
+## Comparación con poblaciones de referencia {-}
 
 Supongamos que estamos considerando cambios rápidos en una serie de tiempo de alta frecuencia. Hemos observado la serie en su estado "normal" durante un tiempo considerable, y cuando observamos nuevos
 datos quisiéramos juzgar si hay indicaciones o evidencia en contra de que el sistema sigue funcionando
@@ -41,7 +41,6 @@ mostramos cinco ejemplos donde el sistema opera normalmente. Para comparar efect
 ```{r, echo = FALSE}
 simular_serie <- function(n = 1000, lambda = 1, ac = 0.7, x_inicial = 1){
     x <- numeric(n)
-    pendiente <- numeric(n)
     x[1] <- x_inicial
     for(i in 2:n){
         x[i] <-  ac*(x[i - 1]) + rgamma(1, 1, 1 / lambda)
@@ -50,13 +49,15 @@ simular_serie <- function(n = 1000, lambda = 1, ac = 0.7, x_inicial = 1){
             t_s <- seq(0, 9, 1)
         }
     }
-    tibble(t = 1:n, obs = x %>% filter(t > 50)
+    tibble(t = 1:n, obs = x) %>% filter(t > 50)
 }
-históricos <- simular_serie(2000)
+set.seed(8812)
+historicos <- simular_serie(2000)
 ```
 
 
-```
+```{r}
+tbl <- historicos
 muestrear_ventanas <- function(control, obs, n_ventana = 20, long = 20){
     n_control <- nrow(control)
     inicios <- sample(1:(nrow(control) - long), n_ventana - 1)
@@ -81,7 +82,7 @@ ggplot(ventanas_tbl$lineup, aes(x = t_0, y = obs, colour = factor(rep==ventanas_
 Cuando nos señalan cuáles son los datos nuevos, 
 es fácil encontrar aspectos particulares que distinguen
 las nuevas observaciones de las anteriore. Pero hay variabilidad considerable en el
-proceso usual, de forma que nos preguntamos si no estamos **sobreinterpretando **
+proceso usual, de forma que nos preguntamos si no estamos **sobreinterpretando**
 variaciones que son parte normal del proceso.
 
 Repetimos el ejercicio con nuevos datos, y otros 19 páneles escogidos con datos históricos. En un panel
@@ -99,7 +100,7 @@ ggplot(prueba_tbl$lineup, aes(x = t_0, y = obs)) + geom_line() +
 
 Ahora contrastemos con  un ejemplo donde ocurre un cambio considerable. En el siguiento caso,
 
-```{r, message=FALSE}
+```{r, message=FALSE, echo = FALSE}
 obs_dif <- simular_serie(500, lambda = 3, ac = 0.3, x_inicial = last(obs$obs))
 prueba_tbl <- muestrear_ventanas(tbl, obs_dif[1:20, ], n_ventana = 20)
 ggplot(prueba_tbl$lineup, aes(x = t_0, y = obs)) + geom_line() + 
@@ -107,23 +108,28 @@ ggplot(prueba_tbl$lineup, aes(x = t_0, y = obs)) + geom_line() +
 ```
 
 Aunque es imposible estar seguros de que ha ocurrido un cambio considerable, la diferencia de una de las
-series es muy considerable. La probabilidad de haber acertado por alguna característica particular
-que aparece por azar es de 0.05 - relativamente baja.
+series es muy considerable. Si identificamos los datos correctos,
+la probabilidad de que hayamos señalado la nueva serie sobreinterpretando fluctuaciones 
+en un proceso que sigue comportándose normalente es 0.05 - relativamente baja.
 
 **Observaciones y terminología**:
 
 1. Llamamos *hipótesis nula* a la hipótesis de que los nuevos datos son producidos bajo
 las mismas condiciones que los datos control.
 
-2. Si no escogemos la gráfica correcta, nuestra conclusión es que la prueba no aporta evidencia
+2. En una *prueba de hipótesis* construimos un resumen o estadística de los datos (en este caso es una
+gráfica), y nos fijamos si los datos nuevos tienen un comportamiento extremo con respecto al comportamiento
+usual del sistema. La prueba de arriba se llama *prueba del lineup* , o *ronda de los sospechosos*.
+
+3. Si no escogemos la gráfica de los nuevos datos, nuestra conclusión es que la prueba no aporta evidencia
 en contra de la hipótesis nula. 
 
-3. Si escogemos la gráfica correcta, nuestra conclusión es que la prueba aporta evidencia
+4. Si escogemos la gráfica correcta, nuestra conclusión es que la prueba aporta evidencia
 en contra de la hipótesis nula.
 
 ¿Qué tan fuerte es la evidencia, en caso de que descubrimos los datos no nulos? 
 
-4. Cuando el número de paneles es más grande y detectamos los datos, la evidencia es más alta en contra de la nula. La razón es que si todos los datos son nulos, escogemos la gráfica "diferente" usando características de variación que ocurren naturalmente el sistema: es decir, escogimos al azar el panel distinto. Decimos que el *nivel de significancia de la prueba* es la probabilidad de atinarle a los
+5. Cuando el número de paneles es más grande y detectamos los datos, la evidencia es más alta en contra de la nula. La razón es que si todos los datos son nulos, escogemos la gráfica "diferente" usando características de variación que ocurren naturalmente el sistema: es decir, escogimos al azar el panel distinto. Decimos que el *nivel de significancia de la prueba* es la probabilidad de atinarle a los
 datos correctos cuando la hipótesis nula es razonable. En el caso de 20 paneles, es de 1/20 = 0.05
 
 5. Si acertamos, y la diferencia es más notoria y fue más fácilmente detectar la gráfica diferente,
@@ -131,69 +137,10 @@ esto también sugiere más evidencia en contra de la hipótesis nula.
 
 6. Adicionalmente, esta prueba nos puede indicar con mucho detalle qué es lo que puede estar cambiando.
 
-7. Finalmente, esta prueba nunca nos da seguridad completa acerca de ninguna conclusión, aún cuando
+7. Finalmente, esta prueba rara vez (o nunca) **nos da seguridad completa acerca de ninguna conclusión**, aún cuando
 hiciéramos muchos páneles.
 
-## Comparación con distribuciones de referencia {-}
-
-En el ejemplo anterior, nuestra estadística de prueba es una gráfica. Cuando la estadística
-de prueba es muy extrema comparado con lo que obtenemos con los datos nulos (o de referencia),
-entonces terminamos con evidencia acumulada en contra de la hipótesis nula.
-
-Nuestra estadística también puede ser numérica. Esta simplificación tiene algunas ventajas. Por ejemplo,
-podemos hacer más cálculos y cuantificaciones, pero también tiene desventajas: debemos enfocar la estadística a un aspecto concreto de los datos.
-
-Supongamos entonces que medimos la pendiente a lo largo de la ventana de tamaño 20. En este caso,
-podemos construir una distribución para nuestra estadística, *bajo la hipótesis nula*. En este caso,
-tomamos todas las posibles ventanas y los valores de pendiente que obtenemos, y graficamos:
-
-```{r}
-g_1 <- ggplot(tbl, aes(sample = pendiente)) + geom_qq(distribution = stats::qunif) +
-    labs(subtitle = "Referencia (nula)")
-g_2 <- ggplot(tbl, aes(x = pendiente)) + geom_histogram() + labs(subtitle = " ") + coord_flip() +
-    xlab("")
-gridExtra::grid.arrange(g_1, g_2, nrow = 1, widths = c(4, 2))
-```
-
-En el primer caso, obtuvimos una pendiente de
-
-```{r}
-sd_nula <- obs$pendiente[20]
-sd_dif <- obs_dif$pendiente[20]
-sd_nula
-sd_dif
-```
-
-```{r}
-g_1 <- ggplot(tbl, aes(sample = pendiente)) + geom_qq(distribution = stats::qunif) +
-    labs(subtitle = "Referencia (nula)") + 
-    geom_hline(yintercept = c(sd_nula, sd_dif), col = "red")
-g_2 <- g_2 <- ggplot(tbl, aes(x = pendiente)) + geom_histogram() + labs(subtitle = " ") + coord_flip() +
-    xlab("")
-gridExtra::grid.arrange(g_1, g_2, nrow = 1, widths = c(4, 2))
-```
-
-
-
-Podemos cuantificar qué tan extrema es nuestra observación mediante el cálculo de un *valor p*. 
-El cuantil de la observación es
-
-```{r}
-dist_acum <- ecdf(tbl$pendiente)
-dist_acum(sd_nula)
-dist_acum(sd_dif)
-```
-
-Si la observación fuera extraída de la población original (es decir, se cumple
-la hipótesis nula),  una observación tan extrema o más de lo que observamos tendría probabilidad
-de ocurrir de
-
-```{r}
-2*(1-dist_acum(sd_nula))
-2*(1-dist_acum(sd_dif))
-```
-
-Para la La cual es muy baja, y aporta evidencia en contra de la hipótesis nula.
+## Comparando distribuciones {-}
 
 
 ### Ejemplo {-}
@@ -207,8 +154,6 @@ qué tan diferentes son las muestras. Hay muchos aspectos
 que podríamos cuestionar acerca de cómo son diferentes los tres sistemas. En este caso,
 nos preguntamos, por ejemplo, si las distribuciones son similares o no.
 
-
-**Apophenia**: poner esfuerzos donde vale la pena poner esfuerzos, ser más eficiente.
 
 
 ```{r, fig.width = 6, fig.height = 3, echo = FALSE}
@@ -229,74 +174,73 @@ muestra_tab <- pob_tab %>% sample_n(125)
 g_1 <- ggplot(muestra_tab, aes(x = grupo, y = x)) + geom_boxplot(outlier.alpha = 0) +
     geom_jitter(alpha = 0.3) + 
     coord_flip() +  labs(subtitle = "Muestra")
-#g_2 <- ggplot(pob_tab, aes(x= grupo, y = x)) + geom_boxplot(outlier.alpha = 0) +
-#    coord_flip() +  labs(subtitle = "Población")
-#gridExtra::grid.arrange(g_1, g_2, ncol = 2) 
 g_1
 ```
 
 En la muestra observamos diferencias entre los grupos. Pero notamos adicionalmente que
 hay mucha variación dentro de cada grupo. Nos podríamos preguntar entonces si las diferencias
-que observamos se debe a que tenemos información incompleta de los grupos
-
-```{r}
-muestra_tab %>% group_by(grupo) %>% 
-    summarise(mediana = median(x) %>% round(2), n = n())
-```
+que observamos se debe a que tenemos información incompleta de los grupos. 
 
 En la muestra, la mediana del grupo c es menor que la de b, por ejemplo. 
 Las dispersiones parecen ser también ditintas. Las muestras son relativamente chicas, especialmente
 para el grupo b y c.
 
 Podemos construir ahora una *hipótesis nula*, que establece que las observaciones
-provienen de una población similar.
+provienen de una población similar:
 
 - Los tres procesos son prácticamente indistiguibles desde el punto de vista del sistema. La variación
 que observamos se debe a que tenemos información incompleta: si observáramos todos los posibles
 datos que cada proceso genera, veríamos que sus distribuciones son muy similares.
 
 
-## Permutaciones y el lineup
+## Permutaciones y el lineup {-}
 
-Para atacar este problema podemos pensar de la siguiente forma: si los grupos producen
-datos similares, entonces los grupos a, b, c solo son etiquetas que no contienen información.
-Podríamos entonces **permutar** las etiquetas y observar qué pasa. La muestra con las etiquetas
+Para abordar este problema podemos pensar de la siguiente forma: 
+
+- Si los grupos producen
+datos bajo procesos idénticos, entonces los grupos a, b, c solo son etiquetas que no contienen información.
+Podríamos entonces **permutar** las etiquetas y observar qué pasa. Una muestra con las etiquetas
 permutadas es igualmente verosímil que la que obtuvimos, bajo la hipótesis nula.
 
 Si repetimos el proceso de permutación muchas veces, podemos comparar las diferencias que observamos
-en la muestras. Si las diferencias en las muestras no tienen ninguna característica sistemática
+en la muestras. Si las diferencias en las muestras verdaderas
+no tienen ninguna característica sistemática
 que las distinga de las otras muestras obtenidas por permutaciones, entonces tenemos poca
 evidencia de que las diferencias que observamos en nuestra muestra sean sistemáticas.
 
 Vamos a intentar esto, por ejemplo usando una gráfica de cuantiles. Hacemos un *lineup*, o una
-*rueda de sospechosos*, donde 11 de los acusados son generados mediante permutaciones al azar,
-y el culpable (los verdaderos datos) están en una posición escogida al azar.
+*rueda de sospechosos*, donde 19 de los acusados son generados mediante permutaciones al azar,
+y el culpable (los verdaderos datos) están en una posición escogida al azar. ¿Podemos identificar
+los datos verdaderos? Para evitar sesgarnos, también ocultamos la etiqueta verdadera
 
 ```{r}
 set.seed(88)
 reps <- lineup(null_permute("grupo"), muestra_tab, n = 20)
 grafica_cuantiles(reps %>%  mutate(grupo_1 = factor(digest::digest2int(grupo) %% 177)), 
-                             grupo_1, x) + facet_wrap(~.sample, ncol = 5) + ylab("x")
+                             grupo_1, x) + 
+    facet_wrap(~.sample, ncol = 5) + ylab("x")
 ```
 
 Y la pregunta que hacemos es **podemos distinguir nuestra muestra entre todas las 
-replicaciones producidas con permutaciones**? Nota: para evitar en parte hacer trampa, reetiquetamos
-las letras, y usamos otra gráfica diferente.
+replicaciones producidas con permutaciones**? 
 
 En este ejemplo, es difícil indicar cuáles son los datos. Los grupos tienen distribuciones
 similares y es factible que las diferencias que observamos se deban a variación muestral.  
 
 Consideremos algunos cálculos: si los verdaderos datos son consistentes con nuestra hipótesis
-nula, entonces la probabilidad de escoger al verdadero culpable es de 1/12 = 0.08. Esta se
+nula, entonces la probabilidad de escoger al verdadero culpable es de 1/20 = 0.05. Esta se
 llama *significancia de nuestra prueba de lineup*.
 
 - Si la persona escoge los verdaderos datos, rechazamos la hipótesis nula (equivalencia entre los
-tres bonches de datos), y decimos que los datos son *significativamente diferentes* al nivel 0.05.
+tres bonches de datos), y decimos que los datos son *significativamente diferentes* al nivel 0.05. Esto es 
+evidencia en contra de que los datos se producen de manera homogénea, independientemente del grupo.
 
 - Si la persona escoge uno de los datos permutados, no rechazamos la hipótesis nula. Esto usualmente
 implica que es razonable proceder en nuestro análisis de estos datos bajo la hipótesis de trabajo
 de que no hay diferencia entre los grupos.
 
+Generalmente no rechazar la hipótesis nula implica que podemos proceder tentativamente con ciertos
+tratamientos de los datos que no tendrían sentido si la nula estuviéra muy equivocada.
 Por ejemplo, como los datos son consistentes con la hipótesis de que todos los grupos provienen de la
 mismo proceso, podemos resumir haciendo *pooling* o agregación de todos los grupos. Sobre todos los datos,
 los percentiles son
@@ -314,10 +258,6 @@ pob_tab %>% pull(x) %>%  quantile(probs = c(0.1, 0.25, 0.5, 0.75, 0.9))
 Como el pooling es razonable, obtenemos mejores estimaciones utilizando la muestra completa,
 agregada sobre los tres procesos a, b, c.
 
-Este tipo de análisis es especialmente útil cuando trabajamos con muestras relativamente
-chicas, donde mayor varianza implica que muchas veces nos podemos distraer en sobre estimaciones
-de diferencias. Si vimos los datos, el lineup no es tan útil, pero siempre podemos probar
-con más personas (en estos casos es posible incluso calcular un valor p).
 
 ## Cuando la estadística es numérica {-}
 
@@ -326,21 +266,31 @@ Ahora suupongamos que hacemos una pregunta mucho más específica, que se refier
 gráfica, podemos calcular la estadística de interés para cada grupo, y tomar la diferencia. Comparamos
 el valor observado con los resultados de las muestras obtenidas por permutación:
 
-```{r, fig.width = 5, fig.height = 2.5}
+```{r, fig.width = 5, fig.height = 2.5, message = FALSE, warning = FALSE}
+# esta es la función que calcula la estadística:
+dif_medianas <- function(datos){
+    datos %>% 
+        summarise(mediana = median(x)) %>% 
+        spread(grupo, mediana) %>% 
+        mutate(diferencia = b - c)
+}
+# Hacemos permutaciones
 set.seed(118)
 reps <- lineup(null_permute("grupo"), muestra_tab, n = 10000)
-dif_obs <- muestra_tab %>% group_by(grupo) %>% 
-    summarise(mediana  = median(x)) %>% 
-    spread(grupo, mediana) %>% 
-    mutate(diferencia = b - c) %>% pull(diferencia)
+# Mismo cálculo para muestra y permutaciones
+dif_obs <- muestra_tab %>% group_by(grupo) %>% dif_medianas %>% pull(diferencia)
+reps_mediana <- reps %>% group_by(grupo, .sample) %>% dif_medianas
+```
 
-reps_media <- reps %>% 
-    group_by(grupo, .sample) %>% 
-    summarise(mediana  = median(x)) %>% 
-    spread(grupo, mediana) %>% 
-    mutate(diferencia = b - c)
+
+Graficamos de dos maneras: con gráfica de cuantiles e histograma (la última es más común).
+La distribución de referencia se construye con el valor de la estadística
+(diferencia de medianas) que obtenemos al hacer 10000 permutaciones de los datos. Marcamos
+la posición de la diferencia en nuestra muestra y su cuantil:
+
+```{r}
 dist_acumulada_perm <- ecdf(reps_media$diferencia)
-percentil_obs <- dist_acumulada_perm(dif_obs) %>% round(2)
+percentil_obs <- dist_acumulada_perm(dif_obs %>% round(2))
 g_1 <- ggplot(reps_media, aes(sample = diferencia)) + geom_qq(distribution = stats::qunif) +
     geom_hline(yintercept = dif_obs, colour = "red") +
     annotate("text", x = 0.25, y = dif_obs + 0.1, label = "diferencia observada", colour = "red")
@@ -351,26 +301,22 @@ gridExtra::grid.arrange(g_1, g_2, ncol = 2)
 ```
 
 
-Y notamos que el resultado obtenido en nuestra muestra no es excepcionalmente grande. Otra vez, no
-rechazamos la hipótesis nula.
+Y notamos que el resultado obtenido en nuestra muestra no es excepcionalmente grande. Otra vez,
+no hay evidencia en contra de la hipótesis nula: el resultado obtenido no es muy extremo con 
+respecto a la variabilidad que ocurre bajo la hipótesis nula.
 
 Nótese que calculamos una cantidad adicional, que es el percentil donde nuestra observación cae
 en la distribución generada por las permutación. Esta cantidad puede usarse para calcular un 
-valor-p. Podemos calcular, por ejemplo:
-
-- Valor p de una cola: Si la hipótesis nula es cierta, 
-¿cuál es la probabilidad de haber observado un valor tan grande o más que el que observamos? La 
-respuesta es `r 1- percentil_obs`, es decir, no muy baja. Es relativamente común observar un valor
-de tal magnitud bajo la hipótesis nula.
+**valor p**. Podemos calcular, por ejemplo:
 
 - Valor p de dos colas: Si la hipótesis nula es cierta, ¿cuál es la
 probabilidad de observar una diferencia en valor absoluto tan o más extremo de lo que observamos? Podemos calcular
 la respuesta como `r (1 - dist_acumulada_perm(dif_obs)) + dist_acumulada_perm(-dif_obs) ` 
 
 
-Repitimos el ejemplo con un cambio
+Repitimos el ejemplo con un cambio:
 
-```{r}
+```{r, echo = FALSE}
 set.seed(72)
 muestra_tab <- pob_tab %>% sample_n(90) %>% 
     mutate(x = ifelse(grupo == "b", 1.5 * x + 1, x))
@@ -382,11 +328,10 @@ g_2 <- ggplot(pob_tab, aes(x= grupo, y = x)) + geom_boxplot(outlier.alpha = 0) +
 g_1
 ```
 
-Por ejemplo, obtenemos para la muestra:
 
-```{r}
-muestra_tab %>% group_by(grupo) %>% summarise(mediana = median(x))
-```
+
+Hacemos primero la prueba del *lineup*:
+
 
 ```{r}
 set.seed(9012)
@@ -401,7 +346,7 @@ Podemos distinguir más o menos claramente que está localizada en valores
 más altos y tiene mayor dispersión. Por ejemplo, podríamos considerar una
 prueba para ver qué tan excepcional es la diferencia entre c y b:
 
-```{r, fig.width = 5, fig.height = 2.5}
+```{r, fig.width = 5, fig.height = 2.5, echo = FALSE}
 set.seed(118)
 reps <- lineup(null_permute("grupo"), muestra_tab, n = 3000)
 dif_obs <- muestra_tab %>% group_by(grupo) %>% 
@@ -431,20 +376,19 @@ por variación muestra. Tenemos evidencia de que la mediana del grupo "c" es má
 
 Consideremos el ejemplo de fusión de estereogramas que vimos anteriormente. Una pregunta 
 que podríamos hacer es: considerando que hay mucha variación en el tiempo de fusión dentro
-de cada tratamiento, necesitamos calificar la evidencia de nuestra conclusión (el tiempo de fusión se reduce al 66\% aproximadamente).
+de cada tratamiento, necesitamos calificar la evidencia de nuestra conclusión (el tiempo de fusión se reduce al 66\% aproximadamente). En este caso, compararemos gráficas de cuantiles de los datos con los
+producidos por permutaciones:
 
-
-
-```{r, fig.width = 6, fig.height = 5}
+```{r, fig.width = 6, fig.height = 5, echo = FALSE}
 set.seed(113)
 fusion <- read_delim("./datos/fusion_time.txt", delim = " ", trim_ws = TRUE)
 reps <- lineup(null_permute("nv.vv"), fusion, 20)
 ggplot(reps, aes(sample = time, colour = nv.vv)) +
-    #geom_boxplot(colour = "black") +
     geom_qq(distribution = stats::qunif, size = 0.5) +
-    #geom_jitter(width = 0.1, height = 0, alpha = 0.5, size = 1) + 
     facet_wrap(~.sample) + scale_y_log10()
 ```
+
+¿Podemos identificar los datos? 
 
 Otro enfoque sería probar una característica específica de las muestras. En
 este ejemplo, podríamos tomar, por ejemplo, el promedio de los dos cuantiles
@@ -468,11 +412,10 @@ ggplot(cocientes_perm, aes(x = cociente)) +
 2*ecdf(cocientes_perm$cociente)(dif)
 ```
 
-Lo que muestra evidencia considerable, aunque no muy fuerte, de que la instrucción verbal ayuda a reducir el tiempo de fusión de los estereogramas.
+Lo que muestra evidencia considerable, aunque no muy fuerte, de que la instrucción verbal ayuda a reducir el tiempo de fusión de los estereogramas. Regresaremos a este ejemplo para discutir la discusión de estadística usada y tratamiento de los datos.
 
+## Ejemplo (dimensión alta) {-}
 
-
-## Ejemplo (dimensión alta)
 Referencia de Diane Cook
 
 En el siguiente ejemplo, tenemos 4 grupos de avispas (50 individuos en total),
@@ -486,7 +429,7 @@ datos en dimensión baja de forma que los grupos sean lo más compactos y separa
 Para probar qué tan bien funciona este método, podemos hacer una prueba de permutación, aplicamos
 LDA y observamos los resultados:
 
-```{r}
+```{r, echo = FALSE}
 data(wasps)
 
 wasp.lda <- MASS::lda(Group~., data=wasps[,-1])
@@ -515,7 +458,9 @@ los datos verdaderos de las replicaciones nulas indica que este método difícil
 servir para separar los grupos claramente.
 
 
-Otro enfoque sería separar los datos:
+Otro enfoque sería separar los datos en una muestra de entrenamiento y una de prueba (que discutiremos
+en la última sesión). Aplicamos el procedimiento a la muestra de entrenamiento y luego vemos qué pasa
+con los datos de prueba:
 
 ```{r}
 set.seed(8)
@@ -537,6 +482,8 @@ ggplot(wasp_lda, aes(x = LD1, y = LD2, colour = grupo)) + geom_point(size = 3) +
     facet_wrap(~tipo) + scale_color_colorblind()
 ```
 
+Aunque esta separación es menos efectiva en este ejemplo por la muestra chica, podemos ver
+que la separación lograda en los datos de entrenamiento probablemente se debe a variación muestral.
 
 
 ## El jardín de los senderos que se bifurcan
