@@ -17,9 +17,9 @@ AME 2019: Ciencia de datos
 
 ## Temas
 
-1. Principios de análisis
-2. Inferencia y causalidad
-3. Modelos
+1. Principios de análisis. Análisis exploratorio
+2. Inferencia 
+3. Predicción
 
 
 ## Referencias importantes

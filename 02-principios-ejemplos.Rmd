@@ -8,7 +8,7 @@ Por ejemplo, los siguientes datos fueron registrados en un restaurante durante c
 
 ### Ejemplo {-}
 
-```{r}
+```{r, echo = FALSE}
 library(tidyverse)
 library(ggrepel)
 library(knitr)
@@ -851,9 +851,12 @@ gridExtra::grid.arrange(g_1, g_2, ncol = 1)
 Para tablas de conteos o porcentajes, las comparaciones multiplicativas tienden a ser más útiles. 
 Consideremos los siguientes datos de tomadores de te:
 
-```{r}
+```{r, echo=FALSE, message=FALSE}
 tea <- read_csv(("datos/tea.csv"))
 te <- tea %>% select(how, price, sugar)
+```
+
+```{r}
 sample_n(te, 10)
 ```
 
@@ -873,16 +876,17 @@ muy distinto:
 
 ```{r, echo = FALSE}
 tipo <- tipo %>% select(how, prop_how = prop)
-te %>% group_by(how, price) %>% tally() %>% group_by(how) %>% mutate(prop = round(100 * n / sum(n))) %>% 
-  select(-n) %>% spread(how, prop, fill = 0) %>% kable(type = "html")
+tabla_2 <- te %>% group_by(how, price) %>% tally() %>% group_by(how) %>% mutate(prop = round(100 * n / sum(n))) %>% 
+  select(-n) 
+tabla_2 %>% spread(how, prop, fill = 0) %>% kable(type = "html")
 ```
 
 Estos datos podemos examinarlos un tiempo y llegar a conclusiones, pero no son muy efectivo en mostrar
 claramente los patrones. Tampoco es la siguiente gráfica:
 
 ```{r}
-ggplot(tabla_2 %>% ungroup %>% mutate(price = fct_reorder(price, prop_price)),
-  aes(x = price, y = prop_price, group = how, colour = how)) + 
+ggplot(tabla_2 %>% ungroup %>% mutate(price = fct_reorder(price, prop)),
+  aes(x = price, y = prop, group = how, colour = how)) + 
   geom_point() + coord_flip() + geom_line()
 ```
 
@@ -974,12 +978,11 @@ ganado <- ganado %>%
 ggplot(ganado, aes(x=ajustado, y=residual)) + geom_point()
 ```
 
-Y cómo ser vería sin usar logaritmos:
 
 Veamos cómo resultaría el análisis usando logaritmos, que no es muy bueno (ajustados y residuales tienen
 información similar):
-```{r}
-ganado <- ganado %>% 
+```{r, echo=FLASE}
+ganado_nl <- ganado %>% 
   ungroup %>% 
   mutate(media = mean((count))) %>% 
   group_by(country) %>% 
@@ -988,7 +991,7 @@ ganado <- ganado %>%
   mutate(por_tipo = mean((count)) - media) %>% 
   mutate(residual = (count) - (media + por_pais + por_tipo)) %>% 
   mutate(ajustado = media + por_pais + por_tipo)
-ggplot(ganado, aes(x=ajustado, y=residual)) + geom_point()
+ggplot(ganado_nl, aes(x=ajustado, y=residual)) + geom_point()
 ```
 
 
