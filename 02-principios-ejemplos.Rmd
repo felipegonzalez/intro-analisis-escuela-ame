@@ -981,7 +981,7 @@ ggplot(ganado, aes(x=ajustado, y=residual)) + geom_point()
 
 Veamos cómo resultaría el análisis usando logaritmos, que no es muy bueno (ajustados y residuales tienen
 información similar):
-```{r, echo=FLASE}
+```{r, echo=FALSE}
 ganado_nl <- ganado %>% 
   ungroup %>% 
   mutate(media = mean((count))) %>% 
