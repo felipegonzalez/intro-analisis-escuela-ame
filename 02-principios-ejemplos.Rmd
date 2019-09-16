@@ -474,9 +474,11 @@ grupos como sigue:
 set.seed(991)
 sat$clase <- kmeans(sat %>% select(frac), 
                     centers = 4,  nstart = 100, iter.max = 100)$cluster
-sat$clase <- fct_reorder(factor(sat$clase), sat$frac, mean)
+sat <- sat %>% group_by(clase) %>% mutate(clase_media = round(mean(frac))) %>% 
+  ungroup %>% mutate(clase_media = factor(clase_media))
 sat <- sat %>% mutate(rank_p = rank(frac, ties= "first") / length(frac))
-ggplot(sat, aes(x = rank_p, y = frac, label = state, colour = factor(clase))) +
+ggplot(sat, aes(x = rank_p, y = frac, label = state, 
+                colour = clase_media)) +
   geom_point(size = 2) + 
   #geom_text_repel(colour = "gray80", size = 3) +
   paleta
@@ -491,7 +493,7 @@ según el % de alumnos, empezamos a ver otra historia. Ajustamos rectas
 de mínimos cuadrados como referencia:
 
 ```{r, echo = FALSE}
-ggplot(sat, aes(x = expend, y = math, label=state, colour = factor(clase))) + 
+ggplot(sat, aes(x = expend, y = math, label=state, colour = clase_media)) + 
   geom_point(size = 3) + 
   geom_smooth(method = "lm", se = FALSE) +
   xlab("Gasto por alumno (miles)") +
@@ -518,19 +520,12 @@ ggplot(sat, aes(x = frac, y = sat, label = state)) + geom_point() +
 ```
 
 Una buena parte de variación de la calificación del sat puede explicarse con las la proporción 
-de estudiantes que toma el examen. 
+de estudiantes que toma el examen. Ahora podemos graficar los residuales
+obtenidos de este ajuste contra el gasto por alumno (a los residuales le
+sumamos la mediana de las calificaciones del SAT). A estos residuales
+le podemos llamar *calificación SAT ajustada por porcentaje de alumnos que
+toma el examen):
 
-Ahora podemos extraer la diferencia entre cada observación y el esperado, representado
-por el suavizador azul, y graficar contra gasto por alumno:
-
-```{r}
-suavizador <- loess(sat ~ frac, sat, degree = 1, span = 0.5)
-sat <- sat %>% mutate(residual = residuals(suavizador), ajustado = fitted(suavizador))
-mediana <- median(fitted(suavizador))
-ggplot(sat %>% select(ajustado, residual, state) %>% gather(tipo, valor, residual:ajustado),
-  aes(sample = valor - (tipo=="ajustado")*mediana)) + geom_qq(distribution = stats::qunif) + 
-  facet_wrap(~tipo)
-```
 
 
 ```{r}
@@ -542,8 +537,9 @@ ggplot(sat %>% select(ajustado, residual, state) %>% gather(tipo, valor, residua
 
 La indicación que obtenemos es diferente: ahora parece haber cierta 
 evidencia de  que estados con más gasto
-tienden a tener mejores resultados, controlando por la fracción de estudiantes que toma el SAT,
-aunque hay variación considerable para cada nivel de gasto.
+tienden a tener mejores resultados, aunque  a total, la variación
+del SAT ajustado es considerablemente menor que la del SAT no ajustado.
+
 Nótese que esto nos muestra que nuestra pregunta original tiene una respuesta
 simple pero poco útil. con este análisis podemos pensar en mejores preguntas, pero todas
 son mucho más difíciles de contestar!
@@ -666,26 +662,29 @@ ggplot(casas_ejemplo, aes(x = factor(calidad_gral), y = precio_miles)) +
     geom_jitter(width =0.1, height = 0, alpha = 0.2) 
 ```
 
-En esta gráfica podemos hacer comparaciones entre precios de casas de manera
-aditiva: por ejemplo, las casa más cara de Somerset es de 50 mil dólares más cara que la
-siguiente más cara. O en IDOTRR las casas son 100 mil dólares más baratas que en CollgCr.
+En esta gráfica podríamos hacer comparaciones entre precios de casas de manera
+aditiva:
 
-Sin embargo, una comparación multiplicativa puede ser más adecuada y simplifica la descripción
-de los datos. Por ejemplo, una variación de 20 mil dólares en casas de NridgHt no es 
-muy considerable (con rango de 200 a 600 mil dólares), pero sí es importante para una casa
-de IDOTRR (con rango de 50 a 150 mil dólares).
+- Por ejemplo, cuando aumentamos de calificación 7 a 8, la mediana de precio
+sube en unos 75 dólares por metro cuadrado. Un aumento de 4 a 5 sin embargo,
+representa alrededor de  20 dólares adicionales.
+- A partir de la mediana, la variación intercuartil de los precios cuando
+la calidad es 4 es de más menos  10 dólares. En calidad 10, la variación es
+de alrededor de más menos 40 dólares
+- Podemos seguir así sucesivamente, pero nuestra descripción **aditiva** es complicada,
+y no muestra claramente alguna estructura consistente.
 
-¿Cómo convertimos una escala aditiva a una multiplicativa? Buscamos una función $f$ tal que
+Sin embargo, una comparación **multiplicativa** puede ser más adecuada y simplifica la descripción
+de los datos. Por ejemplo, una variación de 10 mil dólares en casas de calidad 10 no es 
+muy considerable (con rango de 200 a 600 mil dólares), pero es muy importante para una casa de calidad 4.
 
-$$f(y) - f(x) = f(x+ \Delta x) - f(x) \approx \frac{\Delta x }{x}$$
-para cualquier $\Delta x$. Esto implica que la derivada de $f$ tiene que ser $1/x$,
-y por lo tanto la transformación que buscamos es el logaritmo. En escala logarítmica, 
-las comparaciones son:
+Podemos transformar nuestros datos para trabajar naturalmente con ellos en una escala que privilegie comparaciones multiplicativas. Una función apropiada es el logaritmo
+natural, pues es una función que cumple:
 
-$$\log(y) - \log(x) = \log(y/x) = \log \left(1 + \frac{\Delta x}{x}\right) \approx \frac{\Delta x}{x}$$
+$$\log(y) - \log(x) = \log(y/x) = \log \left(1 + \frac{y - x}{x}\right) \approx \frac{y - x}{x}$$
 
-y esta aproximación es buena cuando $|\frac{\Delta x}{x}| < 0.25$ (y muy buena si es menor a 0.1).
-
+y esta aproximación es buena cuando $\left |\frac{y-x}{x} \right | < 0.25$ (y muy buena si es menor a 0.1). Es decir, el logartimo convierte comparaciones relativas
+en comparaciones aditivas. Es más simple trabajar con comparaciones aditivas:
 
 Veamos entonces cómo se ven los datos de casas en escala logarítmica. A la izquierda
 mostramos una gráfica más apropiada para análisis, y a la derecha una que quizá prefereríamos
@@ -705,11 +704,17 @@ g_2 <- ggplot(casas_ejemplo,
 gridExtra::grid.arrange(g_1, g_2, ncol = 2)
 ```
 
-La variación es más similar a lo largo de cada categoría de calidad. En la escala logarítmica,
+Nótese que en los datos transformados:
+
+- La variación es más similar a lo largo de cada categoría de calidad. En la escala logarítmica,
 las cajas (cuartil inferior a cuartil superior) está alrededor de tamaño 0.25, y la mediana
 está aproximadamente centrada en cada caja. Así que la variación entre el cuartil superior
 e inferior respecto a la mediana es de 12\% aproximadamente. *Esto es aproximadamente
-cierto en cada grupo de calidad*. Podemos calcular cuantiles adicionales:
+cierto en cada grupo de calidad*. 
+
+- Los incrementos en precio son más o menos similares cuando la calidad aumenta en un 1 punto ( de la gráfica con unidades log, más o menos 0.25, aproximadamente 25\% de incremento en la escala original=.
+
+Podemos calcular cuantiles adicionales:
 
 ```{r}
 casas_tbl <- casas_ejemplo %>% group_by(calidad_gral) %>% 
@@ -723,17 +728,6 @@ g_80_p <- ggplot(casas_tbl  %>% spread(cuantil,valor), aes(x = calidad_gral, y =
 g_80_p
 ```
 
-```{r}
-casas_tbl <- casas_ejemplo %>% group_by(calidad_gral) %>% 
-    summarise(cuantiles = list(cuantil((precio_miles), c(0.1, 0.25, 0.5, 0.75, 0.9)))) %>% 
-    unnest
-ggplot(casas_tbl  %>% spread(cuantil,valor), aes(x = calidad_gral, y = `0.5`)) +
-    geom_linerange(aes(ymin= `0.1`, ymax = `0.9`), colour = "gray40") +
-    geom_linerange(aes(ymin= `0.25`, ymax = `0.75`), size = 2, colour = "white") +
-    geom_point(colour = "red", size = 3) + scale_y_log10()
-```
-
-
 Esta es una comparación superior, pues descubrimos una regularidad importante en los
 datos (principio 3). En este caso, lo logramos cambiando a una escala más apropiada para
 el problema.
@@ -743,7 +737,8 @@ de manera cuantitativa, por ejemplo, podemos hacer lo siguiente:
 
 $$ precio (log) = mediana\_calidad + residual $$
 
-Primero vemos las medianas por grupo:
+O ahora que tenemos este descubrimiento en mano, podríamos calcular directamente
+cambios relativos cuando aumenta un punto de calidad en las medianas:
 
 ```{r}
 medianas <- casas_ejemplo %>% group_by(calidad_gral) %>% 
@@ -753,7 +748,7 @@ medianas <- casas_ejemplo %>% group_by(calidad_gral) %>%
 medianas
 ```
 
-Como los residuales son similares en cada grupo, los agrupamos para resumir:
+Y como los residuales tienen distribución similar en cada grupo los agrupamos para resumir:
 
 ```{r, echo = FALSE, message = FALSE}
 residuales <- casas_ejemplo %>% left_join(medianas) %>% 
@@ -763,13 +758,13 @@ quantile(residuales$residual,
          c(0, 0.10, 0.25, 0.5, 0.75, 0.9, 1)) %>% kable
 ```
 
-Así que nuestro resumen sería la tabla de arriba, junto con esta distribución de residuales. Diríamos:
+Así que nuestro resumen podría ser
 
-- Cada punto adiconal de calidad, la mediana del precio aumenta larededor de 20\%. Dentro de cada grupo
+- Con cada punto adicional de calidad, la mediana del precio aumenta alrededor de 25\%. - Dentro de cada grupo
 de calidad, el 50\% de las casas está a una diferencia máxima de +/- 12% del precio mediano de la categoría,
-y 80\% de las casas alrededor de +/- 27%. En algunos casos observamos diferencias de 60 - 130 \% del precio mediano.
+y 80\% de las casas alrededor de +/- 27%. 
 
-
+Que es compacto y pone en evidencia la estructura en la relación de estas dos variables.
 
 ## Ejemplo: tiempos de fusión {-}
 
@@ -819,34 +814,11 @@ ggplot(fusion, aes(sample = log(time), colour = nv.vv)) +
 
 ## Cuándo la elección es menos importante {-}
 
-En algunos casos, la diferencia no es muy importante. Supongamos
-que tenemos pares de números positivos $(a_i, b_i)$, tales que las $b_i$ varían relativamente
-poco con respecto a las diferencias $a_i - b_i$. Entonces podemos aproximar:
+En algunos casos, la diferencia entre hacer análisis con logaritmo o en unidades
+originales no es muy importante. Esto sucede cuando el rango de variación está dentro de un orden de magnitud. Esto es porque cuando $x$ no varía mucho, por ejemplo,
+las comparaciones aditivas $(y-x)$ y multiplicativas $(y-x)$ difieren en aproximadamente por un factor multiplicativo.
 
-$$\frac{a_i - b_i}{b_i} = \frac{a_i - b_i}{A z_i + B}\approx  \frac{1}{B} (a_i - b_i),$$
-
-de forma que las comparaciones aditivas y multipicativas son similares, y *la elección se 
-reduce a una preferencia de la escala*. Esto se muestra en la primera gráfica en la siguiente
-ilustración. Por otro lado, cuando hay más variación en el denominador, las comparaciones pueden dar
-resultados muy diferentes:
-
-```{r, fig.width =6, fig.height = 5}
-set.seed(81)
-tab_1 <- tibble(b = runif(100, 45,55),   a = b * runif(100, 0, 2), tipo = "b var chica", error = "multiplicativo")
-tab_2 <- tibble(b = runif(100, 10, 100), a = b * runif(100, 0, 2), tipo = "b var grande", error = "multiplicativo")
-tab_3 <- tibble(b = runif(100, 45,55),   a = b + runif(100, -1, 1), tipo = "b var chica", error = "aditivo")
-tab_4 <- tibble(b = runif(100, 10, 100), a = b + runif(100, -1, 1), tipo = "b var grande", error = "aditivo")
-tab <- bind_rows(tab_1, tab_2)
-g_1 <- ggplot(tab, aes(x = a-b, y = (a-b)/b, colour = b)) + geom_point() +
-    facet_wrap(error ~ tipo)
-tab <- bind_rows(tab_3, tab_4)
-g_2 <- ggplot(tab, aes(x = a-b, y = (a-b)/b, colour = b)) + geom_point() +
-    facet_wrap(error ~ tipo)
-gridExtra::grid.arrange(g_1, g_2, ncol = 1)
-```
-
-
-## Ejemplo: tablas de conteos {-}
+## Tablas de conteos {-}
 
 Para tablas de conteos o porcentajes, las comparaciones multiplicativas tienden a ser más útiles. 
 Consideremos los siguientes datos de tomadores de te:
@@ -949,9 +921,6 @@ este grupo particular. No siempre queremos hacer esto.
 
 Aquí presentamos otro análisis de tabla de conteos. En este caso, podemos obtener perfiles de una manera
 distinta: trabajando directamente con los logaritmos de los conteos.
-
-
-
 
 ```{r}
 ganado <- read_csv("./datos/livestock.csv")
