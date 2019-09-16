@@ -8,11 +8,11 @@ La situación más simple donde podemos aplicar bootstrap es la siguiente:
 independientemente de las elecciones que hayamos o no seleccionado en cada momento (es una muestra iid). También
 podemos pensar que cada observación se extrae de una distribución fija $F$ de manera independiente a las otras.
 - Una estadística es un proceso que se aplica a la muestra. 
-- Nos interesa saber qué tanto puede variar el valor de la estadística cuando lo aplicamos a distintas muestras.
+- Nos interesa saber qué tanto puede variar el valor de la estadística cuando lo aplicamos a distintas muestras, con el
+objeto ve valorar lo que hemos aprendido acerca de la población con la muestra.
 
 
-
-## Ejemplo (teórico)
+## Distribución muestral
 
 Supongamos que tenemos la siguiente población de escuelas:
 
@@ -26,45 +26,56 @@ Nuestra estadística es:
 
 ```{r}
 fun_muestra <- function(x){
-    mean(x)
+    median(x)
 }
 ```
 
-Distintas muestras dan distintos resultados:
+Como es de esperarse, distintas muestras dan distintos resultados:
 
 ```{r}
 enlace %>% sample_n(50) %>% summarise(mediana = fun_muestra(mate_6))
 enlace %>% sample_n(50) %>% summarise(mediana = fun_muestra(mate_6))
 ```
 
-La *distribución* de muestreo son los valores que puede tomar la estadística bajo todas las posibles
-muestras. Podemos aproximarla tomando un número grande de muestras:
+La *distribución de muestreo* son los valores que puede tomar la estadística bajo todas las posibles
+muestras. Es un concepto teórico, pero podemos aproximarla tomando un número grande de muestras:
 
-```{r}
-medianas_muestras <- map_dbl(1:100, ~ enlace %>% sample_n(50) %>% summarise(mediana = fun_muestra(mate_6)) %>% pull(mediana))
-plot(sort(medianas_muestras))
-```
-
-```{r}
-medianas_muestras <- map_dbl(1:2000, ~ enlace %>% sample_n(50, replace = T) %>% summarise(mediana = fun_muestra(mate_6)) %>% pull(mediana))
+```{r, fig.width = 4, fig.height = 3.5}
+mediana_muestras <- map_dbl(1:5000, ~ enlace %>% 
+    sample_n(50) %>%  # muestra de 50
+    summarise(mediana = fun_muestra(mate_6)) %>% pull(mediana))
+sims_dm <- tibble(muestra = 1:length(mediana_muestras), mediana_muestras = mediana_muestras)
 valor_poblacional <- median(enlace$mate_6) 
-g_1 <- qplot(sort(medianas_muestras)) + geom_vline(xintercept = valor_poblacional)
+ggplot(sims_dm, aes(sample = mediana_muestras)) + geom_qq(distribution = stats::qunif) +
+    ylab("Mediana") + xlab("f") + labs(subtitle = "Distribución de muestreo para mediana (n = 50)") +
+    geom_hline(yintercept = valor_poblacional, colour = "red") +
+    annotate("text", x = 0.2, y = 505, label = "Mediana poblacional", colour = "red")
+```
+
+- Con esta gráfica podemos juzgar qué tan lejos puede caer nuestra estimación muestral del valor
+poblacional. Cuanto más concentrada esté alrededor del valor poblacional, la probabilidad es más
+alta de que obtengamos una estimación precisa cuando tomemos una muestra particular. Podemos hacer un
+histograma también:
+
+```{r,  fig.width = 4, fig.height = 3.5,echo = FALSE, message=FALSE}
+medianas_muestras <- map_dbl(1:2000, ~ enlace %>% sample_n(50, replace = T) %>% summarise(mediana = fun_muestra(mate_6)) %>% pull(mediana))
+g_1 <- qplot((medianas_muestras)) + geom_vline(xintercept = valor_poblacional)
 g_1
 ```
 
-Cuyos cuantiles son: 
+Los cuantiles que cubren a un 95\% de las muestras son:
 
 ```{r}
 quantile(medianas_muestras - valor_poblacional , c(0.025, 0.975))
 ```
 
-Esto quiere decir que si estimamos con una muestra el valor poblacional, esperamos
+Y esto quiere decir que si estimamos con una muestra el valor poblacional, esperamos
 con 95\% de probabilidad que el error sea menos de unas 30 unidades. Esta es la precisión
 de nuestro estimador.
 
 Si usamos una muestra más grande podemos obetner un resultado más preciso:
 
-```{r}
+```{r, echo = FALSE, message = FALSE}
 medianas_muestras_2 <- map_dbl(1:2000, ~ enlace %>% sample_n(300, replace = T) %>% summarise(mediana = fun_muestra(mate_6)) %>% pull(mediana))
 valor_poblacional <- median(enlace$mate_6)
 dist_muestreo <- bind_rows(tibble(mediana = medianas_muestras, n = 50), tibble(mediana = medianas_muestras_2, n = 300))
@@ -73,14 +84,20 @@ ggplot(dist_muestreo, aes(x = mediana)) + geom_histogram() + facet_wrap(~ n)
 
 Y como es de esperarse, vemos que muestras más grandes resultan en menos variablidad, y menor error de estimación.
 
-Sin embargo, normalmente solo tenemos una muestra disponible, y no necesariamente tenemos una
+- Sin embargo, **normalmente solo tenemos una muestra disponible**, y no necesariamente tenemos una
 manera práctica de calcular su distribución de muestreo que nos ayude a entender su variabilidad.
 
-Lo segundo mejor que podemos hacer es *considerar la muestra como si fuera nuestra población*, y repetir
-el proceso de arriba para estimar la distribución de muestreo. Veamos que sucede para dos muestras
-en este primer ejemplo:
+## El mundo bootstrap {-}
 
-```{r}
+Como no podemos obtener varias muestras de la población, lo segundo mejor que podemos hacer 
+es *considerar la muestra como si fuera nuestra población*, y repetir
+el proceso de arriba para estimar la distribución de muestreo. Nos interesa juzgar lo  mismo que
+en el ejemplo anterior: ¿Qué tanta dispersión tiene nuestro estimador?
+
+
+Veamos que sucede para dos tamaños de muestras en este primer ejemplo:
+
+```{r, echo = FALSE}
 set.seed(8)
 muestras_boot <- function(x, B = 1000, fun_muestra){
     muestra_1 <- enlace %>% sample_n(50)
@@ -101,8 +118,11 @@ ggplot(dat, aes(sample =  mediana, colour = rep == "pob", group = rep)) +
     geom_qq(distribution = stats::qunif, size = 0.1) + facet_wrap(~n)
 ```
 
-Y notamos que la distribución bootstrap es un estimador razonable de la distribución de muestreo
-de nuestra estadística. Usando esta estimación podemos darnos una idea de la variabilidad
+- Notamos que la distribución bootstrap es un estimador razonable de la variabilidad
+en la distribución de muestreo
+de nuestra estadística. 
+
+Usando esta estimación podemos darnos una idea de la variabilidad
 de nuestro estimador.
 
 Por ejemplo, podríamos construir intervalos de confianza. Usamos la distribución bootstrap
