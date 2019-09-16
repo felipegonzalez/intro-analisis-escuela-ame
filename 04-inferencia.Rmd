@@ -1,7 +1,7 @@
 # Inferencia y Remuestreo
 
 
-```{r, message = FALSE, echo = FALSe}
+```{r, message = FALSE, echo = FALSE}
 library(tidyverse)
 library(lubridate)
 library(ggthemes)
@@ -289,12 +289,15 @@ La distribución de referencia se construye con el valor de la estadística
 la posición de la diferencia en nuestra muestra y su cuantil:
 
 ```{r}
-dist_acumulada_perm <- ecdf(reps_media$diferencia)
+dist_acumulada_perm <- ecdf(reps_mediana$diferencia)
 percentil_obs <- dist_acumulada_perm(dif_obs %>% round(2))
-g_1 <- ggplot(reps_media, aes(sample = diferencia)) + geom_qq(distribution = stats::qunif) +
+g_1 <- ggplot(reps_mediana, aes(sample = diferencia)) + geom_qq(distribution = stats::qunif) +
     geom_hline(yintercept = dif_obs, colour = "red") +
     annotate("text", x = 0.25, y = dif_obs + 0.1, label = "diferencia observada", colour = "red")
-g_2 <- ggplot(reps_media, aes(x = diferencia)) + geom_histogram(binwidth = 0.1 ) +
+```
+
+```{r, echo = FALSE}
+g_2 <- ggplot(reps_mediana, aes(x = diferencia)) + geom_histogram(binwidth = 0.1 ) +
     geom_vline(xintercept = dif_obs, colour = "red") +
     annotate("text", x = dif_obs, y = 300, label = percentil_obs, hjust = -0.2, colour = "red")
 gridExtra::grid.arrange(g_1, g_2, ncol = 2) 
@@ -353,15 +356,15 @@ dif_obs <- muestra_tab %>% group_by(grupo) %>%
     summarise(mediana  = median(x)) %>% 
     spread(grupo, mediana) %>% 
     mutate(diferencia = b - c) %>% pull(diferencia)
-reps_media <- reps %>% 
+reps_mediana <- reps %>% 
     group_by(grupo, .sample) %>% 
     summarise(mediana  = median(x)) %>% 
     spread(grupo, mediana) %>% 
     mutate(diferencia = b - c)
-g_1 <- ggplot(reps_media, aes(sample = diferencia)) + geom_qq(distribution = stats::qunif) +
+g_1 <- ggplot(reps_mediana, aes(sample = diferencia)) + geom_qq(distribution = stats::qunif) +
     geom_hline(yintercept = dif_obs, colour = "red") +
     annotate("text", x = 0.4, y = dif_obs + 0.2, label = "diferencia observada", colour = "red")
-g_2 <- ggplot(reps_media, aes(x = diferencia)) + geom_histogram(binwidth = 0.1 ) +
+g_2 <- ggplot(reps_mediana, aes(x = diferencia)) + geom_histogram(binwidth = 0.1 ) +
     geom_vline(xintercept = dif_obs, colour = "red")
 gridExtra::grid.arrange(g_1, g_2, ncol = 2) 
 ```
