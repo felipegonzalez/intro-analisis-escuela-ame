@@ -1,5 +1,13 @@
 # Remuestreo: el bootstrap
 
+```{r, message = FALSE, echo = FALSE}
+library(tidyverse)
+library(lubridate)
+library(ggthemes)
+library(knitr)
+theme_set(theme_minimal(base_size = 14))
+```
+
 ## Ejemplo: estimación e intervalos de confianza {-}
 
 Regresamos a nuestro ejemplo anterior donde medimos 3 grupos, y nos preguntábamos
@@ -142,8 +150,8 @@ g_1
 
 Los cuantiles que cubren a un 95\% de las muestras son:
 
-```{r}
-quantile(medianas_muestras - valor_poblacional , c(0.025, 0.975)) %>% round
+```{r cuantiles_error}
+quantile(mediana_muestras - valor_poblacional , c(0.025, 0.975)) %>% round
 ```
 
 - Esto quiere decir que si estimamos con una muestra el valor poblacional, esperamos
@@ -374,7 +382,7 @@ graf_casas(casas) +
     geom_line(data = reps, aes(y = ajustados, group = rep), alpha = 0.1, colour = "red") 
 ```
 
-## Bootstrap y estimadores complejos: tablas de perfiles
+## Bootstrap y estimadores complejos: tablas de perfiles {-}
 
 Podemos regresar al ejemplo de la primera sesión donde calculamos perfiles de los tomadores
 de distintos tés: en bolsa, suelto, o combinados:
