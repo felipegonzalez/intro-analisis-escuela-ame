@@ -358,7 +358,7 @@ datos_dia <- left_join(datos_dia, pascuas, by = "año") %>%
 datos_pascua <- datos_dia %>% filter(abs(dias_para_pascua) < 20)
 ggplot(datos_pascua, aes(x = dias_para_pascua, y = res_6)) + 
     geom_line(aes(group=año), colour ="gray") + geom_point(colour = "gray") +
-    geom_smooth(data = datos_dia_p, aes(x=dias_para_pascua, y = res_6), 
+    geom_smooth(data = datos_pascua, aes(x=dias_para_pascua, y = res_6), 
                 se = FALSE, span = 0.12, method = "loess", col = "red") +
     geom_hline(yintercept = 0)+ ylab("Residual: exceso de nacimientos")
 ```
