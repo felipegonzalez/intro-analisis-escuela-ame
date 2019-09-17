@@ -553,7 +553,7 @@ estamos buscando las comparaciones correctas. Algunas pueden ser:
 para personas entre 20 y 30 años, y tenemos tres casos con 33 años. ¿Los dejamos o los usamos?)
 
 Dado un juego de datos, las justificaciones de las decisiones que se toman en cada paso son razonables, pero con datos distintos las decisiones podrían ser diferentes. 
-Este es el jardín de los senderos que se bifurcan de [Gelman](http://www.stat.columbia.edu/~gelman/research/published/incrementalism_3.pdf), 
+Este es el jardín de los senderos que se bifurcan  [Gelman](http://www.stat.columbia.edu/~gelman/research/published/incrementalism_3.pdf), 
 que invalida en parte el uso valores p como criterio de evidencia contra la hipótesis nula.
 
 Esto es exacerbado por el hecho de que existe presión fuerte sobre los investigadores
