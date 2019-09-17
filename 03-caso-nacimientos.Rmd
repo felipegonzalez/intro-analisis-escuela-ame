@@ -185,7 +185,7 @@ Y ahora repetimos con la componente de día de la semana:
 
 ```{r, echo = FALSE}
 datos_dia <- datos_dia %>% group_by(dia_semana) %>% nest() %>% 
-    mutate(ajuste_mod = map(data, ~ loess(n_3 ~ as.numeric(fecha), data = .x, span = 0.08, 
+    mutate(ajuste_mod = map(data, ~ loess(n_3 ~ as.numeric(fecha), data = .x, span = 0.1, 
                                           degree=1, family = "symmetric"))) %>% 
     mutate(ajuste_6 =  map(ajuste_mod, fitted)) %>% 
     select(-ajuste_mod) %>% 
@@ -214,9 +214,19 @@ ggplot(datos_l, aes(x = fecha, y = valor, colour = dia_semana)) +
 
 ```
 
+Una gran parte de los residuales está entre +-/250 nacimientos por día, pero las colas tienen
+una dispersión mucho mayor:
+
+```{r}
+quantile(datos_dia$res_6, c(00, .01,0.05, 0.10, 0.90, 0.95, 0.99, 1)) %>% round
+```
+
+¿A qué se deben estas colas tan largas?
 
 
-Ahora podemos examinar los residuales
+## Residuales {-}
+
+Examinaremos los residuales. 
 
 ```{r}
 pascua <- ymd(as.character(timeDate::Easter(2000:2017)))
@@ -238,39 +248,55 @@ datos_dia <- datos_dia %>% mutate(semana_santa = pascua + pascua_m1 +
                                       pascua_m2 + pascua_m3 + pascua_m4 + pascua_m5 + pascua_m6)
 ```
 
+### Viernes 13? {-}
 
-```{r}
-datos_dia$dia_mes <- day(datos_dia$fecha)
-datos_dia$viernes_13 <- datos_dia$dia_mes == 13 & datos_dia$dia_semana == "Viernes"
-ggplot(datos_dia %>% filter(dia_semana == "Viernes"), 
-    aes(x = fecha, y = res_6, colour = factor(semana_santa))) +
-    geom_point() +
-    facet_wrap(~viernes_13) + scale_color_colorblind()
+Podemos empezar con una curosidad: En Viernes o Martes 13, ¿nacen menos niños? 
+
+```{r, echo = FALSE, fig.width = 12, fig.height = 4}
+datos_dia <- datos_dia %>% 
+  mutate(dia_mes <- day(datos_dia$fecha)) %>% 
+  mutate(viernes_13 = ifelse(dia_mes == 13 & dia_semana == "Viernes", "Viernes 13", "Otro Día")) %>% 
+  mutate(martes_13 = ifelse(dia_mes == 13 & dia_semana == "Martes", "Martes 13", "Otro Día")) %>% 
+  mutate(en_semana_santa = ifelse(semana_santa, "Sí", "No"))
+datos_13 <- datos_dia %>% filter(dia_semana == "Martes" | dia_semana == "Viernes") %>% 
+  mutate(tipo_dia_13 = ifelse(martes_13 == "Martes 13", "Martes 13",
+      ifelse(viernes_13 == "Viernes 13", "Viernes 13", "Otro Martes o Viernes")))
+ggplot(datos_13, 
+    aes(x = fecha, y = res_6, colour = en_semana_santa)) +
+    geom_hline(yintercept = 0, colour = "gray") +
+    geom_point(alpha = 0.8) +
+    facet_wrap(~tipo_dia_13) + scale_color_colorblind() + ylab("Residual: exceso de nacimientos")
 ```
 
-Podemos calcular cuántos nacimientos se "evitan" en Viernes 13:
+Nótese que fue útil agregar el indicador de Semana santa por el Viernes 13 de Semana Santa
+que se ve como un atípico en el panel de los viernes 13.
 
-```{r}
+## Residuales: antes y después de 2006
 
-```
-
-```{r}
-datos_dia %>% arrange(res_6)
-datos_dia %>% arrange(desc(res_6))
-```
+Veamos primero una agregación sobre los años de los residuales. Lo primero es observar un
+cambio que sucedió repentinamente en 2006:
 
 ```{r}
 sept_1 <- ymd(paste0(2000:2016, "-09-01")) %>% yday
-s_v <- ymd(paste0(2000:2016, "-02-14")) %>% yday
-datos_dia$antes_2006 <- datos_dia$año < 2006
-ggplot(datos_dia , aes(x = dia_año, y = res_6, 
-                                             group = factor(año))) + 
-    geom_line() +
-    geom_vline(xintercept = sept_1, alpha = 0.3) +
-    geom_vline(xintercept = s_v, alpha = 0.3, colour="red", alpha = 0.3) +
-    facet_wrap( ~ antes_2006, ncol = 1) 
+datos_dia <- datos_dia %>% mutate(antes_2006 = ifelse(año < 2006, "Antes de 2006", "2006 en adelante"))
+ggplot(datos_dia , aes(x = dia_año, y = res_6, group = factor(año))) + 
+    geom_point(size = 0.5) +
+    geom_vline(xintercept = sept_1, alpha = 0.3, colour = "red") +
+    facet_wrap( ~ antes_2006, ncol = 1) + ylab("Residual: exceso de nacimientos") +
+    annotate("text", x = 260, y = -1500, label = "Sept 1", colour = "red")
     
 ```
+
+La razón es un cambio en la ley acerca de cuándo pueden entrar los niños a la primaria. Antes era
+por edad y había poco margen. Ese exceso de nacimientos son reportes falsos para que los niños
+no tuvieran que esperar un año completo por haber nacido unos cuantos días antes de la fecha límite.
+
+Otras características que debemos investigar:
+
+- Efectos de Año Nuevo, Navidad, Septiembre 16 y otros días feriados como Febrero 14.
+- Semana santa: como la fecha cambia, vemos que los residuales negativos tienden a ocurrir dispersos
+alrededor del día 100 del año. 
+
 
 
 ```{r}
