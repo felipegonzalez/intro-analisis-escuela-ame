@@ -1,6 +1,6 @@
 # Ejemplo: nacimientos en México
 
-Este ejemplo sigue es tomado de un análisis de [A. Vehtari y A. Gelman](https://statmodeling.stat.columbia.edu/2016/05/18/birthday-analysis-friday-the-13th-update/)
+Este ejemplo sigue sigue ideasde un análisis de [A. Vehtari y A. Gelman](https://statmodeling.stat.columbia.edu/2016/05/18/birthday-analysis-friday-the-13th-update/)
 
 Usaremos los datos de nacimientos registrados por día en México, desde 1999. Haremos una pregunta
 como ¿cuáles son los cumpleaños más frecuentes?, o ¿Qué mes del año hay más nacimientos?
@@ -18,9 +18,8 @@ explica o sugiere estructura, mecanismos o causalidad?
 
 ## Datos de natalidad para México
 
-Agreagmos por día el número de nacimientos registrados.
 
-```{r}
+```{r, echo FALSE}
 library(tidyverse)
 library(lubridate)
 library(ggthemes)
@@ -29,136 +28,189 @@ natalidad <- readRDS("./datos/nacimientos/natalidad.rds") %>%
     mutate(dia_semana = weekdays(fecha)) %>% 
     mutate(dia_año = yday(fecha)) %>% 
     mutate(año = year(fecha)) %>% 
-    mutate(mes = month(fecha))
+    mutate(mes = month(fecha)) %>% ungroup %>% 
+    mutate(dia_semana = recode(dia_semana, Monday = "Lunes", Tuesday = "Martes", Wednesday = "Miércoles",
+                               Thursday = "Jueves", Friday = "Viernes", Saturday = "Sábado", Sunday = "Domingo")) %>% 
+    mutate(dia_semana = fct_relevel(dia_semana, c("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo")))
 ```
 
-Podemos hacer una primera gráfica que no es muy útil
+Consideramos los datos agregados de número de nacimientos (registrados) por día desde 1999 hasta 2016.
 
-```{r, fig.width = 10, fig.height=3}
+Podemos hacer una primera gráfica de la serie de tiempo que no es muy útil:
+
+```{r, fig.width = 10, fig.height=3, echo = FALSE}
 ggplot(natalidad, aes(x = fecha, y = n)) + 
     geom_line(alpha = 0.2) + geom_point(alpha = 0.5) +
     ylab("Nacimientos")
 ```
 
-Hay varias características que notamos: la tendencia ligeramente decreciente de número de nacimientos
-a lo largo de los años, un patrón anual, dispersión producida por los días de la semana. La comparación
-entre días que esta gráfica muestra es una difícil de interpretar. ¿Cuántos nacimientos hay
-en el viernes 13 de un año dado, por ejemplo? ¿Qué pasa si lo comparamos con otros viernes en otros
-años y en otros meses?
+Hay varias características que notamos. Principalmente, la tendencia ligeramente decreciente de número de nacimientos
+a lo largo de los años, un patrón anual, dispersión producida por los días de la semana. 
 
-La idea del siguiente análisis es aislar las componentes que observamos en la serie de tiempo. Extraemos
-primero la tendencia, haciendo promedios locales con vecindad grande:
+Solo estas características hacen que la comparación
+entre días sea una difícil de interpretar. Supongamos que comparamos el número de nacimientos de dos miércoles dados.
+Esa comparación será diferente dependiendo del año donde ocurrieron, el mes donde ocurrieron, si semana santa ocurrió
+en algunos de los miércoles, y así sucesivamente.
 
-Primero quitamos la tendencia:
+Como en nuestros ejemplos anteriores, la idea  del siguiente análisis es aislar las componentes que 
+observamos en la serie de tiempo: extraemos componentes ajustadas, y luego examinamos los residuales.
+
+## Tendencia {-}
+
+Comenzamos por extraer la tendencia, haciendo promedios loess con vecindades relativamente grandes. Quizá preferiríamos 
+suavizar más, pero si hacemos esto en este punto empezamos a absorber parte de la componente anual:
+
 
 ```{r}
-mod_1 <- loess(n ~ as.numeric(fecha), data = natalidad, span = 0.2, degree = 2)
-datos_dia <- natalidad %>% ungroup %>% 
-    mutate(ajuste_1 = fitted(mod_1)) %>% 
+mod_1 <- loess(n ~ as.numeric(fecha), data = natalidad, span = 0.2, degree = 1)
+datos_dia <- natalidad %>% mutate(ajuste_1 = fitted(mod_1)) %>% 
     mutate(res_1 = n - ajuste_1)
-ggplot(datos_dia, aes(x = fecha)) +
-    geom_point(aes(y = n), alpha = 0.2, size = 1) +
-    geom_line(aes(y = ajuste_1), colour = "red", size = 1.2) 
 ```
 
+```{r, message = FALSE, echo = FALSE, fig.width = 10, fig.height = 4}
+g_1 <- ggplot(datos_dia, aes(x = fecha)) + geom_point(aes(y = n), alpha = 0.2, size = 1) +
+    geom_line(aes(y = ajuste_1), colour = "red", size = 1.2) + xlab("") + labs(caption = "Suavizamiento apropiado")
+g_2 <- ggplot(datos_dia, aes(x = fecha, y = n)) + geom_point(alpha = 0.2, size = 1) +
+    geom_smooth(method = "loess", span = 0.075, method.args = list(degree = 1), se = FALSE) + xlab("") +
+    labs(caption = "Requiere mayor suavizamiento")
+gridExtra::grid.arrange(g_1, g_2, ncol = 2) 
+```
+
+A principios de 2000 el suavizador está en niveles de alrededor de 7000 nacimientos diarios, hacia 2015 ese número es más
+cercano a unos 6000.
+
+
+## Componente anual {-}
+
 Restamos a la serie la tendencia, y así obtenemos mejores comparaciones controlando por tendencia
-(por ejemplo, comparar un día de 2000 y de 2015 tendria más sentido):
+(por ejemplo, comparar un día de 2000 y de 2015 tendria más sentido). Ahora ajustamos **los residuales
+del suavizado anterior**, pero con menos 
+suavizamiento. Así evitamos capturar tendencia:
 
 ```{r}
-mod_anual <- loess(res_1 ~ as.numeric(fecha), data = datos_dia, 
-               degree = 0, family = "symmetric", span = 0.002)
-datos_dia <- datos_dia %>%
-    mutate(ajuste_2 = fitted(mod_anual)) %>% 
+mod_anual <- loess(res_1 ~ as.numeric(fecha), data = datos_dia, degree = 2, span = 0.007)
+datos_dia <- datos_dia %>% mutate(ajuste_2 = fitted(mod_anual)) %>% 
     mutate(res_2 = res_1 - ajuste_2)
+```
+
+```{r, echo = FALSE}
 ggplot(datos_dia, aes(x = fecha)) +
     geom_point(aes(y = res_1), alpha = 0.2, size = 1) +
     geom_line(aes(y = ajuste_2), colour = "red", size = 1.2) 
 ```
 
-Ahora podemos capturar el efecto de día de la semana. Podemos hacer suavizamiento
+
+## Día de la semana {-}
+
+Ahora podemos capturar el efecto de día de la semana. En este caso, podemos hacer suavizamiento
 loess para cada serie independiente
 
 ```{r}
 datos_dia <- datos_dia %>% group_by(dia_semana) %>% nest() %>% 
-    mutate(ajuste_mod = map(data, ~ loess(res_2 ~ as.numeric(fecha), data = .x, 
-                                          span = 0.1, degree = 1, family = "symmetric"))) %>% 
+    mutate(ajuste_mod = 
+      map(data, ~ loess(res_2 ~ as.numeric(fecha), data = .x, span = 0.075, degree = 1))) %>% 
     mutate(ajuste_3 =  map(ajuste_mod, fitted)) %>% 
-    select(-ajuste_mod) %>% 
-    unnest() %>% 
+    select(-ajuste_mod) %>% unnest() %>% 
     mutate(res_3 = res_2 - ajuste_3) %>% ungroup
-ggplot(datos_dia, aes(x = fecha)) + geom_point(aes(y = res_2), alpha = 0.5)  +
-    geom_line(aes(y = ajuste_3, colour = dia_semana), size = 1) + paleta 
 ```
 
-Finalmente, examinamos los residuales finales:
+```{r, echo = FALSE, fig.width = 8}
+ggplot(datos_dia, aes(x = fecha)) + geom_point(aes(y = res_2), alpha = 0.5, colour = "gray")   +
+    geom_line(aes(y = ajuste_3, colour = dia_semana), size = 1) + paleta + xlab("")
+```
+
+## Residuales {-}
+
+Examinamos los residuales finales quitando los efectos ajustados:
+
 ```{r}
 ggplot(datos_dia, aes(x = fecha, y = res_3)) + geom_line() +
-    geom_smooth(method = "loess", span = 0.03, 
-                method.args = list(degree=2, family = "symmetric"))
+    geom_smooth(method = "loess", span = 0.02, 
+                method.args = list(degree=1, family = "symmetric"))
 ```
 
+**Observación**: nótese que la distribución de estos residuales tiene irregularidades interesante:
+es una distribución con colas largas, y no se debe a unos cuantos atípicos. 
+Esto generalmente es indicación que hay factores importantes que hay que examinar en los residuales:
 
-Nótese que con estas estimaciones de distintos efectos, podemos regresar a la serie
+```{r, echo = FALSE, fig.width = 5, fig.height = 4}
+ggplot(datos_dia, aes(sample = res_3)) + geom_qq(distribution = stats::qunif) +
+  ylab("Nacimientos (residual)") + xlab("")
+```
+
+## Reestimación {-}
+
+Cuando hacemos este proceso secuencial ajuste -> residual, a veces conviene iterarlo. La razón es que un una
+segunda o tercera pasada podemos hacer mejores estimaciones de cada componente, y es posible suavizar más sin
+capturar componentes de más alta frecuencia.
+
+Así que podemos regresar a la serie
 original para hacer mejores estimaciones, más suavizadas:
 
 ```{r}
+# quitamos componente anual y efecto de día de la semana
 datos_dia <- datos_dia %>% mutate(n_1 = n - ajuste_2 - ajuste_3)
-mod_1 <- loess(n_1 ~ as.numeric(fecha), data = datos_dia, 
-               span = 0.1, degree = 2, family = "symmetric")
+# reajustamos
+mod_1 <- loess(n_1 ~ as.numeric(fecha), data = datos_dia, span = 0.02, degree = 2)
+```
+
+```{r, echo = FALSE}
 datos_dia <- datos_dia %>% ungroup %>% 
     mutate(ajuste_4 = fitted(mod_1)) %>% 
     mutate(res_4 = n - ajuste_4) %>% 
     mutate(n_2 = n - ajuste_4 - ajuste_3)
 ggplot(datos_dia, aes(x = fecha)) +
     geom_point(aes(y = n_1), alpha = 0.3, size = 1) +
-    geom_line(aes(y = ajuste_4), colour = "red")
+    geom_line(aes(y = ajuste_4), colour = "red", size = 1)
 ```
 
 
 ```{r}
 mod_anual <- loess(n_2 ~ as.numeric(fecha), data = datos_dia, 
-               degree = 2, family = "symmetric", span = 0.01)
+               degree = 2,  span = 0.005, family = "symmetric")
 datos_dia <- datos_dia %>%
     mutate(ajuste_5 = fitted(mod_anual)) %>% 
     mutate(res_5 = n_2 - ajuste_5) %>%
     mutate(n_3 = n - ajuste_4 - ajuste_5)
+```
+
+```{r, echo = FALSE}
 ggplot(datos_dia, aes(x = fecha)) +
     geom_point(aes(y = n_2), alpha = 0.2, size = 1) +
-    geom_line(aes(y = ajuste_5), colour = "red", size = 1.5) 
-
+    geom_line(aes(y = ajuste_5), colour = "red", size = 1) 
 ```
 
 
+Y ahora repetimos con la componente de día de la semana:
 
-
-```{r}
+```{r, echo = FALSE}
 datos_dia <- datos_dia %>% group_by(dia_semana) %>% nest() %>% 
-    mutate(ajuste_mod = map(data, ~ loess(n_3 ~ as.numeric(fecha), data = .x, span = 0.05, 
-                                          degree=2, family = "symmetric"))) %>% 
+    mutate(ajuste_mod = map(data, ~ loess(n_3 ~ as.numeric(fecha), data = .x, span = 0.08, 
+                                          degree=1, family = "symmetric"))) %>% 
     mutate(ajuste_6 =  map(ajuste_mod, fitted)) %>% 
     select(-ajuste_mod) %>% 
     unnest() %>% 
     mutate(res_6 = n_3 - ajuste_6)
-ggplot(datos_dia, aes(x = fecha, y = n_3, group = dia_semana)) + geom_point(aes(y = n_3))  +
-    geom_line(aes(y = ajuste_6), colour = "red")
+ggplot(datos_dia, aes(x = fecha, y = n_3, group = dia_semana)) + 
+  geom_point(aes(y = n_3), alpha = 0.2, size = 1)  +
+    geom_line(aes(y = ajuste_6, colour = dia_semana), size =1) + paleta
 ```
 
 
+## Análisis de componentes
 
+Ahora comparamos las componentes estimados y los residuales en una misma gráfica :
 
-
-Y ahora graficamos junto:
-
-```{r}
-datos_l <- datos_dia %>% select(fecha, dia_semana, n, ajuste_4, ajuste_5, ajuste_6, res_6) %>% 
-    gather(variable, valor, ajuste_4:res_6)
-(100 * quantile(datos_dia$res_6, seq(0, 1, 0.1)) / mean(datos_dia$n)) %>% round(2)
-```
-
-```{r}
+```{r, fig.width =8, fig.height = 12}
+media <- mean(datos_dia$n) %>% round
+datos_l <- datos_dia %>% 
+    select(fecha, dia_semana, n, ajuste_4, ajuste_5, ajuste_6, res_6) %>% 
+    mutate(ajuste_4_centrado = ajuste_4 - mean(ajuste_4)) %>% 
+    gather(variable, valor, ajuste_5:ajuste_4_centrado)
 ggplot(datos_l, aes(x = fecha, y = valor, colour = dia_semana)) + 
-    facet_wrap(~variable,  ncol = 1, scales = "free_y") +
-    geom_point(size=0.5) + scale_colour_colorblind() 
+    facet_wrap(~variable,  ncol = 1) +
+    geom_point(size=0.5) + scale_colour_colorblind()  +
+    labs(caption = "Media total: 6435")
 
 ```
 
@@ -189,8 +241,8 @@ datos_dia <- datos_dia %>% mutate(semana_santa = pascua + pascua_m1 +
 
 ```{r}
 datos_dia$dia_mes <- day(datos_dia$fecha)
-datos_dia$viernes_13 <- datos_dia$dia_mes == 13 & datos_dia$dia_semana == "Friday"
-ggplot(datos_dia %>% filter(dia_semana == "Friday"), 
+datos_dia$viernes_13 <- datos_dia$dia_mes == 13 & datos_dia$dia_semana == "Viernes"
+ggplot(datos_dia %>% filter(dia_semana == "Viernes"), 
     aes(x = fecha, y = res_6, colour = factor(semana_santa))) +
     geom_point() +
     facet_wrap(~viernes_13) + scale_color_colorblind()
