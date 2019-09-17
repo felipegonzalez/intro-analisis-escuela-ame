@@ -78,6 +78,10 @@ simular_serie <- function(n = 1000, lambda = 1, ac = 0.7, x_inicial = 1){
     }
     tibble(t = 1:n, obs = x) %>% filter(t > 50)
 }
+```
+
+```{r}
+# usamos datos simulados para este ejemplo
 set.seed(8812)
 historicos <- simular_serie(2000)
 ```
@@ -326,9 +330,7 @@ Y notamos que el resultado obtenido en nuestra muestra no es excepcionalmente gr
 
 Nótese que calculamos una cantidad adicional, que es el percentil donde nuestra observación cae
 en la distribución generada por las permutación. Esta cantidad puede usarse para calcular un 
-**valor p**. P
-
-odemos calcular, por ejemplo:
+**valor p**. Podemos calcular, por ejemplo:
 
 - **Valor p de dos colas**: Si la hipótesis nula es cierta, ¿cuál es la
 probabilidad de observar una diferencia en valor absoluto tan o más extrema de lo que observamos? Podemos calcular
@@ -338,7 +340,8 @@ la respuesta como `
 1 - abs(dist_acumulada_perm(dif_obs) - dist_acumulada_perm(-dif_obs))
 ```
 
-Repitimos el ejemplo para otra muestra:
+Repitimos el ejemplo para otra muestra (en este ejemplo el proceso generador
+de datos es diferente para el grupo b):
 
 ```{r, echo = FALSE}
 set.seed(72)
@@ -367,8 +370,11 @@ grafica_cuantiles(reps %>%  mutate(grupo_escondido = factor(digest::digest2int(g
 
 
 Podemos distinguir más o menos claramente que está localizada en valores
-más altos y tiene mayor dispersión. Por ejemplo, podríamos considerar una
-prueba para ver qué tan excepcional es la diferencia entre c y b:
+más altos y tiene mayor dispersión. 
+
+O podríamos considerar una
+estadística de prueba numérica para ver qué tan excepcional es la diferencia entre c y b.
+En este caso, lo hacemos para la diferencia de medianas:
 
 ```{r, fig.width = 5, fig.height = 2.5, echo = FALSE}
 set.seed(118)
@@ -391,8 +397,8 @@ gridExtra::grid.arrange(g_1, g_2, ncol = 2)
 ```
 
 La diferencia observada es extrema, y es muy poco probable que hayamos observado tal diferencia
-por variación muestra. Tenemos evidencia de que la mediana del grupo "c" es más alta en la población que
-"b".
+por variación muestra. Tenemos evidencia de que la mediana del grupo "b" es más alta en la población que
+"c".
 
 
 
@@ -510,7 +516,7 @@ Aunque esta separación es menos efectiva en este ejemplo por la muestra chica, 
 que la separación lograda en los datos de entrenamiento probablemente se debe a variación muestral.
 
 
-## El jardín de los senderos que se bifurcan
+## La "crisis de replicabilidad" {-}
 
 Recientemente (aunque muchos estadísticos lo han repetido desde hace mucho tiempo), se ha reconocido
 en campos como la sicología la "crisis de replicabilidad" (ver por ejemplo @falsefindings). Varios estudios que recibieron mucha publicidad inicialmente no han podido ser replicados
@@ -519,15 +525,24 @@ posteriormente por otros investigadores. Por ejemplo:
 - Hacer [poses poderosas](https://www.sciencedaily.com/releases/2017/09/170911095932.htm) produce cambios fisiológicos que mejoran nuestro desempeño en ciertas tareas
 - Patrones de ovulación de las mujeres influyen en los candidatos que escogen para votar
 - Mostrar palabras relacionadas con "viejo" hacen que las personas caminen más lento (efectos de [priming](https://www.nature.com/news/nobel-laureate-challenges-psychologists-to-clean-up-their-act-1.11535)) 
+
 En todos estos casos, la evidencia de estos efectos fue respaldada finalmente (pues es requisito para
 publicación) por una prueba de hipótesis nula con un valor p menor a 0.05. Este estándar de publicación
-es seguido por varias áreas y revistas. Este problema de replicabilidad parece ser más frecuente cuando:
+es seguido por varias áreas y revistas. 
+
+Este problema de replicabilidad parece ser más frecuente cuando:
 
 1. Se trata de estudios de potencia baja: mediciones ruidosas y  tamaños de muestra chicos.
 2. El plan de análisis no está claramente definido desde un principio (lo cual es difícil cuando
 se están investigando "fenómenos no estudiados antes")
 
-Aunque haya varios ejemplos de manipulaciones conscientes para obtener resultados publicables
+¿A qué se atribuye esta crisis de replicabilidad?
+
+
+## El jardín de los senderos que se bifurcan {-}
+
+Aunque haya varios ejemplos de manipulaciones conscientes --e incluso, en menos casos,
+malintencionadas-- para obtener resultados publicables o significativos
 ([p-hacking](https://en.wikipedia.org/wiki/Data_dredging)), 
  como vimos en ejemplos anteriores, hay varias decisiones, todas razonables, que podemos tomar cuando 
 estamos buscando las comparaciones correctas. Algunas pueden ser:
@@ -537,13 +552,18 @@ estamos buscando las comparaciones correctas. Algunas pueden ser:
 - Distintas maneras de interpretar los criterios de inclusión (por ejemplo, el estudio se planeó
 para personas entre 20 y 30 años, y tenemos tres casos con 33 años. ¿Los dejamos o los usamos?)
 
-Dado un juego de datos, las justificaciones de las decisiones que se toman en cada paso se justifican
-y son razonables, pero con datos distintos las decisiones pueden ser diferentes. 
+Dado un juego de datos, las justificaciones de las decisiones que se toman en cada paso son razonables, pero con datos distintos las decisiones podrían ser diferentes. 
 Este es el jardín de los senderos que se bifurcan de [Gelman](http://www.stat.columbia.edu/~gelman/research/published/incrementalism_3.pdf), 
 que invalida en parte el uso valores p como criterio de evidencia contra la hipótesis nula.
+
+Esto es exacerbado por el hecho de que existe presión fuerte sobre los investigadores
+para producir resultados publicables (p < 0.05), y justamente por el hecho
+de tomar un punto de corte fijo como necesario para publicar.
+
 Ver por ejemplo el [comunicado de la ASA](https://www.amstat.org/asa/files/pdfs/P-ValueStatement.pdf).
 
-## Ejemplo:
+## Ejemplo: decisiones de análisis y valores p {-}
+
 En el ejemplo de datos de fusión, decidimos probar, por ejemplo, el promedio de
 los cuartiles inferior y superior, lo cual no es una decisión típica pero usamos como
 ilustración.
@@ -579,9 +599,25 @@ valor_p_fusion(fusion %>% sample_frac(0.8), stat_fusion = mean, trans = log, com
 Si existen grados de libertad - muchas veces necesarios para hacer un análisis exitoso-, entonces
 los valores p pueden tener poco significado.
 
+## Soluciones {-}
 
-En áreas como la sicología, existen ahora movimientos fuertes en favor de la replicación. Este movimiento
-sugiere dar valor a los estudios exploratorios que no reportan valor p, y posteriormente, si el estudio
+El primer punto importante es reconocer que la mayor parte de nuestro trabajo
+es exploratorio (recordemos el proceso complicado del análisis de datos de refinamiento de preguntas). En este tipo de trabajo, reportar valores p puede tener poco sentido,
+y mucho menos aceptar algo "verdadero" cuando pasa un umbral de significancia dado.
+
+En la siguiente sección nos concentraremos en una cara más útil de esta
+valuación de evidencia, cuantificando la variabilidad que nuestros resultados pueden
+tener hasta donde sea posible.
+
+Nuestro interés principal al hacer análisis es expresar correctamente y de manera útil la incertidumbre (asociada a variación muestral, por ejemplo) para que el proceso de toma de decisiones sea informado. **Un** resumen de **un número** (valor $p$, o el que sea) no puede ser tomado como criterio para tomar una decisión que generalmente es compleja.
+
+En áreas como la sicología, existen ahora movimientos fuertes en 
+favor de la replicación de estudios prometedores pero donde hay sospecha
+de grados de libertad del investigador. 
+
+Este movimiento
+sugiere dar valor a los estudios exploratorios que no reportan valor p, 
+y posteriormente, si el estudio
 es de interés, puede intentarse una replicación confirmatoria, con potencia más alta y con planes de análisis predefinidos.
 
 
