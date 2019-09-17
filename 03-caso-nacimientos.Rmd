@@ -254,7 +254,7 @@ Podemos empezar con una curosidad: En Viernes o Martes 13, ¿nacen menos niños?
 
 ```{r, echo = FALSE, fig.width = 12, fig.height = 4}
 datos_dia <- datos_dia %>% 
-  mutate(dia_mes <- day(datos_dia$fecha)) %>% 
+  mutate(dia_mes = day(datos_dia$fecha)) %>% 
   mutate(viernes_13 = ifelse(dia_mes == 13 & dia_semana == "Viernes", "Viernes 13", "Otro Día")) %>% 
   mutate(martes_13 = ifelse(dia_mes == 13 & dia_semana == "Martes", "Martes 13", "Otro Día")) %>% 
   mutate(en_semana_santa = ifelse(semana_santa, "Sí", "No"))
@@ -297,84 +297,73 @@ Otras características que debemos investigar:
 - Semana santa: como la fecha cambia, vemos que los residuales negativos tienden a ocurrir dispersos
 alrededor del día 100 del año. 
 
+## Más de residuales {-}
 
+Ahora promediamos residuales (es posible agregar barras para indicar dispersión a lo largo de los años) para cada 
+día del año. Podemos identificar ahora los residuales más grandes: se deben, por ejemplo, a días feriados, con 
+consecuencias adicionales que tienen en días ajuntos (excesos de nacimientos):
 
-```{r}
+```{r, echo = FALSE, fig.width = 10, fig.height = 8}
 datos_da <- datos_dia %>% 
-    mutate(bisiesto = (año %in% c(2002, 2004, 2008, 2012, 2016))) %>% 
-    mutate(periodo_años = ifelse(antes_2006, "Hasta 2005", "Después de 2005")) %>% 
-    group_by(dia_año, periodo_años, bisiesto) %>% 
+    mutate(bisiesto = (año %in% c(2000, 2004, 2008, 2012, 2016))) %>% 
+    mutate(dia_año_366 = ifelse(!bisiesto & dia_año >= 60, dia_año + 1, dia_año)) %>% 
+    group_by(dia_año_366, antes_2006, bisiesto) %>% 
     summarise(residual_prom = mean(res_6)) %>% 
-    mutate(dia_año_p = (dia_año + 150) %% 365) %>% 
     mutate(grupo = cut(residual_prom, c(-2000,-200, 200,2000))) 
 label_y <- -1000
-ggplot(datos_da, aes(x = dia_año_p, y = residual_prom,
-                     colour = grupo, group=1)) +
+ggplot(datos_da, aes(x = dia_año_366, y = residual_prom, colour = grupo, group=1)) +
     theme(legend.position = "none") +
-     geom_line(colour = "gray80") +
-    geom_point(size = 1.2) + scale_color_colorblind() +
-    facet_grid(bisiesto ~ periodo_años, labeller = label_both) +
-   # geom_vline(xintercept = 195, colour="red", alpha = 0.5) +
-        annotate("text", x = yday("2014-02-14") +  150, y = label_y, label = "San Valentín", 
+    facet_wrap(~ antes_2006, labeller = label_both, ncol = 1) +
+    annotate("text", x = yday("2014-02-14"), y = label_y, label = "San Valentín", 
              colour="black", alpha = 0.5, angle = 90, vjust = -0.5) +
-#    geom_vline(xintercept = yday("2013-03-01") +  150, colour="red", alpha = 0.5) +
-    annotate("text", x = yday("2013-03-01") + 150, y = label_y, label = "Marzo 1", 
+    geom_vline(xintercept = yday("2014-02-14"), colour = "gray") +
+    annotate("text", x = yday("2004-02-29"), y = label_y, label = "Febrero 29", 
              colour="black", alpha = 0.5, angle = 90, vjust = -0.5) +
- #   geom_vline(xintercept = (yday("2013-09-16") +  150) %% 365, colour="red", alpha = 0.5) +
-    annotate("text", x = (yday("2013-09-16") +  150) %% 365, y = label_y, label = "Día de Independencia", 
+    geom_vline(xintercept = yday("2004-02-29"), colour = "gray") +
+    annotate("text", x = (yday("2013-09-16") + 1 ) %% 365, y = label_y, label = "Independencia", 
              colour="black", alpha = 0.5, angle = 90, vjust = -0.5) +
-  #  geom_vline(xintercept = (yday("2013-11-02") +  150) %% 365, colour="red", alpha = 0.5) +
-        annotate("text", x = (yday("2013-11-02") +  150) %% 365, y = label_y, label = "Día de Muertos", 
+        geom_vline(xintercept = yday("2004-09-16"), colour = "gray") +
+    annotate("text", x = (yday("2013-11-02") + 1) %% 365, y = label_y, label = "Muertos", 
              colour="black", alpha = 0.5, angle = 90, vjust = -0.5) +
-   # geom_vline(xintercept = (yday("2013-12-25") +  150) %% 365, colour="red", alpha = 0.5)+
-        annotate("text", x = (yday("2013-12-25") +  150) %% 365, y = label_y, label = "Navidad", 
+      geom_vline(xintercept = yday("2004-11-02"), colour = "gray") +
+        annotate("text", x = (yday("2013-12-25") + 1) %% 365, y = label_y, label = "Navidad", 
              colour="black", alpha = 0.5, angle = 90, vjust = -0.5) +
-#    geom_vline(xintercept = (yday("2013-01-01") +  150) %% 365, colour="red", alpha = 0.5)+
-    annotate("text", x = (yday("2013-01-01") +  150) %% 365, y = label_y, label = "Año Nuevo", 
+      geom_vline(xintercept = yday("2004-12-25"), colour = "gray") +
+    annotate("text", x = (yday("2013-01-01")) %% 365, y = label_y, label = "Año Nuevo", 
              colour="black", alpha = 0.5, angle = 90, vjust = -0.5) +
- #   geom_vline(xintercept = (yday("2013-05-01") +  150) %% 365, colour="red", alpha = 0.5)+
-    annotate("text", x = (yday("2013-05-01") +  150) %% 365, y = label_y, label = "Mayo 1", 
+      geom_vline(xintercept = yday("2004-01-01"), colour = "gray") +
+    annotate("text", x = (yday("2013-05-01") + 1) %% 365, y = label_y, label = "Mayo 1", 
              colour="black", alpha = 0.5, angle = 90, vjust = -0.5) +
-  #  geom_vline(xintercept = (yday("2013-09-01") +  150) %% 365, colour="red", alpha = 0.5) +
-    annotate("text", x = (yday("2013-09-01") +  150) %% 365, y = label_y, label = "Septiembre 1", 
-             colour="black", alpha = 0.5, angle = 90, vjust = -0.5) 
+      geom_vline(xintercept = yday("2004-05-01"), colour = "gray") +
+    annotate("text", x = (yday("2013-09-01") + 1) %% 365, y = label_y, label = "Septiembre 1", 
+             colour="black", alpha = 0.5, angle = 90, vjust = -0.5) +
+      geom_vline(xintercept = yday("2004-09-01"), colour = "gray") +
+    geom_line(colour = "gray80") +
+    geom_point(size = 1.2) + scale_color_colorblind()+ ylab("Residual: exceso de nacimientos")
 ```
-
-
-
-```{r}
-datos_dia %>% arrange(res_6)
-datos_dia %>% arrange(desc(res_6))
-```
-
 
 
 ### Semana santa {-}
-```{r}
+
+Para Semana Santa tenemos que hacer unos cálculos. Si alineamos los datos por días antes de Domingo de Pascua,
+obtenemos un patrón de caída fuerte de nacimientos el Viernes de Semana Santa, y la característica forma
+de "valle con hombros" en días anteriores y posteriores estos Viernes. ¿Por qué ocurre este patrón?
+
+```{r, echo = FALSE}
 pascuas <- tibble(pascua_dia = ymd(as.character(timeDate::Easter(1999:2017)))) %>% 
     mutate(año = year(pascua_dia))
 datos_dia <- left_join(datos_dia, pascuas, by = "año") %>% 
     mutate(dias_para_pascua = fecha - pascua_dia) %>% 
     mutate(dias_para_pascua = as.numeric(dias_para_pascua))
-datos_dia_p <- datos_dia %>% filter(abs(dias_para_pascua) < 20)
-ggplot(datos_dia_p, aes(x = dias_para_pascua, y = res_6)) + 
+datos_pascua <- datos_dia %>% filter(abs(dias_para_pascua) < 20)
+ggplot(datos_pascua, aes(x = dias_para_pascua, y = res_6)) + 
     geom_line(aes(group=año), colour ="gray") + geom_point(colour = "gray") +
     geom_smooth(data = datos_dia_p, aes(x=dias_para_pascua, y = res_6), 
                 se = FALSE, span = 0.12, method = "loess", col = "red") +
-    geom_hline(yintercept = 0)
-```
-
-```{r}
-datos_dia_p %>% group_by(año) %>% 
-    summarise(suma_res = sum(res_6), suma_total = sum(n)) %>% 
-    mutate( prop = suma_res / suma_total)
-sum(datos_dia_p$n)
-sum(datos_dia_p$res_6)
-100 * sum(datos_dia_p$res_6) / sum(datos_dia_p$n)
+    geom_hline(yintercept = 0)+ ylab("Residual: exceso de nacimientos")
 ```
 
 
-```{r}
-acf(datos_dia$res_6, lag.max = 600)
-```
+Nótese un defecto de nuestro modelo: el patrón de "hombros" alrededor del Viernes Santo no es suficientemente
+fuerte para equilibrar los nacimientos faltantes. ¿Cómo podríamos mejorar nuestra descomposición?
 
