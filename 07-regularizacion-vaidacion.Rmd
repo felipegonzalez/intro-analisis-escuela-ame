@@ -1,6 +1,6 @@
+# Más de predicción
 
-
-## ¿Cómo mejorar un modelo predictivo?
+## ¿Cómo mejorar un modelo predictivo? {-}
 
 Distintas acciones tienen efectos sobre distintas componentes el error. Por ejemplo, si queremos reducir varianza:
 
@@ -19,7 +19,7 @@ Si nuestro problema es sesgo, sin embargo, estas acciones pueden no ser efectiva
 
 Explicaremos algo acerca de los métodos de penalización.
 
-## Regresión lineal
+## Regresión lineal {-}
 
 Un tipo de estructura muchas veces exitosa es la lineal. Si tenemos entradas $X_1,\ldots, X_p$, buscamos
 predictores que son promedios ponderados de las variables de entrada:
@@ -90,7 +90,7 @@ $$\hat{f} (X_1,X_2,X_3,X_4) =
 800000 + 4\, X_1 + 1.5 \,X_2 + 400000\, X_3 +6\, X_4$$
 
 
-## Regularización
+## Regularización {-}
 
 En un principio podemos agregar más variables a un modelo, con la esperanza de reducir el sesgo potencial.
 Esto, sin embargo, puede incrementar la varianza y degradar el desempeño predictivo, especialmente

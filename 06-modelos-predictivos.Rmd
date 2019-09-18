@@ -68,7 +68,7 @@ qué nos permite entender estructura en los datos y hacer comparaciones útiles,
 pero también sugiere qué podríamos intentar para predecir niveles de Ozono dependiendo de la resto
 de las variables (Radiación Solar, Velocidad del viento y Temperatura).
 
-## Predicciones puntuales
+## Predicciones puntuales {-}
 
 Supongamos que buscamos hacer predicciones puntuales de una variable $Y$ mediante una función
 $$f(X_1, \ldots, X_p) = f(X)$$
@@ -94,7 +94,7 @@ obtendríamos $f(X_1,\ldots, X_p) = mediana(Y | X_1,\ldots, X_p)$.
 
 
 
-## Media condicional y vecinos más cercanos
+## Media condicional y vecinos más cercanos {-}
 
 Ahora consideremos que tenemos un conjunto de datos $\mathcal{L} = \{(\mathbf{x}_i, y_i)\}_{i=1}^n$. 
 Bajo los supuestos que hicimos, buscamos estimar la media condicional. En general no es factible
@@ -112,7 +112,7 @@ $$\hat{f}(x_1^0,x_2^0, \ldots, x_p^0) = \frac{1}{k} \sum_{i \in N_k(x_0)} y_i$$
 Si los puntos cercanos no están lejos dee $x^0$, y la función $E(Y|X_1,\ldots, X_p)$ es continua,
 este es un método que puede ser razonable.
 
-## Ejemplo: caso simple
+## Ejemplo: caso simple {-}
 
 En nuestro ejemplo del SAT, podríamos querer predecir la calificación promedio de los alumnos que toman
 el examen ($Y$) en función de $X$= fracción de alumnos que toman el examen. Trabajamos con una muestra de los datos.
@@ -156,7 +156,7 @@ Y mostramos cómo serían las predicciones de este método para distintos valore
 según el porcentaje de alumnos que toma el examen?
 
 
-## Ejemplo: ozono
+## Ejemplo: Ozono {-}
 
 Regresamos a nuestro ejemplo de mediciones de Ozono. Podríamos estimar la media condicional
 usando vecinos más cercanos. Conviene estandarizar las variables (convertirlas a la misma
@@ -195,7 +195,7 @@ ggplot(air, aes(x = Solar.R, y = Ozone,  colour = Temp)) + geom_point() +
 ```
 
 
-## Comparaciones predictivas
+## Comparaciones predictivas {-}
 
 Nótese que los modelos predictivos nos dan la oportunidad de hacer mejores comparaciones
 con los datos, donde controlamos por varias variables para entender cómo cambia la respuesta. En este caso particular, de cómo cambia la media condicional de Ozono con las
@@ -330,7 +330,7 @@ hay patrones que dependen demasiado fuertemente de la muestra, y que no generali
 
 
 
-## La tarea del análisis predictivo
+## La tarea del análisis predictivo {-}
 
 En resumen, la tarea del análisis predictivo es la siguiente: dados 
 
@@ -363,7 +363,7 @@ parcialmente el área ahora floreciente de sistemas de recomendación.
 
 
 
-## Métodos de predicción y la maldición de la dimensionalidad
+## Métodos de predicción y la maldición de la dimensionalidad {-}
 
 Al menos hasta hace poco (aunque todavía es parcialmente cierto), habían una "industria" grande
 de producción de distintos métodos de predicción (Ver por ejemplo @hundred). 
@@ -441,7 +441,7 @@ En dimensiones altas, todos los conjuntos de entrenamiento factibles
 se distribuyen de manera rala en el espacio de entradas.
 
 
-## ¿Cuál es la solución al problema de dimensión alta?
+## ¿Cuál es la solución al problema de dimensión alta? {-}
 
 Estas observaciones apuntan a que  métodos simples y locales tienden a funcionar mal
 en cuanto tenemos más de unas cuantas variables.
@@ -529,19 +529,6 @@ dat_g <- tibble(x = x_g, y = y_g)
 f <- function(x){
   ifelse(x < 10, 1000*sqrt(x), 1000*sqrt(10))
 }
-
-# simular <- function(rep){
-#     error <- rnorm(length(x), 0, 500)
-#     y <- round(f(x) + error)
-#     datos_entrena <- data.frame(x = x, y = y)
-#     curva_1 <- loess(y ~ x, data = datos_entrena, degree = 2, span = 1)
-#     curva_2 <- loess(y ~ x, data = datos_entrena, degree = 2, span = 0.6)
-#     curva_3 <- lm(y ~ x, data = datos_entrena)
-#     modelos <- list(curva_1, curva_2, curva_3)
-#     x_in <- tibble(x = x_0)
-#     preds <- map_dbl(modelos, ~ predict(.x, newdata = x_in))
-#     tibble(rep = rep, metodo = c("gris","rojo", "recta"), preds = preds, error = preds - f(7))
-# }
 simular_curvas <- function(rep, x_g){
     error <- rnorm(length(x), 0, 500)
     y <- round(f(x) + error)
@@ -556,7 +543,6 @@ simular_curvas <- function(rep, x_g){
     tibble(rep = rep, metodo = c("gris","rojo", "recta"), preds = preds)
 }
 set.seed(8812)
-#sims <- map(1:500, ~ simular(.x)) %>% bind_rows
 sims_curvas <- map(1:30, ~ simular_curvas(.x, x_g)) %>% bind_rows %>% unnest
 ```
 
