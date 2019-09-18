@@ -488,8 +488,10 @@ Vemos en primer lugar dos razones para errores grandes:
 - $f(X) - \hat{f}(X) $ puede ser grande, es decir, nuestra estimación de $f$ es mala. A su vez,
 hay dos razones por las que puede ocurrir esto:
 
-- $\hat{f}(X)$ tiene poca variabilidad y está consistemente lejos de la verdadera $f$.
-- La variabilidad de $\hat{f}(X)$ es grande, de forma que potencialmente puede estar lejos del valor $f(X)$
+- $\hat{f}(X)$ tiene poca variabilidad y está consistemente lejos de la verdadera $f$, independientemente de la muestra
+que usemos para entrenar al modelo
+- La variabilidad de $\hat{f}(X)$ es grande, de forma que es probabable que el valor obtenido en una
+muestra particular esté lejos del valor $f(X)$
 - Una combinación de los dos incisos anteriores.
 
 
@@ -505,16 +507,21 @@ donde el valor esperado es sobre el conjunto de entrenamiento ${\mathcal L}$ y $
 - Al tercer término le llamamos *error irreducible*.
 
 
+
 ## Ejemplo {-}
+
+Consideramos un ejemplo simulado (el de las curvas rojas, gris y la recta más arriba), y suponemos que
+queremos predecir en:
 
 ```{r}
 x_0 <- 7
 ```
-En nuestro ejemplo anterior, consideremos qué pasa cuando hacemos predicciones en x = `r x_0`. Usaremos
+
+Consideremos qué pasa cuando hacemos predicciones en x = `r x_0`, dependiendo de los datos que usemos
+para entrenar el modelo. Usaremos
 varias muestras de entrenamiento y vemos cómo cambia la predicción:
 
-
-```{r, fig.width=5, fig.asp=0.7, warning = FALSE}
+```{r, fig.width=5, fig.asp=0.7, warning = FALSE, echo = FALSE}
 x <- c(1,7,10,0,0,5,9,13,2,4,17,18,1,2)
 x_g <- seq(0,15,0.5)
 y_g <- f(x_g)
@@ -523,24 +530,24 @@ f <- function(x){
   ifelse(x < 10, 1000*sqrt(x), 1000*sqrt(10))
 }
 
-simular <- function(rep){
-    error <- rnorm(length(x), 0, 500)
-    y <- round(f(x) + error)
-    datos_entrena <- data.frame(x = x, y = y)
-    curva_1 <- loess(y ~ x, data = datos_entrena, degree = 2, span = 1)
-    curva_2 <- loess(y ~ x, data = datos_entrena, degree = 2, span = 0.5)
-    curva_3 <- lm(y ~ x, data = datos_entrena)
-    modelos <- list(curva_1, curva_2, curva_3)
-    x_in <- tibble(x = x_0)
-    preds <- map_dbl(modelos, ~ predict(.x, newdata = x_in))
-    tibble(rep = rep, metodo = c("gris","rojo", "recta"), preds = preds, error = preds - f(7))
-}
+# simular <- function(rep){
+#     error <- rnorm(length(x), 0, 500)
+#     y <- round(f(x) + error)
+#     datos_entrena <- data.frame(x = x, y = y)
+#     curva_1 <- loess(y ~ x, data = datos_entrena, degree = 2, span = 1)
+#     curva_2 <- loess(y ~ x, data = datos_entrena, degree = 2, span = 0.6)
+#     curva_3 <- lm(y ~ x, data = datos_entrena)
+#     modelos <- list(curva_1, curva_2, curva_3)
+#     x_in <- tibble(x = x_0)
+#     preds <- map_dbl(modelos, ~ predict(.x, newdata = x_in))
+#     tibble(rep = rep, metodo = c("gris","rojo", "recta"), preds = preds, error = preds - f(7))
+# }
 simular_curvas <- function(rep, x_g){
     error <- rnorm(length(x), 0, 500)
     y <- round(f(x) + error)
     datos_entrena <- data.frame(x = x, y = y)
     curva_1 <- loess(y ~ x, data = datos_entrena, degree = 2, span = 1.2)
-    curva_2 <- loess(y ~ x, data = datos_entrena, degree = 2, span = 0.5)
+    curva_2 <- loess(y ~ x, data = datos_entrena, degree = 2, span = 0.6)
     curva_3 <- lm(y ~ x, data = datos_entrena)
     modelos <- list(curva_1, curva_2, curva_3)
     x_in <- tibble(x = x_g)
@@ -548,32 +555,41 @@ simular_curvas <- function(rep, x_g){
              map(~ bind_cols(x_in, .x))
     tibble(rep = rep, metodo = c("gris","rojo", "recta"), preds = preds)
 }
-sims <- map(1:500, ~ simular(.x)) %>% bind_rows
-sims_curvas <- map(1:20, ~ simular_curvas(.x, x_g)) %>% bind_rows %>% unnest
+set.seed(8812)
+#sims <- map(1:500, ~ simular(.x)) %>% bind_rows
+sims_curvas <- map(1:30, ~ simular_curvas(.x, x_g)) %>% bind_rows %>% unnest
 ```
 
-```{r}
+En negro está la verdadera $f$: esta es la curva que queremos estimar. Cada línea de color
+representa un modelo ajustado con una muestra de entrenamiento distinta:
+
+```{r, fig.width = 10, fig.height=4}
 ggplot(sims_curvas, aes(x = x)) +
+    geom_vline(xintercept = 7, colour = "gray") +
     geom_line(aes(y = pred, group = interaction(metodo, rep), colour = metodo)) +
-     geom_line(data = dat_g, aes(y = y), size = 2) + facet_wrap(~metodo)
+     geom_line(data = dat_g, aes(y = y), size = 2) + facet_wrap(~metodo) +
+    scale_colour_manual(values = c("gray40", "blue", "red")) 
 ```
 
+Y vemos que la recta tiene relativamente poca variabilidad, pero consistemente falla en aprender la forma de los
+datos. Por el contrario, en algunos puntos las predicciones del modelo rojo son muy malas, pues el suavizador
+varía mucho.
 
-Ahora vemos las predicciones comparadas con el óptimo, que es f(7):
+Ahora vemos las predicciones comparadas con el óptimo en el punto que nos interesa, que es f(7):
 
-```{r}
-ggplot(sims, aes(x= 7, y = preds)) + 
+```{r, message = FALSE, warning = FALSE}
+sims_curvas <- map(1:200, ~ simular_curvas(.x, x_g)) %>% bind_rows %>% unnest
+sims <- filter(sims_curvas, x == 7)
+ggplot(sims, aes(x= 7, y = pred)) + 
     geom_line(data = dat_g %>% filter(x > 4 & x < 11), aes(x = x, y = y)) +
     geom_boxplot(aes(colour = metodo)) 
-    #geom_hline(yintercept = f(7), colour = "red") +
-    #annotate("text", x = 5, y = f(7), colour = "red", label = "valor correcto", hjust = 1, vjust = -0.2)d
 ```
 
 Y confirmamos que:
 
-- En este punto, el error preditivo del modelo rojo es alto porque su varianza es alto (depende muy fuertemente
-de los datos)
-- El error predictivo de la recta es malo porque está consistemente lejos de la curva verdadera
+- El error predictivo del modelo rojo es frecuentemente alto porque su varianza
+de la predicción es alta (depende muy fuertemente de los datos)
+- El error predictivo de la recta es malo porque está consistemente lejos de la curva verdadera, aunque varía menos.
 - El modelo gris parece tener ligero sesgo, pero menos que el modelo lineal, y varía menos que
 la curva roja.
 
@@ -589,16 +605,33 @@ Todos estos nombres se refieren a ideas similares: los modelos que usamos no tie
 suficiente para aprender patrones que se generalizan y ayudan en la predicción, aún cuando haya mucha 
 evidencia y datos que sostengan ese patrón. 
 
+La recta del ejemplo anterior es muy rígida para este problema.
+
 **Flexibilidad, varianza y sobreajuste**
 
-Estos se refieren a modelos que son demasiado flexibles y dependen demasiado fuertemente de los datos, capturando características. Tienden a ser inestables (varían mucho con los datos) o variables, y 
-asociadas a variación muestral o variación que no depende de variables conocidas.
+Estos se refieren a modelos que son demasiado flexibles y dependen demasiado fuertemente de los datos, 
+capturando características asociadas a variación muestral o variación que no depende de variables conocidas.
+Son características que no 
+generalizan en la predicción. Tienden a ser inestables (varían mucho con los datos).
+
+## Tradeoff rigidez - complejidad {-}
+
 
 Generalmente, cuando trabajamos en análisis predictivo, ajustes al modelo
-intercambian una forma de error por otro. Buscamos un balance entre los dos para optimizar las predicciones:
+intercambian una forma de error por otro. Por ejemplo:
+
+- Cuando usamos modelos más flexibles, tendemos a aumentar varianza y reducir sesgo.
+- Cuando quitamos variables, aumentamos el sesgo, pero la varianza puede reducirse
+- Poner más restricciones en el proceso de ajuste tiende a reducir la varianza a costa del sesgo
+- Cuando utilizamos muestras más grandes, tendemos a reducir la varianza. Pero si son datos menos
+relevantes para el problema, el sesgo puede aumentar.
+- Reducir dimensionalidad puede reducir la varianza, pero, dependiendo de cómo la hagamos, 
+puede aumentar el sesgo.
+
+**Buscamos un balance entre los dos para optimizar las predicciones**
 
 
-```{r, fig.height = 3, fig.width = 10}
+```{r, fig.height = 5, fig.width = 12, echo = FALSE}
 varianza <- function(x) {
     x^2.5 + 1
 }
