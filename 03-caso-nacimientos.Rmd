@@ -1,6 +1,7 @@
 # Ejemplo: nacimientos en México
 
-Este ejemplo sigue sigue ideasde un análisis de [A. Vehtari y A. Gelman](https://statmodeling.stat.columbia.edu/2016/05/18/birthday-analysis-friday-the-13th-update/)
+Este ejemplo sigue sigue ideas de un análisis de [A. Vehtari y A. Gelman](https://statmodeling.stat.columbia.edu/2016/05/18/birthday-analysis-friday-the-13th-update/),
+junto con análisis de serie de tiempo de @ClevelandVis
 
 Usaremos los datos de nacimientos registrados por día en México, desde 1999. Haremos una pregunta
 como ¿cuáles son los cumpleaños más frecuentes?, o ¿Qué mes del año hay más nacimientos?

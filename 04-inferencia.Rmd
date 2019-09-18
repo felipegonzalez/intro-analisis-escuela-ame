@@ -100,7 +100,7 @@ muestrear_ventanas <- function(control, obs, n_ventana = 20, long = 20){
         pos = last(orden))
 }
 set.seed(12)
-obs <- tbl[500:519, ]
+obs <- historicos[500:519, ]
 ventanas_tbl <- muestrear_ventanas(historicos, obs, n_ventana = 6)
 ggplot(ventanas_tbl$lineup, aes(x = t_0, y = obs, colour = factor(rep==ventanas_tbl$pos))) + geom_line() + 
     geom_point() + facet_wrap(~rep, nrow = 2) +
