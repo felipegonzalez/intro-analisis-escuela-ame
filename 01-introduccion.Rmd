@@ -22,6 +22,11 @@ en el tipo de herramientas y técnicas preferidas. Así que un taller de este
 tipo necesariamente refleja ciertos puntos de vista, experiencias, y 
 opiniones y juicios.
 
+Estas notas están producidas en R, usando bookdown (@bookdown), y haciendo
+uso extensivo de R base y del tidyverse (@tidyverse). En las notas sólo presentamos
+algunas partes del código: la intención es leerlas un poco como seudocódigo para
+intentar aclarar algunos cálculos. El código completo está disponible para
+todos los participantes.
 
 ## Tukey y análisis de datos {-}
 
