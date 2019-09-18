@@ -7,7 +7,7 @@ como ¿cuáles son los cumpleaños más frecuentes?, o ¿Qué mes del año hay m
 
 Una gráfica popular (ver por ejemplo [esta visualización](http://thedailyviz.com/2016/09/17/how-common-is-your-birthday-dailyviz/)):
 
-```{r}
+```{r, echo = FALSE}
 knitr::include_graphics("./figuras/heatmapbirthdays1.png")
 ```
 
@@ -19,7 +19,7 @@ explica o sugiere estructura, mecanismos o causalidad?
 ## Datos de natalidad para México
 
 
-```{r, echo FALSE}
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
 library(tidyverse)
 library(lubridate)
 library(ggthemes)
@@ -54,6 +54,8 @@ en algunos de los miércoles, y así sucesivamente.
 
 Como en nuestros ejemplos anteriores, la idea  del siguiente análisis es aislar las componentes que 
 observamos en la serie de tiempo: extraemos componentes ajustadas, y luego examinamos los residuales.
+
+En este caso particular, construiremos una **descomposición aditiva** de la serie de tiempo (@ClevelandVis).
 
 ## Tendencia {-}
 
@@ -133,7 +135,7 @@ ggplot(datos_dia, aes(x = fecha, y = res_3)) + geom_line() +
 es una distribución con colas largas, y no se debe a unos cuantos atípicos. 
 Esto generalmente es indicación que hay factores importantes que hay que examinar en los residuales:
 
-```{r, echo = FALSE, fig.width = 5, fig.height = 4}
+```{r, echo = FALSE, fig.width = 4, fig.height = 3}
 ggplot(datos_dia, aes(sample = res_3)) + geom_qq(distribution = stats::qunif) +
   ylab("Nacimientos (residual)") + xlab("")
 ```
@@ -197,18 +199,22 @@ ggplot(datos_dia, aes(x = fecha, y = n_3, group = dia_semana)) +
 ```
 
 
-## Análisis de componentes
+## Análisis de componentes {-}
 
-Ahora comparamos las componentes estimados y los residuales en una misma gráfica :
+Ahora comparamos las componentes estimadas y los residuales en una misma gráfica. La suma de todas
+estas componentes da los datos originales: es una descomposición aditiva.
 
-```{r, fig.width =8, fig.height = 12}
+```{r, fig.width =8, fig.height = 8, echo = FALSE}
 media <- mean(datos_dia$n) %>% round
 datos_l <- datos_dia %>% 
     select(fecha, dia_semana, n, ajuste_4, ajuste_5, ajuste_6, res_6) %>% 
     mutate(ajuste_4_centrado = ajuste_4 - mean(ajuste_4)) %>% 
-    gather(variable, valor, ajuste_5:ajuste_4_centrado)
+    gather(componente, valor, ajuste_5:ajuste_4_centrado) %>% 
+    mutate(componente = recode(componente, ajuste_4_centrado="Tendencia", ajuste_5 = "Anual", ajuste_6 = "Día de la semana",
+                               res_6 = "Residual")) %>% 
+    mutate(componente = fct_relevel(componente, "Tendencia", "Anual", "Día de la semana", "Residual"))
 ggplot(datos_l, aes(x = fecha, y = valor, colour = dia_semana)) + 
-    facet_wrap(~variable,  ncol = 1) +
+    facet_wrap(~ componente,  ncol = 1) +
     geom_point(size=0.5) + scale_colour_colorblind()  +
     labs(caption = "Media total: 6435")
 
@@ -313,7 +319,7 @@ datos_da <- datos_dia %>%
 label_y <- -1000
 ggplot(datos_da, aes(x = dia_año_366, y = residual_prom, colour = grupo, group=1)) +
     theme(legend.position = "none") +
-    facet_wrap(~ antes_2006, labeller = label_both, ncol = 1) +
+    facet_wrap(~ antes_2006,  ncol = 1) +
     annotate("text", x = yday("2014-02-14"), y = label_y, label = "San Valentín", 
              colour="black", alpha = 0.5, angle = 90, vjust = -0.5) +
     geom_vline(xintercept = yday("2014-02-14"), colour = "gray") +

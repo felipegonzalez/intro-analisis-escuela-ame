@@ -71,12 +71,9 @@ simular_serie <- function(n = 1000, lambda = 1, ac = 0.7, x_inicial = 1){
     x[1] <- x_inicial
     for(i in 2:n){
         x[i] <-  ac*(x[i - 1]) + rgamma(1, 1, 1 / lambda)
-        if(i >= 10){
-            x_s <- x[i - seq(9, 0, -1)]
-            t_s <- seq(0, 9, 1)
-        }
     }
-    tibble(t = 1:n, obs = x) %>% filter(t > 50)
+    tibble(t = 1:n, obs = x) %>% filter(t > 50) %>% 
+        mutate(t = t - 50 + 1)
 }
 ```
 
@@ -88,22 +85,23 @@ historicos <- simular_serie(2000)
 
 
 ```{r}
-tbl <- historicos
 muestrear_ventanas <- function(control, obs, n_ventana = 20, long = 20){
     n_control <- nrow(control)
     inicios <- sample(1:(nrow(control) - long), n_ventana - 1)
     control_lista <- map(inicios, function(i){
-        filter(control, t %in% seq(i, i + long - 1))
+        muestra <- filter(control, t %in% seq(i, i + long - 1, 1)) 
+        muestra
     })
     dat_lista <- append(control_lista, list(obs))
     orden <- sample(1:n_ventana, n_ventana)
-    list(lineup = tibble(rep = orden, datos = dat_lista) %>% 
-        unnest %>% group_by(rep) %>% mutate(t_0 = t - min(t)) %>% ungroup,
+    datos_lineup <- tibble(rep = orden, datos = dat_lista) %>% 
+        unnest %>% group_by(rep) %>% mutate(t_0 = t - min(t)) %>% ungroup  
+    list(lineup = datos_lineup,
         pos = last(orden))
 }
 set.seed(12)
 obs <- tbl[500:519, ]
-ventanas_tbl <- muestrear_ventanas(tbl, obs, n_ventana = 6)
+ventanas_tbl <- muestrear_ventanas(historicos, obs, n_ventana = 6)
 ggplot(ventanas_tbl$lineup, aes(x = t_0, y = obs, colour = factor(rep==ventanas_tbl$pos))) + geom_line() + 
     geom_point() + facet_wrap(~rep, nrow = 2) +
     theme(legend.position = "none") + scale_y_log10()
@@ -124,7 +122,7 @@ están los datos recientemente observados.  ¿Hay algo en los datos que distinga
 
 ```{r, echo = FALSE}
 obs <- simular_serie(500, x_inicial = last(obs$obs))
-prueba_tbl <- muestrear_ventanas(tbl, obs[1:20, ], n_ventana = 20)
+prueba_tbl <- muestrear_ventanas(historicos, obs[1:20, ], n_ventana = 20)
 ggplot(prueba_tbl$lineup, aes(x = t_0, y = obs)) + geom_line() + 
      facet_wrap(~rep, nrow = 4) + scale_y_log10()
 ```
@@ -135,13 +133,14 @@ ggplot(prueba_tbl$lineup, aes(x = t_0, y = obs)) + geom_line() +
 Ahora contrastemos con  un ejemplo donde ocurre un cambio considerable. En el siguiente caso,
 
 ```{r, message=FALSE, echo = FALSE}
-obs_dif <- simular_serie(500, lambda = 3, ac = 0.3, x_inicial = last(obs$obs))
-prueba_tbl <- muestrear_ventanas(tbl, obs_dif[1:20, ], n_ventana = 20)
+set.seed(912)
+obs_dif <- simular_serie(500, lambda = 3, ac = 0.3, x_inicial = last(historicos$obs))
+prueba_tbl <- muestrear_ventanas(historicos, obs_dif[10:29, ], n_ventana = 20)
 ggplot(prueba_tbl$lineup, aes(x = t_0, y = obs)) + geom_line() + 
    facet_wrap(~rep, nrow = 4) + scale_y_log10()
 ```
 
-Aunque es imposible estar seguros de que ha ocurrido un cambio considerable, la diferencia de una de las
+Aunque es imposible estar seguros de que ha ocurrido un cambio, la diferencia de una de las
 series es muy considerable. Si identificamos los datos correctos,
 la probabilidad de que hayamos señalado la nueva serie "sobreinterpretando" fluctuaciones en un proceso que sigue comportándose normalente es 0.05 - relativamente baja.
 
@@ -574,7 +573,6 @@ set.seed(8812)
 media_cuartiles <- function(x){
     (quantile(x, 0.75) + quantile(x, 0.25))/2
 }
-
 valor_p_fusion <- function(fusion, stat_fusion = stat_fusion, trans = identity, comp = VV / NV){
     pos <- 1
     reps <- lineup(null_permute("nv.vv"), pos =1, fusion, n = 10000)
@@ -587,11 +585,20 @@ valor_p_fusion <- function(fusion, stat_fusion = stat_fusion, trans = identity, 
         summarise(cociente = ({{ comp }}))
     2*ecdf(cocientes_perm$cociente)(dif)
 }
-valor_p_fusion(fusion %>% sample_frac(0.8), stat_fusion = mean, trans = identity, comp = VV - NV)
-valor_p_fusion(fusion %>% sample_frac(0.8), stat_fusion = median, trans = identity, comp = VV / NV)
-valor_p_fusion(fusion %>% sample_frac(0.8), stat_fusion = media_cuartiles, trans = identity, 
+```
+
+
+
+```{r}
+valor_p_fusion(fusion %>% sample_frac(0.8), 
+               stat_fusion = mean, trans = identity, comp = VV - NV)
+valor_p_fusion(fusion %>% sample_frac(0.8), 
+               stat_fusion = median, trans = identity, comp = VV / NV)
+valor_p_fusion(fusion %>% sample_frac(0.8), 
+               stat_fusion = media_cuartiles, trans = identity, 
                comp = VV / NV)
-valor_p_fusion(fusion %>% sample_frac(0.8), stat_fusion = median, trans = log, comp = VV - NV)
+valor_p_fusion(fusion %>% sample_frac(0.8), 
+               stat_fusion = median, trans = log, comp = VV - NV)
 valor_p_fusion(fusion %>% sample_frac(0.8), stat_fusion = mean, trans = log, comp = VV - NV)
 
 ```

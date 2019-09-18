@@ -33,11 +33,8 @@ de cada cuenta: cúanto fue la cuenta total, la propina, y el número de persona
 Los datos están separados según se fumó o no en la mesa, y temporalmente en dos partes: el día
 (Jueves, Viernes, Sábado o Domingo), cada uno separado por Cena y Comida. 
 
-Lo primero que nos interesa es comparar los datos dentro de cada "bonche":
-
-- ¿Varían mucho o poco? ¿Cuáles son valores típicos o centrales? ¿Existen valores atípicos?
-- ¿Cómo es la variación conjunta de varias mediciones en un bonche? 
-- ¿Cómo están asociadas las distintas agrupaciones de los datos? ¿Qué agrupaciones están más asociadas?
+El primer tipo de comparaciones que nos interesa hacer es para una medición: ¿Varían mucho o poco los datos 
+de un tipo  de medición? ¿Cuáles son valores típicos o centrales? ¿Existen valores atípicos?
 
 Supongamos entonces que consideramos simplemente la variable de *cuenta_total*. Podemos comenzar
 por **ordenar los datos**, y ver cuáles datos están en los extremos y cuáles están en los lugares centrales:
@@ -131,18 +128,21 @@ gridExtra::grid.arrange(g_1, g_2, g_3, g_4, nrow = 1, widths = c(8, 2, 2, 2))
 ```
 
 
-- **Ventajas en el análisis inicial**: en un principio del análisis, estos resúmenes
+**Ventajas en el análisis inicial**
+
+En un principio del análisis, estos resúmenes
 (cuantiles) pueden ser más útiles que utilizar medias y varianzas, por ejemplo. La razón es
 que los cuantiles:
 
 - Son cantidades más fácilmente interpretables
 - Los cuantiles centrales son más resistentes a valores atípicos que medias o varianzas
 - Sin embargo, permite identificar valores extremos
+- Es fácil comparar cuantiles de distintos bonches de datos
 
 
 
+### Ejercicio {-}
 
-### Ejercicio
 ¿Cómo se ve la gráfica de cuantiles de las propinas? ¿Cómo crees que esta gráfica se
 compara con distintos histogramas?
 
@@ -152,6 +152,9 @@ g_1 <- ggplot(propinas, aes(sample = propina)) +
 g_1
 ```
 
+**Observación**. Cuando hay datos repetidos, los cuantiles tienen que interpretarse como sigue: 
+el cuantil-$f$ con valor $q$ satisface que existe una proporción aproximada $f$ de los datos que están en el valor
+$q$ o por debajo de éste, pero no necesariamente exactamente una proporción $f$ de los datos estan en $q$ o por debajo.
 
 ## Ejemplo: Precio de venta de casas {-}
 
@@ -218,7 +221,7 @@ Nótese que este último paso tiene sentido pues la variación dentro de las zon
 cuadrado, es similar. Esto no lo podríamos hacer de manera efectiva si hubiéramos usado el precio de las casas sin
 ajustar por su tamaño.
 
-Podemos resumir este primer análisis con un par de gráficas de cuantiles:
+Podemos resumir este primer análisis con un par de gráficas de cuantiles (@ClevelandVis):
 
 ```{r, fig.width = 5, fig.height = 3}
 mediana <- median(casas$precio_m2)
@@ -288,9 +291,10 @@ entre tipo de escuelas:
 
 ```{r, message = FALSE, echo = FALSE}
 enlace <- read_csv("datos/enlace.csv")
-enlace <- enlace %>%  filter(num_evaluados_total > 0, mate_6 > 0) %>% 
-    mutate(tipo = fct_reorder(tipo, mate_6, mean)) %>% 
-    mutate(marginacion = fct_reorder(marginacion, mate_6, median))
+enlace <- enlace %>%  filter(num_evaluados_total > 0, mate_6 > 0) %>%
+    mutate(marginacion = fct_reorder(marginacion, mate_6, median)) %>% 
+    mutate(tipo = recode(tipo, `INDÍGENA`="Indígena/Conafe", CONAFE="Indígena/Conafe", GENERAL="General", PARTICULAR="Particular")) %>% 
+    mutate(tipo = fct_reorder(tipo, mate_6, mean)) 
 ```
 
 ```{r, message = FALSE}
@@ -301,7 +305,7 @@ enlace_tbl <- enlace %>% group_by(tipo) %>%
 enlace_tbl %>% spread(cuantil, valor) %>% formatear_tabla()
 ```
 
-Podemos graficar de varias maneras, por ejemplo:
+Podemos graficar de varias maneras, por ejemplo (en la gráfica 1 usamos cuantiles 0.05, 0.25, 0.5, 0.75 y 0.95) :
 
 
 ```{r, fig.width = 10, fig.height = 6, echo = FALSE, message = FALSE}
@@ -318,23 +322,23 @@ g_80_p <- ggplot(enlace_tbl  %>% spread(cuantil,valor), aes(x = tipo, y = `0.5`)
     geom_linerange(aes(ymin= `0.05`, ymax = `0.95`), colour = "gray40") +
     geom_linerange(aes(ymin= `0.25`, ymax = `0.75`), size = 2, colour = "white") +
     geom_point(colour = "red", size = 3) +
-     ylim(c(150,880)) + labs(subtitle = "Gráfica 2")+
+     ylim(c(150,880)) + labs(subtitle = "Gráfica 1")+
     ylab("Promedios Matemáticas")
 
 g_boxplot <- ggplot(enlace  , aes(x = tipo, y = mate_6)) + 
     geom_boxplot(outlier.size = 0.7) +
-    labs(subtitle = "Gráfica 3")+ ylim(c(150,930))+
+    labs(subtitle = "Gráfica 2")+ ylim(c(150,930))+
     ylab("Promedios Matemáticas")
 
 g_cuantil <- ggplot(enlace, aes(sample = mate_6, colour = tipo)) +
   geom_qq(distribution = stats::qunif, size = 1) + ylab("Promedios Matemáticas") +
-  xlab("orden")
+  xlab("orden") + labs(subtitle = "Gráfica 3")
 
-gridExtra::grid.arrange(g_80, g_80_p, g_boxplot, g_cuantil, nrow = 2)
+gridExtra::grid.arrange(g_80_p, g_boxplot, g_cuantil, nrow = 2)
 ```
 
 En términos de comparaciones, podemos discutir qué tan apropiada es cada gráfica. Graficar más
-cuantiles es más útil para hacer comparaciones.  Por ejemplo, en la Gráfica 2 podemos ver que la
+cuantiles es más útil para hacer comparaciones.  Por ejemplo, en la Gráfica 1 podemos ver que la
 mediana de las escuelas generales está cercano al cuantil 5\% de las escuelas particulares. Por otro
 lado, el diagrama de caja y brazos muestra también valores "atípicos". 
 
@@ -368,22 +372,6 @@ g_80_p <- ggplot(enlace_tbl_marg  %>% spread(cuantil, valor),
 g_80_p
 ```
 
-O también de la siguiente forma:
-
-```{r, echo = FALSE}
-enlace_tbl <- 
-  enlace %>% mutate(tipo = ifelse(tipo %in% c("GENERAL", "PARTICULAR"), as.character(tipo), "INDIGENA/CNFE")) %>% 
-  mutate(tipo = fct_reorder(tipo, mate_6))
-g_1 <- ggplot(enlace_tbl, 
-       aes(x = marginacion, y = mate_6, colour = tipo)) +
-  geom_boxplot(outlier.alpha = 0) + scale_color_colorblind() +
-  theme(legend.position = "none") + ylim(c(200,800))
-g_2 <- ggplot(enlace_tbl, 
-       aes(x = "Total", y = mate_6, colour = tipo)) +
-  geom_boxplot(outlier.alpha = 0) + scale_color_colorblind() + ylab("") + xlab("") +
-   ylim(c(200,800))
-gridExtra::grid.arrange(g_1, g_2, ncol =2, widths = c(9, 7.5))
-```
 
 
 Esta gráfica pone en contexto la pregunta inicial, y señala la dificultad 
@@ -420,6 +408,7 @@ sat_tbl <- sat %>% select(state, expend, sat) %>%
     gather(variable, valor, expend:sat) %>% 
     group_by(variable) %>% 
     summarise(cuantiles = list(cuantil(valor))) %>% unnest %>% 
+    mutate(valor = round(valor, 1)) %>% 
     spread(cuantil, valor)
 sat_tbl %>% formatear_tabla
 ```
@@ -558,7 +547,7 @@ son mucho más difíciles de contestar!
 
 Puedes practicar y entender cómo funcionan los suavidaores con **esta app**, cuya idea
 es tomada de [este libro](https://rafalab.github.io/dsbook/smoothing.html#local-weighted-regression-loess). El suavizamiento
-**loess** es diferente de promedios móviles centrados usuales, y a veces ayuda a obtener mejores
+**loess** (@ClevelandVis) es diferente de promedios móviles centrados usuales, y a veces ayuda a obtener mejores
 suavizados (cuando hay estructura lineal en el problema):
 
 ```{r, fig.width = 10, fig.height = 6, echo = FALSE}
@@ -600,7 +589,7 @@ w_loess <- function(x){
   ifelse(abs(x) < 1, (1 - abs(x)^3)^3, 0.0)
 }
 lm_ponderado <- function(...) {
-  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, ...)
+  geom_smooth(method = "lm", formula = y ~ 1, se = FALSE, ...)
 }
 
 crear_local <- function(frac_val, alpha = 0.5){
@@ -612,7 +601,7 @@ crear_local <- function(frac_val, alpha = 0.5){
 ggplot(sat_g, aes(x = frac, y = sat, label = state, size = peso)) + 
   geom_point(colour = "gray") +
   scale_size(range = c(0.5, 4)) +
-    geom_smooth(method = "loess", method.args = list(degree = 1), 
+    geom_smooth(method = "loess", method.args = list(degree = 0), 
                 span = alpha, se = FALSE,
               size = 1, colour = "red") +
   lm_ponderado(data = sat_g %>% filter(peso > 0), aes(weight = peso)) +
@@ -743,11 +732,11 @@ datos (principio 3). En este caso, lo logramos cambiando a una escala más aprop
 el problema.
 
 Podemos examinar los residuales de distintas maneras. Para describir estas gráficas
-de manera cuantitativa, por ejemplo, podemos hacer lo siguiente:
+de manera cuantitativa, por ejemplo, podemos hacer lo siguiente. Consideramos
 
 $$ precio (log) = mediana\_calidad + residual $$
 
-O ahora que tenemos este descubrimiento en mano, podríamos calcular directamente
+y analizamos cada parte. Podríamos calcular directamente
 cambios relativos cuando aumenta un punto de calidad en las medianas:
 
 ```{r}
@@ -755,7 +744,7 @@ medianas <- casas_ejemplo %>% group_by(calidad_gral) %>%
     summarise(mediana = median(precio_miles)) %>% 
     arrange(desc(mediana)) %>% 
     mutate(incremento = mediana / lead(mediana) - 1)
-medianas
+medianas %>% kable(type = "html")
 ```
 
 Y como los residuales tienen distribución similar en cada grupo los agrupamos para resumir:
@@ -765,7 +754,9 @@ residuales <- casas_ejemplo %>% left_join(medianas) %>%
     group_by(calidad_gral) %>% 
     mutate(residual = log(precio_miles) - log(mediana)) 
 quantile(residuales$residual, 
-         c(0, 0.10, 0.25, 0.5, 0.75, 0.9, 1)) %>% kable
+         c(0, 0.10, 0.25, 0.5, 0.75, 0.9, 1)) %>% 
+  round(2) %>% 
+  kable (type = "html")
 ```
 
 Así que nuestro resumen podría ser
@@ -826,7 +817,7 @@ ggplot(fusion, aes(sample = log(time), colour = nv.vv)) +
 
 En algunos casos, la diferencia entre hacer análisis con logaritmo o en unidades
 originales no es muy importante. Esto sucede cuando el rango de variación está dentro de un orden de magnitud. Esto es porque cuando $x$ no varía mucho, por ejemplo,
-las comparaciones aditivas $(y-x)$ y multiplicativas $(y-x)$ difieren en aproximadamente por un factor multiplicativo.
+las comparaciones aditivas $(y-x)$ y multiplicativas $(y-x)/x$ difieren en aproximadamente por un factor multiplicativo.
 
 ## Tablas de conteos {-}
 
@@ -903,7 +894,7 @@ tasa casi el doble (0.98) que el promedio.
 
 También podemos graficar como:
 
-```{r, fig.width = 6, fig.height = 2, echo = FALSE}
+```{r, fig.width = 6, fig.height = 2, echo = FALSE, message = FALSE}
 tabla_ordenada <- tabla %>% ungroup %>% 
   left_join(tabla %>% ungroup %>% filter(how == "tea bag") %>% select(price, perfil_tea = perfil)) %>% 
   mutate(precio = fct_reorder(price, perfil_tea))
