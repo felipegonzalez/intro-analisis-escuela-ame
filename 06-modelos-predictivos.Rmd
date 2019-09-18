@@ -427,7 +427,9 @@ para k vecinos más cercanos
 mod_1 <- lm(Ozone  ~  Temp + Wind + Solar.R + Temp:Wind + Solar.R:Temp, data = air)
 ```
 
-Y podemos dibujar nuestro modelo sobre los datos, comparando con lo que obtuvimos con 27 vecinos más cercanos:
+Nótese algo interesante: el modelo es lineal, pero hicimos algo de *feature engineering* creando
+entradas derivadas de nuestros datos: en este caso el producto de Temperatura por Viento y el de radiación solar por temperatura.
+^odemos dibujar nuestro modelo sobre los datos, comparando con lo que obtuvimos con 27 vecinos más cercanos:
 
 ````{r, message = FALSE, fig.width = 7, fig.height = 6}
 dat_1 <- air %>% filter(!is.na(Ozone) & !is.na(Solar.R))
