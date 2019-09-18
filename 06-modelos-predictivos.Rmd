@@ -30,7 +30,7 @@ En análisis exploratorio vimos varios ejemplos donde buscábamos hacer **compar
 del comportamiento de alguna variable dependiendo de distintos niveles de otras variables
 (de forma **multivariada**).
 En ese caso usamos métodos relativamente simples para hacer esas comparaciones que nos
-ayudan a descubrir y entender **estructura** los datos. 
+ayudan a descubrir y entender **estructura** en los datos. 
 
 Podemos ver cómo el análisis predictivo es una extensión natural de este procedimiento. La
 diferencia principal es que en este tipo de análisis nos concentramos principalmente
@@ -68,25 +68,27 @@ de las variables (Radiación Solar, Velocidad del viento y Temperatura).
 ## Predicciones puntuales
 
 Supongamos que buscamos hacer predicciones puntuales de una variable $Y$ mediante una función
-$$f(X_1, \ldots, X_p)$$
+$$f(X_1, \ldots, X_p) = f(X)$$
 
-Si consideramos a (X_1,X_2,\ldots, X_p, Y)$ como variables aleatorias, entonces buscamos
-que $Y$ esté lo más cercana posible a $f(X_1, \ldots, X_p)$. La definición de *cercanía* importa,
+Si consideramos a $X = (X_1,X_2,\ldots, X_p, Y)$ como variables aleatorias, entonces buscamos
+que $Y$ esté lo más cercana posible a $f(X)$. La definición de *cercanía* importa,
 pero por el momento tomemos el punto de vista más común en este tipo de problemas, y supongamos
 que queremos minimizar los errores que observamos:
 
-$$(Y - f(X_1, \ldots, X_p))^2 = (Y - f(X))^2$$
+$$(Y - f(X))^2$$
 Esta es una variable aleatoria y depende de los valores que observamos. Tiene sentido entonces
 buscar una $f$ que minimice, por ejemplo, el valor promedio de este error:
 
 $$EPE = E((Y-f(X))^2)$$
 La solución teórica a este problema se puede encontrar condicionando a $X$, y es
 
-$$f(X_1, X_2, \ldots, X_p) = E[Y | X_1, X_2, \ldots, X_p]$$
+$$f(X) = media(Y | X_1, X_2, \ldots, X_p])$$
 
 Es decir: resolvemos el problema de predicción si encontramos esta función, que devuelve la media de la
 respuesta $Y$ dados los valores de entrada $X$. Si escogiéramos la pérdida absoluta, por ejemplo,
 obtendríamos $f(X_1,\ldots, X_p) = mediana(Y | X_1,\ldots, X_p)$.
+
+
 
 
 ## Media condicional y vecinos más cercanos
@@ -107,10 +109,55 @@ $$\hat{f}(x_1^0,x_2^0, \ldots, x_p^0) = \frac{1}{k} \sum_{i \in N_k(x_0)} y_i$$
 Si los puntos cercanos no están lejos dee $x^0$, y la función $E(Y|X_1,\ldots, X_p)$ es continua,
 este es un método que puede ser razonable.
 
-## Ejemplo 
+## Ejemplo: caso simple
+
+En nuestro ejemplo del SAT, podríamos querer predecir la calificación promedio de los alumnos que toman
+el examen ($Y$) en función de $X$= fracción de alumnos que toman el examen. Trabajamos con una muestra de los datos.
+
+```{r, fig.width = 4, fig.height = 3}
+set.seed(923)
+sat_completos <- read_csv("datos/sat.csv") 
+sat <- sat_completos %>% sample_frac(0.6)
+ggplot(sat, aes(x = frac, y = sat)) + geom_point()
+```
+
+Para $k$ vecinos más cercanos, supongamos que queremos predecir en frac = 30, usando 5 vecinos más cercanos. Buscamos los
+3 vecinos más cercanos en *frac* y promediamos para obtener una predicción:
+
+```{r}
+frac_x <- 30
+pred <- sat %>% mutate(dist = abs(frac - frac_x)) %>% filter(rank(dist) <= 5) %>% 
+    summarise(sat_pred = mean(sat)) %>% mutate(frac = frac_x)
+pred
+```
+
+Ponemos en rojo nuestra predición, y ahora repetimos para el rango de *frac*:
+
+```{r, fig.width = 8, fig.height = 3}
+g <-  ggplot(sat, aes(x = frac)) + geom_point(aes(y=sat))
+g_una <- g + geom_point(data = pred, aes(y = sat_pred), colour = "red", size = 4)
+
+# k vecinos más cercanos
+mod_knn_sat <- caret::knnreg(sat ~ frac, data = sat, k = 5)
+preds <- tibble(frac = seq(3, 80,1)) %>% mutate(sat_pred = predict(mod_knn_sat, newdata = .))
+g_rango <- g_una + geom_line(data = preds, aes(y = sat_pred), colour = "red", size = 1)
+g_rango
+gridExtra::grid.arrange(g_una, g_rango, ncol = 2)
+```
+
+Y mostramos cómo serían las predicciones de este método para distintos valores de *frac*. 
+
+
+- ¿Qué defectos o ventajas piensas que tiene este predictor? 
+- ¿Piensas que este modelo ayuda a comparar la diferencia que existe en desempeño por estado
+según el porcentaje de alumnos que toma el examen?
+
+
+## Ejemplo: ozono
 
 Regresamos a nuestro ejemplo de mediciones de Ozono. Podríamos estimar la media condicional
-usando vecinos más cercanos:
+usando vecinos más cercanos. Conviene estandarizar las variables (convertirlas a la misma
+escala) para que tenga más sentido calcular distancias:
 
 ```{r}
 pred_grid <- expand.grid(Wind = c(5,10,15), Temp = seq(60, 90, 10), Solar.R = seq(20, 300, by = 10)) %>% 
@@ -145,17 +192,35 @@ ggplot(air, aes(x = Solar.R, y = Ozone,  colour = Temp)) + geom_point() +
 ```
 
 
----
+## Comparaciones predictivas
 
-**Observación**: nótese que los modelos predictivos nos dan la oportunidad de hacer mejores comparaciones
+Nótese que los modelos predictivos nos dan la oportunidad de hacer mejores comparaciones
 con los datos, donde controlamos por varias variables para entender cómo cambia la respuesta. En este caso particular, de cómo cambia la media condicional de Ozono con las
 variables de temperatura, radiación y velocidad del viento. A este tipo de 
 comparaciones les llamamos **comparaciones predictivas**. Para que estas sean efectivas, sin
 embargo, necesitamos hacer más trabajo de validación que discutimos más adelante. 
 
 - Más en la sección de inferencia de modelos predictivos (cobertura de intervalos).
-- Más acerca de inclusión de variables relevantes y teoría acerca del proceso
-- Aleatorización?
+- Más acerca de inclusión de variables relevantes y teoría acerca del proceso que genera los datos
+
+El énfasis en comparaciones predictivas es importante para distinguirlo de *comparaciones causales*. Por ejemplo,
+las comparaciones causales son necesarias cuando hacemos pregunta arerca de manipulaciones explícitas de
+las covariables, por ejemplo:
+
+- ¿Qué podríamos esperar si un estado particular (Alabama) introdujera un programa para incentivar 
+que más alumnos tomen el SAT. ¿Qué pasaría con el promedio del SAT del estado?
+
+Aún cuando nuestro modelo tenga buenas calidades predictivas y estadísticas, 
+**esta es una pregunta mucha más difíci** que la contesta una comparación predictiva. No se refiere a 
+cómo son diferentes grupos de estados, si no a una misma unidad (estado) bajo distintas condiciones.
+
+Hablaremos un poco más de esto, pero por lo pronto: es importante tener cuidado en interpretar
+comparaciones predictivas (que tienen utilidad) como causales (que en algunos casos son las que realmente nos interesa).
+
+
+
+
+
 
 ## Evaluación de modelos predictivos {-}
 
@@ -170,7 +235,7 @@ que está dado por
 
 $$\overline{err} = \frac{1}{n} \sum_i (y_i - \hat{f}(x_i))^2,$$
 
-**y esto es una muy mala idea**. La razón es que cuando decimos **predicción** nos referimos a que
+**y esto es una muy mala idea en general**. La razón es que cuando decimos **predicción** nos referimos a que
 vamos a aplicar el modelo para casos nuevos, que no hemos visto en la muestra de entrenamiento.
 Como veremos, que este error sea bajo no es necesariamente indicación que el modelo tienen capacidad
 de **generalizar** para casos nuevos
@@ -257,7 +322,9 @@ df_mods
 ```
 
 y vemos que el modelo con mejor desempeño está dado por la curva gris, lo cual coincide con nuestra
-intuición.
+intuición. Esto también nos podía hacer dudar del primer ejemplo donde usamos k-vecinos más cercanos: probablemente
+hay patrones que dependen demasiado fuertemente de la muestra, y que no generalizan para otros datos.
+
 
 
 ## La tarea del análisis predictivo
@@ -293,17 +360,26 @@ parcialmente el área ahora floreciente de sistemas de recomendación.
 
 
 
-## La maldición de la dimensionalidad
+## Métodos de predicción y la maldición de la dimensionalidad
 
-Alquien podría preguntarse: ¿por qué construir estas predicciones de alguna otra
-manera que $k$-vecinos más cercanos? ¿Si mis datos no son muy chicos, entonces este 
-método debería funcionar razonablemente bien? El principal problema es que usualmente
-trabajamos con más de 3 o 4 variables.
+Al menos hasta hace poco (aunque todavía es parcialmente cierto), habían una "industria" grande
+de producción de distintos métodos de predicción (Ver por ejemplo @hundred). 
+
+Ingenuamente, podríamos preguntarnos ¿por qué tantos métodos? ¿por qué construir estas predicciones de alguna otra
+manera que $k$-vecinos más cercanos, que estima directamente la cantidad de interés?
+Y más aún: si tengo grandes cantidades de datos, este método debe funcionar muy bien, pues puedo usar promedios
+a lo largo de varias variables que incluyan muchas observaciones. 
+
+Y en parte esto es cierto para problemas de dimensión baja (digamos, 2,3 o 4 variables). El problema
+es que generalmente nuestros problemas son de dimensionalidad más alta.
 
 - Cuando la dimensión es no muy chica, todos los datos de entrenamiento tienden a ser *ralos*,
 lo que quiere decir que todos los puntos están lejanos unos de otros. 
+- Si la dimensión es alta, entonces no hay manera de evitar uno de dos problemas: o tomamos muchos vecinos,
+y entonces las predicciones son extrapolaciones graves, o tomamos muy pocos, y nuestro modelo es poco confiable
+y tiene alta variabilidad. Peor aún, aunque tomemos un vecino más cercano seguimos extrapolando gravemente.
 
-Podemos ver un ejemplo (@ESL):
+Esto es contraintuitivo en un principio. Podemos ver un ejemplo (@ESL):
 
 #### Ejemplo {-}
  Consideremos que la salida Y es determinística $Y = e^{-8\sum_{j=1}^p x_j^2}$.
@@ -387,6 +463,8 @@ información secuencialmente cercana.
 
 ## ¿Por qué pueden ser malas las predicciones? {-}
 
+En esta parte intentamos explicar algo de la teoría que intuitivamente hemos discutido en secciones anteriores.
+
 Recordemos que planteamos nuestro problema de predicción como uno donde queremos aproximar la 
 función $f$ con una función $\hat{f}$ construida con los datos de entrenamiento. ¿Por qué puede
 ser grande este error?
@@ -394,8 +472,9 @@ ser grande este error?
 Consideremos un modelo particular que genera datos para nuestro problema que es útil para entender
 de dónde provienen los errores de predicción:
 
-$$Y = f(X_1, \ldots, X_p) + \epsilon$$
-donde por suponemos que $E(\epsilon | X_1,\ldots X_p) = 0$. Esta variable aleatoria representa efectos
+$$Y = f(X) + \epsilon$$
+donde por suponemos que $media(\epsilon | X) = 0$ (si no, podríamos sumar ese valor a $f$). 
+Esta variable aleatoria representa efectos
 de otras variables que no tenemos disponibles, y que afectan el resultado $Y$ que observamos. Si consideramos el error esperado de predicción bajo pérdida cuadrática, podemos escribir:
 
 $$Y-\hat{f}(X) = (f(X)- \hat{f}(X)) + \epsilon$$
