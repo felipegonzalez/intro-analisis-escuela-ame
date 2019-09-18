@@ -8,26 +8,24 @@ library(glmnet)
 theme_set(theme_minimal(base_size = 14))
 ```
 
-En esta parte discutiremos las ideas básicas de los modelación predictiva. Mucho de este material
-proviene de nuestra referencia principal que es @ESL. 
-
-La tarea básica
-del análisis predictivo es la siguiente: 
+En esta parte discutiremos las ideas básicas de los modelación predictiva. La tarea básica del análisis predictivo 
+es la siguiente: 
 
 Tenemos un conjunto de datos observados
 
- $$\mathcal L = \{(\mathbf{x}_i, y_i)\}_{i=1}^n,$$
-donde cada $\mathbf{x} = (x_1, x_2, \ldots, x_p)$ es un conjunto de variables observadas
+ $$\mathcal{L}  = \{({x}^{(1)}, y^{1)}), ({x}^{(2)}, y^{2)}), \ldots, ({x}^{(n)}, y^{n)})\}$$
+
+ 
+donde cada $x^{(i)} = (x^{(i)}_1, x^{(i)}_2, \ldots, x^{(i)}_p)$ es un conjunto de variables observadas
 (que llamamos covariables). 
 
-Cuando observamos un nuevo conjunto de covariables $\mathbf{x}^0$,
-cómo podemos utilizar la información de $\mathcal L$ para:
+Cuando observamos un nuevo conjunto de covariables ${x}$,
+cómo utilizar la información de $\mathcal L$ para:
 
 - ¿Predecir su correspondiente valor $y$, o más generalmente, 
 - ¿Qué podemos decir acerca de los posibles valores que podría tomar $y$ dado que conocemos sus covariables asociadas?
 
-
-** Comparaciones predictivas **
+**Comparaciones predictivas**
 
 En análisis exploratorio vimos varios ejemplos donde buscábamos hacer **comparaciones**
 del comportamiento de alguna variable dependiendo de distintos niveles de otras variables
@@ -60,7 +58,7 @@ air <- air_data
 ```{r, fig.width = 6, fig.height = 3}
 ggplot(air, aes(x = Solar.R, y = Ozone,  colour = Temp)) + geom_point() +
     facet_wrap(~Wind_cat, ncol = 3) + 
-    scale_colour_gradientn(colours = heat.colors(10, rev = TRUE))
+    scale_colour_gradientn(colours = rainbow(2, rev = TRUE))
 ```
 
 Esta una gráfica exploratoria útil,
@@ -83,22 +81,26 @@ Esta es una variable aleatoria y depende de los valores que observamos. Tiene se
 buscar una $f$ que minimice, por ejemplo, el valor promedio de este error:
 
 $$EPE = E((Y-f(X))^2)$$
+O en términos de una muestra grande:
+
+$$EPE \approx \hat{Err} = \frac{1}{m} \sum_{i=1}^m (\mathbf{y}^{(j)} - f(\mathbf{x}^{(j)}))^2$$
+
 La solución teórica a este problema se puede encontrar condicionando a $X$, y es
 
 $$f(X) = media(Y | X_1, X_2, \ldots, X_p])$$
 
 Es decir: resolvemos el problema de predicción si encontramos esta función, que devuelve la media de la
-respuesta $Y$ dados los valores de entrada $X$. Si escogiéramos la pérdida absoluta, por ejemplo,
-obtendríamos $f(X_1,\ldots, X_p) = mediana(Y | X_1,\ldots, X_p)$.
-
-
+respuesta $Y$ dados los valores de entrada $X$. 
 
 
 ## Media condicional y vecinos más cercanos {-}
 
-Ahora consideremos que tenemos un conjunto de datos $\mathcal{L} = \{(\mathbf{x}_i, y_i)\}_{i=1}^n$. 
+Ahora consideremos que tenemos un conjunto de datos 
+
+ $$\mathcal{L}  = \{({x}^{(1)}, y^{1)}), ({x}^{(2)}, y^{2)}), \ldots, ({x}^{(n)}, y^{n)})\}.$$
+
 Bajo los supuestos que hicimos, buscamos estimar la media condicional. En general no es factible
-hacer una estimación directa, pues tpicamente encontraremos que para ciertos valores
+hacer una estimación directa, pues tipicamente encontraremos que para ciertos valores
 $(X_1,ldots, X_p)$ no tenemos ninguna observación.
 
 Una idea simple para hacer predicciones y comparaciones predictivas es entonces la siguiente:
@@ -107,7 +109,7 @@ Si queremos hacer una predicción en las entradas $x^0 = (x_1^0,x_2^0, \ldots, x
 buscar los puntos de nuestros datos que tengan entradas similares, y producir promedios,
 medianas, o el resumen que nos interese hacer:
 
-$$\hat{f}(x_1^0,x_2^0, \ldots, x_p^0) = \frac{1}{k} \sum_{i \in N_k(x_0)} y_i$$
+$$\hat{f}(\mathbf{x}) = \frac{1}{k} \sum_{i \in N_k(\mathbf{x})} y^{(i)}$$
 
 Si los puntos cercanos no están lejos dee $x^0$, y la función $E(Y|X_1,\ldots, X_p)$ es continua,
 este es un método que puede ser razonable.
@@ -134,7 +136,8 @@ pred <- sat %>% mutate(dist = abs(frac - frac_x)) %>% filter(rank(dist) <= 5) %>
 pred
 ```
 
-Ponemos en rojo nuestra predición, y ahora repetimos para el rango de *frac*:
+Ponemos en rojo nuestra predición, y luego repetimos para el rango de *frac* para  mostrar
+cómo serían las predicciones de este método para distintos valores de *frac*. 
 
 ```{r, fig.width = 8, fig.height = 3}
 g <-  ggplot(sat, aes(x = frac)) + geom_point(aes(y=sat))
@@ -144,11 +147,8 @@ g_una <- g + geom_point(data = pred, aes(y = sat_pred), colour = "red", size = 4
 mod_knn_sat <- caret::knnreg(sat ~ frac, data = sat, k = 5)
 preds <- tibble(frac = seq(3, 80,1)) %>% mutate(sat_pred = predict(mod_knn_sat, newdata = .))
 g_rango <- g_una + geom_line(data = preds, aes(y = sat_pred), colour = "red", size = 1)
-g_rango
 gridExtra::grid.arrange(g_una, g_rango, ncol = 2)
 ```
-
-Y mostramos cómo serían las predicciones de este método para distintos valores de *frac*. 
 
 
 - ¿Qué defectos o ventajas piensas que tiene este predictor? 
@@ -187,18 +187,20 @@ Y podemos producir predicciones para varios valores de velocidad del viento, tem
 y radiación solar:
 
 ```{r}
-ggplot(air, aes(x = Solar.R, y = Ozone,  colour = Temp)) + geom_point() +
+g_kvmc <- ggplot(air, aes(x = Solar.R, y = Ozone,  colour = Temp)) + geom_point() +
     facet_wrap(~Wind_cat) + 
-    scale_colour_gradientn(colours = heat.colors(10, rev = TRUE)) +
+    scale_colour_gradientn(colours = rainbow(2, rev = TRUE)) +
     geom_line(data = pred_grid_mod, aes(y = Ozone, group = interaction(Temp, Wind_cat)), size = 1) +
     labs(subtitle = "Curvas de k-vmc, para viento = 5, 10, 15")
+g_kvmc
 ```
 
 
 ## Comparaciones predictivas {-}
 
 Nótese que los modelos predictivos nos dan la oportunidad de hacer mejores comparaciones
-con los datos, donde controlamos por varias variables para entender cómo cambia la respuesta. En este caso particular, de cómo cambia la media condicional de Ozono con las
+con los datos, donde controlamos por varias variables para entender cómo cambia la respuesta.
+En este caso particular, de cómo cambia la media condicional de Ozono con las
 variables de temperatura, radiación y velocidad del viento. A este tipo de 
 comparaciones les llamamos **comparaciones predictivas**. Para que estas sean efectivas, sin
 embargo, necesitamos hacer más trabajo de validación que discutimos más adelante. 
@@ -214,29 +216,26 @@ las covariables, por ejemplo:
 que más alumnos tomen el SAT. ¿Qué pasaría con el promedio del SAT del estado?
 
 Aún cuando nuestro modelo tenga buenas calidades predictivas y estadísticas, 
-**esta es una pregunta mucha más difíci** que la contesta una comparación predictiva. No se refiere a 
-cómo son diferentes grupos de estados, si no a una misma unidad (estado) bajo distintas condiciones.
+**esta es una pregunta mucha más difíci** que la que contesta una comparación predictiva. No se refiere a 
+cómo son diferentes grupos de estados, si no a una misma unidad (estado) bajo distintas condiciones (@GelmanHill, cap 9).
 
 Hablaremos un poco más de esto, pero por lo pronto: es importante tener cuidado en interpretar
 comparaciones predictivas (que tienen utilidad) como causales (que en algunos casos son las que realmente nos interesa).
-
-
-
-
 
 
 ## Evaluación de modelos predictivos {-}
 
 En nuestros contexto, la modelación predictiva se separa en dos pasos claramente separados:
 
-- Construir con algunos datos $\mathcal{L} = \{(\mathbf{x}_i, y_i)\}_{i=1}^n$ una función $\hat{f}$.
+- Construir con algunos datos $\mathcal{L} = \{({x}^{(1)}, y^{1)}), ({x}^{(2)}, y^{2)}), \ldots, ({x}^{(n)}, y^{n)})\}$ una 
+función $\hat{f}$ para haer predicciones.
 - Evaluar el desempeño de $\hat{f}$ como predictor.
 
 En el ejemplo anterior usamos $k$-vecinos más cercanos. Una aproximación ingenua para medir
 la calidad de la función $\hat{f}$ que construimos sería calcular el **error de entrenamiento**,
 que está dado por
 
-$$\overline{err} = \frac{1}{n} \sum_i (y_i - \hat{f}(x_i))^2,$$
+$$\overline{err} = \frac{1}{n} \sum_i (y^{(i)} - \hat{f}(x^{(i)})^2,$$
 
 **y esto es una muy mala idea en general**. La razón es que cuando decimos **predicción** nos referimos a que
 vamos a aplicar el modelo para casos nuevos, que no hemos visto en la muestra de entrenamiento.
@@ -334,13 +333,14 @@ hay patrones que dependen demasiado fuertemente de la muestra, y que no generali
 
 En resumen, la tarea del análisis predictivo es la siguiente: dados 
 
-- Una función de pérdida $L(predicción, observado)$,
-- Datos de entrenamiento $\mathcal{L} = \{(\mathbf{x}_i, y_i)\}_{i=1}^n$
-- Datos de prueba $\mathcal{T} = \{(\mathbf{x'}_i, y'_i)\}_{i=1}^m$
+- Una función de error (o de pérdida) $Error(predicción, observado)$ para predicciones individuales
+- Datos de entrenamiento $\mathcal{L}  = \{({x}^{(1)}, y^{1)}), ({x}^{(2)}, y^{2)}), \ldots, ({x}^{(n)}, y^{n)})\}$
+- Datos de prueba $\mathcal{T} =  \{(\mathbf{x}^{(1)}, \mathbf{y}^{1)}), (\mathbf{x}^{(2)}, \mathbf{y}^{2)}), \ldots, (\mathbf{x}^{(m)}, \mathbf{y}^{m)})\}$
 
-Queremos construir un $\mathcal{L} \to \hat{f} $ (sólo depende de datos de entrenamiento) tal que
+Queremos construir un $\mathcal{L} \to \hat{f} $ (sólo depende de datos de entrenamiento) tal que el promedio
+de error sobre los datos de prueba:
 
-$$\hat{Err} = \frac{1}{m} \sum_{i = 1}^m L(\hat{f}(\mathbf{x'}_i) , y'_i))$$
+$$\hat{Err} = \frac{1}{m} \sum_{i = 1}^m Error(\hat{f}(\mathbf{x}^{(j)}) , \mathbf{y}^{(j)})$$
 
 sea lo más chico posible. Buscamos buen desempeño **fuera de la muestra** con la que construimos
 el modelo. Como veremos, el error de entrenamiento es útil como herramienta de diagnóstico, pero 
@@ -362,6 +362,94 @@ tiene acceso.
 parcialmente el área ahora floreciente de sistemas de recomendación.
 
 
+## Dos métodos regresión lineal y k-vecinos más cercanos
+
+Para entender cómo es que podemos tener éxito en la tarea fundamental del análisis predictivo, vamos a ver
+dos métodos simples para hacer predicciones:
+
+- $k$-vecinos más cercanos
+- regresión lineal
+
+El primer método lo explicamos en secciones anteriores, y se basa en la idea de intentar hacer predicciones
+puntual tomando promedios de la respuesta para datos cercanos a donde queremos predecir. 
+
+
+## Regresión lineal
+
+Si tenemos entradas $X_1,\ldots, X_p$, buscamos
+predictores que son promedios ponderados de las variables de entrada:
+
+$$f_b(X_1,\ldots, X_p) = b_0 + b_1 X_1 + \cdots + b_p X_p$$
+
+Con un conjunto de datos de entrenamiento $\mathcal{L}  = \{({x}^{(1)}, y^{1)}), ({x}^{(2)}, y^{2)}), \ldots, ({x}^{(n)}, y^{n)})\}$, intentamos encontrar los coeficientes $\beta$ minimizando
+el error de entrenamiento, o sea resolviendo le problema de **mínimos cuadrados**:
+
+$$\min_{b_0,b_1,\ldots, b_p} \frac{1}{n}\sum_{i=1}^n (y^{(i)} - f_b(x^{(i)}))^2$$
+
+Las b's (coeficientes) que resuelven este problema (que es convexo y *típicamente* tiene un solo mínimo) se pueden calcular analíticamente
+derivando e igualando a cero. Entonces el predictor que usamos es 
+
+$$\hat{f}(X_1, X_2, \ldots, X_p ) = \hat{b}_0 +\ {\hat{b}_1} X_1 + \cdots + \hat{b} X_p$$
+
+Es posible demostrar que las predicciones de este modelo son promedios ponderados de las $y_i$ observadas, pero 
+con ponderadores que resultan de la estructura lineal:
+$$\hat{y} = \hat{f} ({x}) = \frac{1}{n}\sum_{i=1} w_i y_i$$
+donde cada  $w_i$ solo dependen de las entradas de entrenamiento $x^{(i)}, x^{(2)}, \cdots, x^{(n)}$
+
+### Ejemplo {-}
+
+```{r, message = FALSE, echo = FALSE, fig.width=4, fig.height = 3}
+# De la respuesta https://stackoverflow.com/a/7549819
+set.seed(821)
+df <- data.frame(x = seq(1,100, 5))
+df$y <- 2 + 3 * df$x + rnorm(nrow(df), sd = 50)
+df$label <- ""
+df$label[15] <- "list(x^(15), y^(15))"
+p <- ggplot(data = df, aes(x = x, y = y)) + geom_smooth(method = "lm", se=FALSE) + 
+  geom_point() + geom_text(aes(label = label), 
+                           parse = TRUE, vjust = 1, hjust = -0.1)
+lm_eqn <- function(df){
+    m <- lm(y ~ x, df);
+    eq <- substitute(y == a + b %.% x, 
+         list(a = format(unname(coef(m)[1]), digits = 2),
+              b = format(unname(coef(m)[2]), digits = 2)))
+    as.character(as.expression(eq));
+}
+p + annotate("text", x = 25, y = 300, label = lm_eqn(df), parse = TRUE)
+```
+
+## Ejemplo: Ozono {-}
+
+Podemos intentar ajustar un modelo lineal a los datos de ozono para hacer predicciones, como hicimos antes
+para k vecinos más cercanos
+
+```{r}
+mod_1 <- lm(Ozone  ~  Temp + Wind + Solar.R + Temp:Wind + Solar.R:Temp, data = air)
+```
+
+Y podemos dibujar nuestro modelo sobre los datos, comparando con lo que obtuvimos con 27 vecinos más cercanos:
+
+````{r, message = FALSE, fig.width = 7, fig.height = 6}
+dat_1 <- air %>% filter(!is.na(Ozone) & !is.na(Solar.R))
+pred_grid <- expand.grid(Wind = c(5,10,15), Temp = seq(60, 90, 10), Solar.R = seq(20, 300, by = 10)) %>% 
+    mutate(Wind_cat = cut(Wind, quantile(airquality$Wind, c(0, 0.33, 0.66, 1)), include.lowest = T))
+pred_grid$Ozone <- predict(mod_1, pred_grid)
+g_lineal <- ggplot(air, aes(x = Solar.R, y = Ozone,  colour = Temp)) + geom_point() +
+    facet_wrap(~Wind_cat) + 
+    scale_colour_gradientn(colours = rainbow(2, rev = TRUE)) +
+    geom_line(data = pred_grid, aes(y = Ozone, group = interaction(Temp, Wind_cat)), size = 1) +
+    labs(subtitle = "Curvas de modelo lineal, para viento = 5, 10, 15") 
+gridExtra::grid.arrange(g_kvmc, g_lineal, ncol = 1)
+```
+
+*Discutir*: ¿Qué primeras ventajas ves de un modelo sobre otro? ¿Computacionales? ¿Interpretación?
+¿Calidad predictiva?
+
+La diferencia no es tan grande en términos de las predicciones. 
+Además de ventajas computacionales y quizá de interpretación (aunque hay más riesgo de sesgo en el modelo lineal), 
+una pregunta inicial genuina
+puede ser: ¿para qué usar métodos diferentes de vecinos más cercanos para predicción? La respuesta va
+más allá de interpretabilidad o conveniencia computacional.
 
 ## Métodos de predicción y la maldición de la dimensionalidad {-}
 
@@ -382,10 +470,11 @@ lo que quiere decir que todos los puntos están lejanos unos de otros.
 y entonces las predicciones son extrapolaciones graves, o tomamos muy pocos, y nuestro modelo es poco confiable
 y tiene alta variabilidad. Peor aún, aunque tomemos un vecino más cercano seguimos extrapolando gravemente.
 
-Esto es contraintuitivo en un principio. Podemos ver un ejemplo (@ESL):
+Esto es contraintuitivo en un principio.
 
 #### Ejemplo {-}
- Consideremos que la salida Y es determinística $Y = e^{-8\sum_{j=1}^p x_j^2}$.
+
+Este ejemplo es tomado de @ESL. Consideremos que la salida Y es determinística $Y = e^{-8\sum_{j=1}^p x_j^2}$.
 Vamos a usar 1-vecino más cercano para hacer predicciones, con 
 una muestra de entrenamiento de 1000 casos.
 Generamos $x^{i}‘s uniformes en $[ 1,1]$, para $p = 2$, y calculamos la respuesta 
@@ -441,12 +530,95 @@ En dimensiones altas, todos los conjuntos de entrenamiento factibles
 se distribuyen de manera rala en el espacio de entradas.
 
 
+## Estructura en modelos {-}
+
+Estas observaciones apuntan a que  métodos locales simples tenerán a funcionar mal
+en cuanto tenemos más de unas cuantas variables. ¿Qué salida puede tener este problema?
+
+- Si el problema tiene alguna estructura explotable (que se puede descubrir mediante sugerencias
+de teoría y expertos, exploración y conocimiento de los datos, y experimentación), es posible superar el
+la maldición de la dimensionalidad.
+- En primer lugar, porque tenemos mejores guías para escoger que variables usamos para predecir, y
+cuáles probablemente es mala idea incluír
+- En segundo lugar, porque podemos construir modelos más parsimoniosos que exploten la estructura del problema.
+
+### Ejemplo {-}
+Este segundo ejemplo también es de @ESL. Supongamos que estamos otra vez en un problema de dimensión alta
+
+Ahora intentamos algo similar con una función que es razonable aproximar
+con una función lineal. Esta función *solo depende de la primera entrada, y las demás
+componentes de $x$ son ruido en términos del problema de predicción:
+
+```{r}
+fun_cuad <- function(x)  0.5 * (1 + x[1])^2
+```
+
+Y queremos predecir para $x=(0,0,\ldots,0)$, cuyo valor exacto es
+
+```{r}
+fun_cuad(0)
+```
+
+Los datos se generan de la siguiente forma:
+
+```{r}
+simular_datos <- function(p = 40){
+    x <- map(1:1000,  ~ runif(p, -1, 1))
+    dat <- tibble(x = x) %>% mutate(y = map_dbl(x, fun_cuad)) 
+    dat
+}
+```
+
+Por ejemplo, para dimensión $p=1$ (nótese que una aproximación
+lineal no es tan mala):
+
+```{r, fig.width= 4, fig.height = 3}
+ejemplo <- simular_datos(p = 1) %>% mutate(x = unlist(x))
+ggplot(ejemplo, aes(x = x, y = y)) + geom_point() +
+    geom_smooth(method = "lm")
+```
+
+
+Ahora simulamos el proceso en dimensión $p=40$: simulamos las entradas, y aplicamos un vecino más cercano
+
+```{r}
+vmc_1 <- function(dat){
+    dat <- dat %>% 
+        mutate(dist_origen = map_dbl(x, ~ sqrt(sum(.x^2)))) %>% 
+        arrange(dist_origen)
+        mas_cercano <- dat[1, ]
+        mas_cercano$y
+}
+set.seed(834)
+dat <- simular_datos(p = 40)
+vmc_1(dat)
+```
+
+Este no es un resultado muy bueno (muy lejos de 0.5). Sin embargo, regresión se
+desempeña considerablemente mejor:
+
+```{r}
+regresion_pred <- function(dat){
+    p <- length(dat$x[[1]])
+    dat_reg <- cbind(
+        y = dat$y, 
+        x = matrix(unlist(dat$x), ncol = p, byrow=T)) %>% 
+        as.data.frame()
+    mod_lineal <- lm(y ~ ., dat = dat_reg)
+    origen <- data.frame(matrix(rep(0, p), 1, p))
+    names(origen) <- names(dat_reg)[2:(p+1)]
+    predict(mod_lineal, newdata = origen)
+}
+regresion_pred(dat)
+```
+
+Donde podemos ver que típicamente la predicción de regresión
+es mucho mejor que la de 1 vecino más cercano. **Ejercicio**: prueba con otras semillas
+
+
 ## ¿Cuál es la solución al problema de dimensión alta? {-}
 
-Estas observaciones apuntan a que  métodos simples y locales tienden a funcionar mal
-en cuanto tenemos más de unas cuantas variables.
-
-La solución a este problema no tiene atajos mágicos: igual que en análisis exploratorio,
+La solución a este problema, entonces, no tiene atajos mágicos: igual que en análisis exploratorio,
 este problema se mitiga cuando descubrimos estructura apropiada para el problema y 
 construimos esta estructura dentro de los modelos que queremos utilizar. Ejemplos son:
 
@@ -464,7 +636,7 @@ modelos estadísticos del lenguaje (probabilidades de ocurrencia de palabras dad
 información secuencialmente cercana.
 
 
-## ¿Por qué pueden ser malas las predicciones? {-}
+## Teoría: ¿Por qué pueden ser malas las predicciones? {-}
 
 En esta parte intentamos explicar algo de la teoría que intuitivamente hemos discutido en secciones anteriores.
 
@@ -505,7 +677,6 @@ donde el valor esperado es sobre el conjunto de entrenamiento ${\mathcal L}$ y $
 - El primer término le llamamos *sesgo* del predictor (si está consistentemente lejos de $f(x)$)
 - El segundo término es la *varianza* del predictor (qué tan sensible es a la muestra de entrenamiento)
 - Al tercer término le llamamos *error irreducible*.
-
 
 
 ## Ejemplo {-}
@@ -583,7 +754,16 @@ la curva roja.
 
 Aunque la descomposición de sesgo, varianza y error irreducible no aplica a todas las funciones
 de pérdida (por ejemplo en problemas donde la respuesta es una variable categórica), nos provee una guía
-para pensar en modelos predictivos y su desempeño
+para pensar en modelos predictivos y su desempeño.
+
+En nuestros ejemplos anteriores 
+
+1. Suavizadores con ventana más chica son más flexibles, y aunque su sesgo tiende a ser más bajo, ese
+precio se paga en varianza más alta. Suavizadores con ventan más grande son menos flexibles, tienen menos
+varianza, pero pueden tener más sesgo.
+2. Prediciones de k-vecinos más cercanos, con $k$ chica, tienden a tener más varianza y menos sesgo. Cuando $k$
+es grande, la varianza es menor pero el sesgo puede aumentar
+
 
 **Rigidez, sesgo y subajuste**
 
@@ -591,7 +771,9 @@ Todos estos nombres se refieren a ideas similares: los modelos que usamos no tie
 suficiente para aprender patrones que se generalizan y ayudan en la predicción, aún cuando haya mucha 
 evidencia y datos que sostengan ese patrón. 
 
-La recta del ejemplo anterior es muy rígida para este problema.
+La recta del ejemplo anterior es muy rígida para este problem y subajusta. O
+
+
 
 **Flexibilidad, varianza y sobreajuste**
 
@@ -600,8 +782,9 @@ capturando características asociadas a variación muestral o variación que no 
 Son características que no 
 generalizan en la predicción. Tienden a ser inestables (varían mucho con los datos).
 
-## Tradeoff rigidez - complejidad {-}
+El modelo rojo del ejemplo anterior es dedamisado flexible y sobreajusta.
 
+## Tradeoff rigidez - complejidad {-}
 
 Generalmente, cuando trabajamos en análisis predictivo, ajustes al modelo
 intercambian una forma de error por otro. Por ejemplo:
@@ -639,7 +822,7 @@ sesgo_var <-tibble(x = seq(0.5, 2, by = 0.01)) %>%
 
 ggplot(sesgo_var, 
        aes(x = x, y = error, colour = fuente)) + geom_line(size = 1) +
-    scale_color_colorblind() + xlab("Complejidad del modelo") + facet_wrap(~metodo)
+    scale_color_colorblind() + xlab("Complejidad del modelo") + facet_wrap(~metodo) + ylab("Error de predicción")
 ```
 
 

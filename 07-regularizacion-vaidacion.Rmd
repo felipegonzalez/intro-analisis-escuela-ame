@@ -17,7 +17,25 @@ Si nuestro problema es sesgo, sin embargo, estas acciones pueden no ser efectiva
 - Crear variables derivadas (por ejemplo, interacciones)
 - Conseguir mejores variables o mediciones
 
-Explicaremos algo acerca de los métodos de penalización.
+La pregunta es: ¿Cómo diagnosticamos si nuestro problema es sesgo o varianza (o ambos). 
+
+**Signos de que la varianza es alta (sobreajuste)**:
+
+- El error de prueba tiende a ser considerablemente más alto que el error de entrenamiento. El modelo se "pega" mucho
+a los datos de entrenamiento, y el error parece bajo. Sin embargo, cuando lo probamos con otra muestra el error se degrada.
+- El modelo cambia mucho con pequeñas perturbaciones de los datos de entrenamiento (por ejemplo, si hacemos bootstrap las 
+predicciones varían mucho)
+
+**Signos de que el sesgo es alta (subajuste)**:
+
+- El error de prueba tiende a ser similar al de entrenamiento. 
+- El modelo es muy estable, por ejemplo bajo replicaciones bootstrap de los datos. Sin embargo, hay partes en los datos
+donde el modelo consistemente sobrepredice y subpredice. 
+- Residuales (errores individuales) de entrenamiento tienen una distribución con colas que tienden a ser largas.
+
+
+
+
 
 ## Regresión lineal {-}
 
