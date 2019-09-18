@@ -45,9 +45,9 @@ gridExtra::grid.arrange(g_1, g_2, ncol = 2)
 ```
 
 Donde en rojo está nuestro estimador puntual de la mediana de cada
-grupo (la mediana muestral), y las rectas mustran un intervalo de 90\%
+grupo (la mediana muestral), y las rectas mustran un intervalo de 95\%
 para nuestra estimación de la mediana: esto quiere decir que 
-los valores poblacionales tienen probabilidad aproximada de 90\% de estar
+los valores poblacionales tienen probabilidad aproximada de 95\% de estar
 dentro del intervalo.
 
 Este análisis comunica correctamente que tenemos incertidumbre alta acerca de nuestras
@@ -70,7 +70,6 @@ En este curso, como ejemplo, y también por ser una técnica muy versátil, pres
 el **bootstrap no paramétrico**, donde utilizaremos simulación (y poder de cómputo) para producir
 este tipo de intervalos, bajo ciertas condiciones de extracción de la muestra que discutiremos
 más adelante.
-
 
 
 ## Distribución de Muestreo {-}
@@ -193,7 +192,6 @@ g_dist_muestreo
 ```
 
 
-
 ## El mundo bootstrap {-}
 
 El problema que tenemos ahora es que normalmente sólo tenemos una muestra, así que
@@ -206,7 +204,7 @@ la distribución de muestreo de nuestro estimador, y así entender su variabilid
 3. **Sin embargo, podemos estimar la distribución poblacional con nuestros valores muestrales**
 4. Si usamos la estimación del inciso anterior, entonces usando 1 podríamos tomar muestras
 de nuestros datos muestrales, como si fueran de la población, y usando el mismo tamaño de muestra.
-El muestreo lo hacemos con reemplazo.
+El muestreo lo hacemos con reemplazo, como la muestra original.
 5. A la distribución resultante le llamamos **distribución bootstrap** de la muestra
 6. Usamos la distribución bootstrap de la muestra para estimar la variabilidad en nuestra
 estimación con **la muestra original**.
@@ -224,7 +222,7 @@ Esta muestra nos da nuestro estimador de la distribución poblacional:
 ```{r}
 bind_rows(muestra %>% mutate(tipo = "muestra"),
     casas_pob %>% mutate(tipo = "población")) %>% 
-ggplot(aes(sample = precio_miles, colour = tipo, group = tipo, alpha = 0.2)) + 
+ggplot(aes(sample = precio_miles, colour = tipo, group = tipo), alpha = 0.1) + 
     geom_qq(distribution = stats::qunif) + scale_color_colorblind()
 ```
 
@@ -243,17 +241,39 @@ mediana_muestras <- map_dbl(1:5000, ~ muestra %>%  #muestreamos de la muestra, n
 
 Y nuestra estimación de la distribución de muestreo es entonces:
 
-```{r}
+```{r, fig.width =4, fig.height = 3}
 bootstrap <- tibble(mediana = mediana_muestras)
 ggplot(bootstrap, aes(sample = mediana)) + geom_qq(distribution = stats::qunif)
 ```
 
-Y podemos calcular ahora un intervalo de confianza del 90\% calculando los percentiles de
-esta distribución:
+Y podemos calcular ahora un intervalo de confianza del 90\% simplemente calculando los cuantiles de
+esta distribución (no son los cuantiles de la muestra original!):
 
 ```{r}
-quantile(mediana_muestras, c(0.05,  0.95)) %>% round
+limites_ic <- quantile(mediana_muestras, c(0.05,  0.95)) %>% round
+limites_ic
 ```
+
+Presentaríamos nuestro resultado como sigue: nuestra estimación puntual de la mediana es
+`r median(muestra$precio_miles)`, con un intervalo de confianza del 90\% de (`r limites_ic[1]`, `r limites_ic[2]`)
+
+## Ventajas y desventajas del bootstrap
+
+El bootstrap es una técnica versátil generalmente fácil de implementar (ventaja) - especialmente cuando a algún
+nivel podemos suponer que las muestras son idependientes e idénticamente distribuidas (desventaja).
+
+Por ejemplo: en muestreo estratificado, podemos hacer bootstrap sobre cada estrato por separado. En muestreo
+complejo, podemos hacer bootstrap de unidades primarias de muestreo, etc.
+
+Requiere más cómputo que fórmulas estándar (desventaja) que en algunos casos funcionan bien (por ejemplo, intervalos $t$ para
+una media), pero tenemos flexibilidad (ventaja) para aplicar en estadísticas diferentes de manera muchas veces trivial.
+
+Es una técnica estándar en el análisis de datos que se usa en un rango grande de aplicaciones (ventaja).
+
+Finalmente, en casos donde tenemos la población total, o el supuesto de muestras aleatorias es dudoso, lo podemos
+utilizar más informalmente como un análisis de sensibilidad de nuestros resultados. Es una perturbación a los
+datos (que podemos combinar con otros tipos de perturbaciones) para juzgar qué tan fuertemente depende nuestro
+análisis de los datos que tenemos a mano.
 
 
 ## Cobertura nominal y cobertura real
@@ -272,9 +292,9 @@ pueden consultarse recomendaciones de cómo mejorar intervalos basados en boostr
 se llaman *intervalos de percentiles*, pero hay más opciones simples que se desempeñan mejor 
 en ciertos casos.
 
-Y siempre podemos hacer ejercicios
+**Y siempre podemos hacer ejercicios
 de simulación bajo ciertos supuestos acerca de la población 
-para una estadística dada, y estimar empíricamente si la cobertura es adecuada. 
+para una estadística dada, y estimar empíricamente si la cobertura es adecuada. **
 
 ### Ejemplo
 
@@ -396,7 +416,10 @@ te <- tea %>% select(how, price, sugar)
 
 ```{r, echo = FALSE, message = FALSE}
 calcular_perfiles <- function(te){
-    tabla <- te %>% group_by(how, price) %>% tally() %>% group_by(how) %>% 
+    tabla <- te %>% group_by(how, price) %>% tally() %>% 
+        spread(price, n, fill = 0) %>% 
+        gather(price, n, -how) %>% 
+        group_by(how) %>% 
         mutate(prop_price = (100 * n / sum(n))) %>% 
         group_by(price) %>% mutate(prom_prop = mean(prop_price)) %>% 
         mutate(perfil = (prop_price / prom_prop - 1) %>% round(2))  
@@ -438,20 +461,21 @@ g_perfil <- ggplot(mutar_perfiles(tabla),
 g_perfil
 ```
 
-Hacemos bootstrap sobre toda la muestra:
+Hacemos bootstrap sobre toda la muestra, y repetimos exactamente el mismo proceso
+de construción de perfiles:
 
 ```{r}
-boot_perfiles <- map(1:100, function(x){
+boot_perfiles <- map(1:1000, function(x){
     te_boot <- te %>% sample_n(nrow(te), replace = TRUE)
     calcular_perfiles(te_boot) %>% mutate(rep = x)
 }) %>% bind_rows()
 ```
 
-y ahora resumimos y graficamos, esta vez de manera distinta:
+Ahora resumimos y graficamos, esta vez de manera distinta:
 
 ```{r, fig.width = 5, fig.height = 3}
 resumen_perfiles <- boot_perfiles %>% group_by(how, price) %>% 
-    summarise(perfil_media = mean(perfil), ymax = quantile(perfil, 0.9), ymin = quantile(perfil, 0.1)) 
+    summarise(perfil_media = mean(perfil), ymax = quantile(perfil, 0.95), ymin = quantile(perfil, 0.05)) 
 resumen_bolsa <- resumen_perfiles %>% ungroup %>% 
     filter(how == "tea bag") %>% select(price, perfil_bolsa = perfil_media)
 resumen_perfiles <- resumen_perfiles %>% left_join(resumen_bolsa) %>% 

@@ -59,7 +59,7 @@ evidencia para pensar que algo en el sistema cambió?
 
 En algunos casos, podemos construir distribuciones de referencia para comparar resultados
 que obtengamos con un "estándar" de variación, y juzgar si nuestros resultados son consistentes con la referencia
-o no (@Box78).
+o no (@box78).
 
 ### Ejemplo {-}
 
