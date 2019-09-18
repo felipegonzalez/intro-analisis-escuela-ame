@@ -8,7 +8,10 @@ library(glmnet)
 theme_set(theme_minimal(base_size = 14))
 ```
 
-En esta parte discutiremos las ideas básicas de los modelación predictiva. La tarea básica
+En esta parte discutiremos las ideas básicas de los modelación predictiva. Mucho de este material
+proviene de nuestra referencia principal que es @ESL. 
+
+La tarea básica
 del análisis predictivo es la siguiente: 
 
 Tenemos un conjunto de datos observados
