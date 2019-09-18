@@ -486,3 +486,48 @@ ggplot(resumen_perfiles, aes(x = price, y = perfil_media, ymax = ymax, ymin = ym
     facet_wrap(~how) + coord_flip() +
     geom_hline(yintercept = 0, colour = "gray") + ylab("Perfil") + xlab("Precio")
 ```
+
+Nótese una deficiencia clara del bootstrap: para los que compran té suelto, en la muestra no existen personas
+que desconocen de dónde provienen su té (No sabe/No contestó). Esto puede ser un hallazgo, pero produce un intervalo colapsado que no
+es razonable. 
+
+Podemos remediar esto de varias maneras: quitando del análisis los que no sabe o no contestaron, agrupando en otra categoría,
+usando un modelo con más estructura, o regularizando agregando proporciones del tipo usando conteos modificados: por ejemplo,
+agregando un caso de cada combinación (agregaría 18 personas "falsas" a una muestra de 290 personas):
+
+```{r}
+conteos_1 <- crossing(te %>% select(how) %>% unique, te %>% select(price) %>% unique)
+boot_perfiles <- map(1:1000, function(x){
+    te_aumentado <- te %>% select(how, price) %>% bind_rows(conteos_1)
+    te_boot <- te_aumentado %>% select(how, price) %>% 
+        sample_n(nrow(te), replace = TRUE)
+    calcular_perfiles(te_boot) %>% mutate(rep = x)
+}) %>% bind_rows()
+```
+
+Ahora resumimos y graficamos, esta vez de manera distinta:
+
+```{r, fig.width = 5, fig.height = 3}
+resumen_perfiles_aum <- boot_perfiles %>% group_by(how, price) %>% 
+    summarise(perfil_media = mean(perfil), ymax = quantile(perfil, 0.95), ymin = quantile(perfil, 0.05)) 
+resumen_bolsa <- resumen_perfiles_aum %>% ungroup %>% 
+    filter(how == "tea bag") %>% select(price, perfil_bolsa = perfil_media)
+resumen_perfiles_aum <- resumen_perfiles_aum %>% left_join(resumen_bolsa) %>% 
+    ungroup %>% 
+    mutate(price = fct_reorder(price, perfil_bolsa))
+ggplot(resumen_perfiles_aum, aes(x = price, y = perfil_media, ymax = ymax, ymin = ymin)) + 
+    geom_point(colour = "red") + geom_linerange() +
+    facet_wrap(~how) + coord_flip() +
+    geom_hline(yintercept = 0, colour = "gray") + ylab("Perfil") + xlab("Precio")
+```
+
+Y vemos que estos perfiles están encogidos a la diagonal (tienen más varianza )
+
+```{r}
+p_1 <- resumen_perfiles %>% select(how, price, perfil = perfil_media) 
+p_2 <- resumen_perfiles_aum %>% select(how, price, perfil_aum = perfil_media)
+datos_g <- left_join(p_1, p_2) %>% left_join(te %>% group_by(how, price) %>% tally) %>% 
+    mutate(n = ifelse(is.na(n), 1, n+1))
+ggplot(datos_g, aes(x = perfil, y = perfil_aum, colour = log(n), size=n)) + geom_point() + geom_abline() +
+    coord_equal(ratio = 1, xlim=c(-1, 2), ylim=c(-1, 2)) 
+```
