@@ -257,7 +257,8 @@ datos observados de los producidos con las permutaciones al azar.
 
 
 Vamos a intentar esto, por ejemplo usando una gráfica de cuantiles. Hacemos un *lineup*, o una
-*rueda de sospechosos*, donde 19 de los acusados son generados mediante permutaciones al azar 
+*rueda de sospechosos* (usamos el paquete @nullabor, ver @lineup), 
+donde 19 de los acusados son generados mediante permutaciones al azar 
 - las etiquetas de los datos observados se permutan al azar en los datos-,
 y el culpable (los verdaderos datos) están en una posición escogida al azar. ¿Podemos identificar
 los datos verdaderos? Para evitar sesgarnos, también ocultamos la etiqueta verdadera
@@ -506,25 +507,43 @@ Y el valor p de dos colas es
 
 ```{r}
 dist_perm_nv <- ecdf(cocientes_perm$cociente)
- dist_perm_nv(dif) + (1 - dist_perm_nv(1/dif))
+dist_perm_nv(dif) + (1 - dist_perm_nv(1/dif))
 ```
 
 Lo que muestra evidencia considerable, aunque no muy fuerte, de que la instrucción verbal ayuda a reducir el tiempo de fusión de los estereogramas. Regresaremos a este ejemplo para discutir la discusión de estadística usada y tratamiento de los datos.
 
-## Ejemplo (dimensión alta) {-}
+##  Separación de grupos {-}
 
-Referencia de Diane Cook
+Este ejemplo tomado de @cookwasps (tanto la idea como el código). La pregunta que se aborda en
+ese estudio es:
+
+- Existen métodos de clasificación (supervisados o no supervisados) para formar grupos en términos
+de variables que describen a los individuos
+- Estos métodos (análisis discriminante, o k-means, por ejemplo), pretenden formar grupos compactos,
+bien separados entre ellos. Cuando aplicamos el método, obtenemos clasificadores basados en las variables
+de entrada.
+- La pregunta es: ¿los grupos resultantes son producto de patrones que se generalizan a la población, o
+capitalizaron en variación aleatoria para formarse?
+- Especialmente cuando tenemos muchas mediciones de los individuos, y una muestra relativamente chica,
+Es relativamente fácil encontrar combinaciones de variables que separan los grupos, aunque estas combinaciones
+y diferencias están basadas en ruido y no generalizan a la población.
+
+Como muestran en @cookwasps, el *lineup* es útil para juzgar si tenemos evidencia en contra de que los
+grupos en realidad son iguales, y usamos variación muestral para separarlos.
+
+
+### Avispas {-}
 
 En el siguiente ejemplo, tenemos 4 grupos de avispas (50 individuos en total),
 y para cada individuo se miden expresiones
 de 42 genes distintos. La pregunta es: ¿Podemos separar a los grupos de avispas 
-dependiendo de sus mediciones. 
+dependiendo de sus mediciones?
 
 En este caso podemos usar análisis discriminante, que busca proyecciones de los
 datos en dimensión baja de forma que los grupos sean lo más compactos y separados posibles.
 
 Para probar qué tan bien funciona este método, podemos hacer una prueba de permutación, aplicamos
-LDA y observamos los resultados:
+LDA y observamos los resultados. 
 
 ```{r, echo = FALSE}
 data(wasps)
@@ -550,10 +569,10 @@ ggplot(d, aes(x=LD1, y=LD2, colour=Group)) +
 ```
 
 Y vemos que incluso permutando los grupos, es generalmente posible separarlos en grupos
-bien definidos: Existen combinaciones lineales que los separan. Que no podamos distinguir
+bien definidos: la búsqueda es suficientemente agresiva para encontrar 
+ combinaciones lineales que los separan. Que no podamos distinguir
 los datos verdaderos de las replicaciones nulas indica que este método difícilmente puede
 servir para separar los grupos claramente.
-
 
 Otro enfoque sería separar los datos en una muestra de entrenamiento y una de prueba (que discutiremos
 en la última sesión). Aplicamos el procedimiento a la muestra de entrenamiento y luego vemos qué pasa
@@ -579,7 +598,7 @@ ggplot(wasp_lda, aes(x = LD1, y = LD2, colour = grupo)) + geom_point(size = 3) +
     facet_wrap(~tipo) + scale_color_colorblind()
 ```
 
-Aunque esta separación es menos efectiva en este ejemplo por la muestra chica, podemos ver
+Aunque esta separación de datos es menos efectiva en este ejemplo por la muestra chica, podemos ver
 que la separación lograda en los datos de entrenamiento probablemente se debe a variación muestral.
 
 
@@ -594,8 +613,9 @@ posteriormente por otros investigadores. Por ejemplo:
 - Mostrar palabras relacionadas con "viejo" hacen que las personas caminen más lento (efectos de [priming](https://www.nature.com/news/nobel-laureate-challenges-psychologists-to-clean-up-their-act-1.11535)) 
 
 En todos estos casos, la evidencia de estos efectos fue respaldada finalmente (pues es requisito para
-publicación) por una prueba de hipótesis nula con un valor p menor a 0.05. Este estándar de publicación
-es seguido por varias áreas y revistas. 
+publicación) por una prueba de hipótesis nula con un valor p menor a 0.05. La razón es que este estándar de publicación
+es seguido por varias áreas y revistas. La no-replicación va mucho más allá de la tasa de falsos positivos que
+sugeriría este método (es decir, menor a 0.05).
 
 Este problema de replicabilidad parece ser más frecuente cuando:
 
@@ -619,8 +639,9 @@ estamos buscando las comparaciones correctas. Algunas pueden ser:
 - Distintas maneras de interpretar los criterios de inclusión (por ejemplo, el estudio se planeó
 para personas entre 20 y 30 años, y tenemos tres casos con 33 años. ¿Los dejamos o los usamos?)
 
-Dado un juego de datos, las justificaciones de las decisiones que se toman en cada paso son razonables, pero con datos distintos las decisiones podrían ser diferentes. 
-Este es el jardín de los senderos que se bifurcan  [Gelman](http://www.stat.columbia.edu/~gelman/research/published/incrementalism_3.pdf), 
+Dado un juego de datos, las justificaciones de las decisiones que se toman 
+en cada paso son razonables, pero con datos distintos las decisiones podrían ser diferentes. 
+Este es el **jardín de los senderos que se bifurcan**  [Gelman](http://www.stat.columbia.edu/~gelman/research/published/incrementalism_3.pdf), 
 que invalida en parte el uso valores p como criterio de evidencia contra la hipótesis nula.
 
 Esto es exacerbado por el hecho de que existe presión fuerte sobre los investigadores
@@ -633,7 +654,10 @@ Ver por ejemplo el [comunicado de la ASA](https://www.amstat.org/asa/files/pdfs/
 
 En el ejemplo de datos de fusión, decidimos probar, por ejemplo, el promedio de
 los cuartiles inferior y superior, lo cual no es una decisión típica pero usamos como
-ilustración.
+ilustración. Ahora intentamos usar distintas mediciones de la diferencia entre los grupos,
+usando distintas medidas resumen y transformaciones (por ejemplo, con o sin logaritmo). Aquí hay
+unas 12 combinaciones distintas para hacer el análisis (multiplicadas por criterios
+de "aceptación de datos en la muestra", que simulamos tomando una submuestra al azar):
 
 
 ```{r}
@@ -643,31 +667,33 @@ media_cuartiles <- function(x){
 }
 valor_p_fusion <- function(fusion, stat_fusion = stat_fusion, trans = identity, comp = VV / NV){
     pos <- 1
-    reps <- lineup(null_permute("nv.vv"), pos =1, fusion, n = 10000)
+    reps <- lineup(null_permute("nv.vv"), pos =1, fusion, n = 20000)
     dif <- fusion %>% group_by(nv.vv) %>% 
         summarise(valor_est = {{ stat_fusion }}(time)) %>% 
         spread(nv.vv, valor_est) %>% mutate(dif = {{ comp }} ) %>% pull(dif)
     cocientes_perm <- reps  %>%  group_by(.sample, nv.vv) %>% 
         summarise(valor_est = {{ stat_fusion }} (time)) %>% 
         spread(nv.vv, valor_est) %>% 
-        summarise(cociente = ({{ comp }}))
-    2*ecdf(cocientes_perm$cociente)(dif)
+        summarise(diferencia = ({{ comp }}))
+    dist_perm <- ecdf(cocientes_perm$diferencia)
+    dist_perm(dif) + (1 - dist_perm(-dif))
 }
 ```
 
 
 
 ```{r}
-valor_p_fusion(fusion %>% sample_frac(0.8), 
+set.seed(772)
+valor_p_fusion(fusion %>% sample_frac(0.9), 
                stat_fusion = mean, trans = identity, comp = VV - NV)
-valor_p_fusion(fusion %>% sample_frac(0.8), 
-               stat_fusion = median, trans = identity, comp = VV / NV)
-valor_p_fusion(fusion %>% sample_frac(0.8), 
+valor_p_fusion(fusion %>% sample_frac(0.9), 
+               stat_fusion = median, trans = identity, comp = log(VV / NV))
+valor_p_fusion(fusion %>% sample_frac(0.9), 
                stat_fusion = media_cuartiles, trans = identity, 
-               comp = VV / NV)
-valor_p_fusion(fusion %>% sample_frac(0.8), 
+               comp = log(VV / NV))
+valor_p_fusion(fusion %>% sample_frac(0.9), 
                stat_fusion = median, trans = log, comp = VV - NV)
-valor_p_fusion(fusion %>% sample_frac(0.8), stat_fusion = mean, trans = log, comp = VV - NV)
+valor_p_fusion(fusion %>% sample_frac(0.9), stat_fusion = mean, trans = log, comp = VV - NV)
 
 ```
 
@@ -677,22 +703,22 @@ los valores p pueden tener poco significado.
 ## Soluciones {-}
 
 El primer punto importante es reconocer que la mayor parte de nuestro trabajo
-es exploratorio (recordemos el proceso complicado del análisis de datos de refinamiento de preguntas). En este tipo de trabajo, reportar valores p puede tener poco sentido,
+es **exploratorio** (recordemos el proceso complicado del análisis de datos de refinamiento de preguntas). 
+En este tipo de trabajo, reportar valores p puede tener poco sentido,
 y mucho menos aceptar algo "verdadero" cuando pasa un umbral de significancia dado.
+
+Nuestro interés principal al hacer análisis es expresar correctamente y de manera útil la incertidumbre (asociada a variación muestral, por ejemplo) para que el proceso de toma de decisiones sea informado. **Un** resumen de **un número** (valor $p$, o el que sea) no puede ser tomado como criterio para tomar una decisión que generalmente es compleja.
 
 En la siguiente sección nos concentraremos en una cara más útil de esta
 valuación de evidencia, cuantificando la variabilidad que nuestros resultados pueden
 tener hasta donde sea posible.
 
-Nuestro interés principal al hacer análisis es expresar correctamente y de manera útil la incertidumbre (asociada a variación muestral, por ejemplo) para que el proceso de toma de decisiones sea informado. **Un** resumen de **un número** (valor $p$, o el que sea) no puede ser tomado como criterio para tomar una decisión que generalmente es compleja.
-
-En áreas como la sicología, existen ahora movimientos fuertes en 
+Por otra parte, los estudios confirmatorios (donde se reportan valores p ) 
+también tienen un lugar. En áreas como la sicología, existen ahora movimientos fuertes en 
 favor de la replicación de estudios prometedores pero donde hay sospecha
-de grados de libertad del investigador. 
-
-Este movimiento
-sugiere dar valor a los estudios exploratorios que no reportan valor p, 
+de grados de libertad del investigador. Este movimiento
+sugiere dar valor a los **estudios exploratorios** que no reportan valor p, 
 y posteriormente, si el estudio
-es de interés, puede intentarse una replicación confirmatoria, con potencia más alta y con planes de análisis predefinidos.
+es de interés, puede intentarse una **replicación confirmatoria, con potencia más alta y con planes de análisis predefinidos**.
 
 
