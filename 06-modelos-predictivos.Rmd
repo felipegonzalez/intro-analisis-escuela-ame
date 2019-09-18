@@ -1,5 +1,52 @@
 # Modelación predictiva
 
+¿Qué significa tener éxito en una tarea predictiva? 
+¿Cuáles son los ingredientes básicos para tener éxitos en la tarea prediciva?
+
+En la tarea general del análisis predictivo, hablamos de lograr **predicciones precisas**, y ese enfoque
+es poderoso en parte porque es simple, y es un lugar donde tenemos que poner esfuerzo. 
+
+Pero después tenemos que considerar que en nuestros problemas aplicados, tener éxito significa
+usualmente que la inclusión de predicciones en el proceso de toma decisiones muestra
+mejoras claras en métricas importantes *con respecto a lo que se hacía antes* (uso de reglas simples, completar tareas con
+intervención discrecional de personas). Esto significa que generalmente estamos trabajando contra un **estándar dado**:
+
+- Usar probabilidades de cancelación (modelo) de cuenta para ofrecer incentivos, en lugar de usar reglas simples 
+(como días sin usar la tarjeta, el teléfono, etc.)
+- Asignar programas sociales según predicciones de vulnerabilidades y capacidades futuras de los hogares, 
+en lugar de usar reglas simples como localización geográfica o estimaciones simples de ingreso.
+- Dar créditos según juicios de un gerente de banco en lugar de mediante un modelo de calificación crediticia.
+- Acercarnos a un *benchmark* humano de clasificación de textos o imágenes de manera comparable a una persona, 
+traducir textos a niveles comparables a un humano (según páneles de jueces), etc.
+
+Aunque en el caso de procesos más maduros que incorporan modelos predictivos, muchas veces el éxito de un
+esfuerzo es posible reducirlo a mejoras en la precisión de las predicciones.
+
+
+## ¿Qué se necesita para lograr buenos resultados con el enfoque predictivo?
+
+Más adelante hablaremos de la construcción y evaluación de modelos. Consideramos primero los ingredientes
+básicos para tener buenos resultados con el enfoque predictivo:
+
+- Tenemos la información correcta acerca de la variable que queremos predecir. Esto implica generalmente que 
+nuestro esfuerzo se hace en un contexto donde la recolección y el análisis de datos
+ya se hace de manera sistemática y adaptada al problema.
+
+- El enfoque predictivo se enriquece con un ciclo de aplicación de modelo, medición de métricas, y mejora constante. Este ciclo
+produce más datos, a veces diferentes, y el objetivo es dirigir esfuerzos en recolectar más datos importantes y adaptarnos
+a cambios en el sistema.
+
+- Finalmente, y quizá más centrado en la tarea fundamental del análisis predictivo, es necesario experimentar con distintos
+enfoque de procesamiento de la información disponible y el uso de distintos modelos y enfoques predictivos.
+
+
+
+
+
+## Predicciones y comparaciones
+
+
+
 ```{r setup6, message = FALSE}
 library(tidyverse)
 library(lubridate)
@@ -8,8 +55,7 @@ library(glmnet)
 theme_set(theme_minimal(base_size = 14))
 ```
 
-En esta parte discutiremos las ideas básicas de los modelación predictiva. La tarea básica del análisis predictivo 
-es la siguiente: 
+
 
 Tenemos un conjunto de datos observados
 
