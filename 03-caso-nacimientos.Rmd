@@ -17,7 +17,7 @@ diseño analítico? ¿Las comparaciones son útiles? ¿Hay aspectos multivariado
 explica o sugiere estructura, mecanismos o causalidad?
 
 
-## Datos de natalidad para México
+## Datos de natalidad para México {-}
 
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE}

@@ -23,7 +23,7 @@ Aunque en el caso de procesos más maduros que incorporan modelos predictivos, m
 esfuerzo es posible reducirlo a mejoras en la precisión de las predicciones.
 
 
-## ¿Qué se necesita para lograr buenos resultados con el enfoque predictivo?
+## ¿Qué se necesita para lograr buenos resultados con el enfoque predictivo? {-}
 
 Más adelante hablaremos de la construcción y evaluación de modelos. Consideramos primero los ingredientes
 básicos para tener buenos resultados con el enfoque predictivo:
@@ -43,7 +43,7 @@ enfoque de procesamiento de la información disponible y el uso de distintos mod
 
 
 
-## Predicciones y comparaciones
+## Predicciones y comparaciones {-}
 
 
 
@@ -408,10 +408,10 @@ tiene acceso.
 parcialmente el área ahora floreciente de sistemas de recomendación.
 
 
-## Dos métodos regresión lineal y k-vecinos más cercanos
+## Dos métodos: regresión lineal y k-vecinos más cercanos {-}
 
 Para entender cómo es que podemos tener éxito en la tarea fundamental del análisis predictivo, vamos a ver
-dos métodos simples para hacer predicciones:
+dos métodos simples (@ESL) para hacer predicciones:
 
 - $k$-vecinos más cercanos
 - regresión lineal
@@ -420,7 +420,7 @@ El primer método lo explicamos en secciones anteriores, y se basa en la idea de
 puntual tomando promedios de la respuesta para datos cercanos a donde queremos predecir. 
 
 
-## Regresión lineal
+## Mínimos cuadrados para regresión lineal {-}
 
 Si tenemos entradas $X_1,\ldots, X_p$, buscamos
 predictores que son promedios ponderados de las variables de entrada:

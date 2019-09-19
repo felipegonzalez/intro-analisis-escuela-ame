@@ -461,7 +461,7 @@ La diferencia observada es más extrema, y es muy poco probable que hayamos obse
 por variación muestra. Tenemos evidencia de que la mediana del grupo "b" es más alta en la población que
 "c".
 
-## Ejemplo: tiempos de fusión (opcional)
+## Ejemplo: tiempos de fusión (opcional) {-}
 
 Consideremos el ejemplo de fusión de estereogramas que vimos anteriormente. Una pregunta 
 que podríamos hacer es: considerando que hay mucha variación en el tiempo de fusión dentro

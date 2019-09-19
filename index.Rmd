@@ -10,18 +10,24 @@ link-citations: yes
 description: "Notas para el taller de intro a análisis de datos de la Escuela AME 2019"
 ---
 
-# Temario
+# Acerca del curso
 
 Notas y materiales para el taller de intro al análisis de datos de la Escuela
-AME 2019: Ciencia de datos
+AME 2019: Ciencia de datos. 
 
-## Temas
-
-1. Principios de análisis. Análisis exploratorio
-2. Inferencia 
-3. Predicción
+Este es un curso para principiantes del análisis de datos. Busca ilustrar ideas 
+y principios importantes, y algunas ideas de herramientas útiles en el análisis usual.
 
 
-## Referencias importantes
+
+## Temas {-}
+
+1. Principios de análisis. Análisis exploratorio de datos
+2. Inferencia:Permutaciones y Remuestreo 
+3. Análisis predictivo
 
 ## Instrucciones
+
+- ¿Dónde están las notas? En las notas sólo mostramos partes del código (las que consideramos pueden ayudar a entender mejor los conceptos)
+- ¿Dónde está el código y cómo correr el código? Repositorio y Rstudio Cloud
+- Qué actividades haremos: ejemplo de aplicación. Probar que funciona

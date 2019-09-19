@@ -45,7 +45,7 @@ donde el modelo consistemente sobrepredice y subpredice.
 
 
 
-## Predicción de Grasa corporal
+## Predicción de Grasa corporal {-}
 
 Supongamos que queremos predecir el porcentaje de grasa en el cuerpo a partir de varias
 medidas simples del cuerpo (estatura, peso, circunferencia de abdomen, cuello, rodilla, etc.). 
@@ -66,7 +66,7 @@ library(glmnet)
 source("R/funciones_auxiliares.R")
 ```
 
-```{r}
+```{r, message = FALSE}
 preprocesar <- function(data){
   # un ejemplo de preprocesamiento
     data_proc <- data %>% 
@@ -118,7 +118,7 @@ gp_tbl %>% formatear_tabla()
 
 
 
-## Grasa corporal: analista 1
+## Grasa corporal: mínimos cuadrados {-}
 
 El primer analista decide incluir todas las variables en un modelo lineal:
 
@@ -173,7 +173,7 @@ error_1
 ```
 
 
-## Grasa corporal: analista 2
+## Grasa corporal: selección de algunas variables {-}
 
 El analista 2 reconoce que hay información común en las variables que puede producir varianza. Después de 
 pensar no mucho, decide usar un método simple: simplemente va a usar la medida de peso y estatura para 
@@ -208,7 +208,7 @@ error_2
 ```
 
 
-## Regularización: analista 3 {-}
+## Grasa corporal: regularización {-}
 
 El analista 3 decide que todas las variables podrían tener sentido para abordar este problema, pero
 reconoce que puede tener un problema de varianza. Decide usar regresión regularizada (elastic net)
@@ -254,7 +254,7 @@ error_tbl %>% knitr::kable(type = "html")
 Con esta información, bastaría para escoger el modelo con regularización $\lambda = 2$. Sin embargo, hay más razones
 para hacerlo. 
 
-## Coeficientes
+## Coeficientes {-}
 
 Examinemos los coeficientes que obtuvimos de cada modelo
 
@@ -350,17 +350,26 @@ Hay varias maneras de construir estos intervalos. Lo más importante es:
 la muestra de prueba para este propósito.
 
 
-## Ejemplo: precios de casas
+## Ejemplo: precios de casas {-}
 
 Consideramos un modelo para predecir precios de casas basadas in un bosque aleatorio:
 
-```{r}
+```{r, message = FALSE, echo = FALSE}
 source("R/casas_preprocesamiento.R")
 set.seed(21)
 casas_completo <- casas
+```
+
+Separamos muestra de entrenamiento y prueba:
+
+```{r}
 casas_t <- casas_completo %>% sample_frac(0.9)
 casas_p <- casas_completo %>% anti_join(casas_t)
+```
 
+Ajustamos un bosque aleatorio:
+
+```{r}
 library(rfinterval)
 intervals_sc <- rfinterval(precio_miles ~ area_habitable_sup_m2 + calidad_gral +
                                nombre_zona + condicion_gral + aire_acondicionado +

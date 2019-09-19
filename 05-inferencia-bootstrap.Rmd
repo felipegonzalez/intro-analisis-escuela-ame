@@ -257,7 +257,7 @@ limites_ic
 Presentaríamos nuestro resultado como sigue: nuestra estimación puntual de la mediana es
 `r median(muestra$precio_miles)`, con un intervalo de confianza del 90\% de (`r limites_ic[1]`, `r limites_ic[2]`)
 
-## Ventajas y desventajas del bootstrap
+## Ventajas y desventajas del bootstrap {-}
 
 El bootstrap es una técnica versátil generalmente fácil de implementar (ventaja) - especialmente cuando a algún
 nivel podemos suponer que las muestras son idependientes e idénticamente distribuidas (desventaja).
