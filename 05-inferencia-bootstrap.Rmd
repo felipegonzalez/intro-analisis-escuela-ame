@@ -59,6 +59,31 @@ o tomar una decisión en este momento: la decisión asociada
 a estas estimaciones es algo más complicado que tenemos que hacer con los expertos y/o 
 interesados en el tema. Este análisis informa esa decisión.
 
+## Interpretación de intervalos de confianza {-}
+
+Generalmente,  "intervalo de confianza" (de 90\% de confianza, por ejemplo) significa, desde
+el punto de vista frecuentista:
+
+- Cada muestra produce un intervalo distinto. Para el 90\% de las muestras posibles, el intervalo
+cubre al valor poblacional.
+- Así que con *alta probabilidad*, el valor poblacional está dentro del intervalo.
+- Intervalos más anchos nos dan más incertidumbre acerca de dónde está el verdadero valor poblacional
+(y al revés para intervalos más angostos)
+
+Existen también "intervalos creíbles" (de 90\% de probabilidad, por ejemplo), que se interpetan de
+forma bayesiana:
+
+- Con alta probabilidad, creemos que el valor poblacional está dentro del intervalo creíble.
+
+**La técnica que veremos a continuación se puede interpretar de las dos maneras**. 
+
+- La interpretación bayesiana es más natural
+- La interpretación frecuentista nos da maneras empíricas de probar si los intervalos de
+confianza están bien calibrados o no: es un mínimo que "intervalos del 90\%" debería satisfacer.
+
+Así que tomamos el punto de vista bayesiano, pero requerimos que nuestros intervalos cumplan las
+garantías frecuentistas.
+
 ## Cómo producir intervalos para estimación {-}
 
 Existen muchas técnicas para construir estos intervalos que muestran la incertidumbre
@@ -350,6 +375,43 @@ intervalos %>% mutate(cubre = valor_poblacional > inf & valor_poblacional < sup)
 Para este número de repeticiones, estos números son consistentes con la cobertura *nominal*
 de 90\%.
 
+## Ejemplo: estereogramas
+
+En este caso, queremos hacer inferencia sobre la diferencia de tiempo de reconocimiento de los grupos. 
+Como discutimos antes, preferimos hacer comparaciones multiplicativas. En este caso particular,
+compararemos el cociente de las medias:
+
+Podemos adaptar el bootstrap en este caso para dos grupos: hacemos remuestreo de cada grupo, comparamos
+diferencias, y repetimos
+
+```{r, message = FALSE}
+fusion <- read_delim("./datos/fusion_time.txt", delim = " ", trim_ws = TRUE)
+muestra_boot <- function(datos, grupo, medicion, fun_muestra, comparacion){
+    est_boot <- datos %>% group_by({{ grupo }}) %>% 
+      sample_n(n(), replace = T) %>% 
+      summarise(est = fun_muestra( {{ medicion }})) %>% 
+      spread(nv.vv, est) %>% 
+      mutate(comp = {{ comparacion }}) %>% 
+      pull(comp)
+    est_boot
+}
+muestra_boot(fusion, nv.vv, time, median, VV / NV)
+```
+
+```{r, fig.width = 4, fig.height = 3}
+reps_boot <- map_dbl(1:2000, ~ muestra_boot(fusion, nv.vv, time, mean, VV / NV))
+qplot(1:length(reps_boot), sort(reps_boot))
+```
+
+y un intervalo de 90\% sería:
+
+```{r}
+quantile(reps_boot, c(0.05, 0.95))
+```
+
+Y esta sería una forma de presentar nuestros resultados: hay probabilidad considerable de que el efecto
+de este tratamiento sea marginal (una reducción de 10\%), aunque lo más probables es que tenga un efecto
+consdierable (reducción alrededor de 60\% del tiempo de fusión).
 
 ## Bootstrap y estimadores complejos: suavizadores {-}
 

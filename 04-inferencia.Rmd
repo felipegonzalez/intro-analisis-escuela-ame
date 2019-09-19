@@ -9,38 +9,38 @@ theme_set(theme_minimal(base_size = 14))
 ```
 
 
-Una buena parte de los problemas de análisis de datos tenemos información incompleta. Por ejemplo:
+En una buena parte de los problemas de análisis de datos tenemos información incompleta. Por ejemplo:
 
-- Sólo observamos una parte de la población o del sistema de interés 
+- **No observamos todas las unidades en interés**: Sólo observamos una parte de la población o del sistema de interés. 
 (a veces por costo o tiempo, a veces porque observaciones de interés están en futuro, por ejemplo).
-- Existen variables para las cuales no tenemos información que influyen en las medidas de interés
+- **No observamos todas las variables de interés**: Existen variables para las cuales no tenemos información que influyen
+en las observaciones que estamos considerando.
 
-En estos casos, el problema es que **las comparaciones que hacemos están sujetas a fluctuaciones de origen desconocido**: 
-variación muestral, acción de variables desconocidas, por ejemplo. Cuando hacemos comparaciones, entonces, debemos de alguna
-forma integrar la **incertidumbre** producto de estas fluctuaciones. Y algo que no queremos hacer es **sobreinterpretar** esas fluctuaciones como diferencias sustantivas en las comparaciones que nos interesan.
+En ambos casos, las comparaciones que hacemos están sujetas a variabilidad que no controlamos. Podemos
+pensar en esta variabiliad de dos formas:
+
+- **Diferencias sistemáticas**: por ejemplo, sólo observamos cierto tipo de unidades, con características muy particulares, o
+en el caso de variables, no tenemos información de variables que afectan nuestras comparaciones de manera sistemática. Estas 
+consideraciones inducen incertidumbre en nuestro análisis que es relativamente difícil de cuantificar.
+
+- **Diferencias no sistemáticas**: si descartamos la primera posibilidad, consideramos que nuestras comparaciones están
+influidas por *fluctuaciones* que se deben al azar. En este caso, nuestras comparaciones pueden ser difíciles de interpretar
+por esa componente de ruido:  ¿cómo podemos
+saber si una comparación se ve de cierta manera debida a fluctuaciones debidas al azar (pues tenemos información incompleta)?
+
+La incertidumbre del segundo caso es más fácil de cuantificar bajo ciertas condiciones: 
+
+- Cuando tenemos cuantificaciones históricas de la variabilidad natural de un proceso,
+- Cuando introducimos patrones de aleatorización conocidos y cuantificables en la selección de la muestra o aplicación de tratamientos,
+por ejemplo.
 
 
-- Podemos en primer lugar pensar qué variables que no tenemos podrían estar produciendo variación en los datos, y si esa variación tiene algún patrón que podría dificultar nuestras comparaciones de manera sistemática.
-- En segundo lugar, cuando esa variación de origen incierto tiene patrones más simples, 
- podemos considerar modelos  para esas fluctuaciones que nos permitan separar señal y ruido en los datos,
-o entender qué tanto ruido producen esas fluctuaciones en nuestras comparaciones.
-
-Por ejemplo:
-
-- Si usamos una muestra de una población para generalizar a la población, queremos separar de
-comparaciones y diferencias de nuestra muestra que generalizan a la población de otras que se producen por variación muestral
-- Cuando queremos juzgar si un conjunto de datos observados es consistente con un modelo (o con otro conjunto de datos observados), considerando que hay variables que no controlamos que afectan a ambos conjuntos de datos.
-
-En todos los casos, el paso importante es intentar separar señales útiles (para explicar, predecir,
-o mostrar estructura) de *fluctuaciones* que resultan de variables sobre las que no tenemos información.
-
-Consideraremos dos herramientas fundamentales de la estadística para acercarnos 
-a este fin: pruebas de hipótesis e intervalos de confianza.
 
 ## Pruebas de hipótesis {-}
 
 Las primeras técnicas que veremos intentan contestar la siguiente pregunta: 
-si observamos
+
+- Si observamos
 cierto patrón en los datos, ¿cómo podemos cuantificar  la evidencia de que es un
 patrón notable y no sólo debido a fluctuaciones en los datos particulares que tenemos?
 ¿Cómo sabemos que no estamos **sobreinterpretando** esas fluctuaciones?
@@ -57,13 +57,16 @@ evidencia para pensar que algo en el sistema cambió?
 ## Comparación con poblaciones de referencia {-}
 
 
-En algunos casos, podemos construir distribuciones de referencia para comparar resultados
+En las prueba de hipótesis, tratamos de construir distribuciones de referencia para comparar resultados
 que obtengamos con un "estándar" de variación, y juzgar si nuestros resultados son consistentes con la referencia
-o no (@box78).
+o no (@box78). 
+
+En algunos casos, ese estándar de variación puede construirse con datos históricos.
 
 ### Ejemplo {-}
 
-Supongamos que estamos considerando cambios rápidos en una serie de tiempo de alta frecuencia. Hemos observado la serie en su estado "normal" durante un tiempo considerable, y cuando observamos nuevos
+Supongamos que estamos considerando cambios rápidos en una serie de tiempo de alta frecuencia. 
+Hemos observado la serie en su estado "normal" durante un tiempo considerable, y cuando observamos nuevos
 datos **quisiéramos juzgar si hay indicaciones o evidencia en contra de que el sistema sigue funcionando
 de manera similar**. 
 
@@ -119,18 +122,20 @@ ggplot(ventanas_tbl$lineup, aes(x = t_0, y = obs, colour = factor(rep==ventanas_
 ```
 
 ¿Vemos algo diferente en los datos nuevos (el panel de color diferente)? 
-Indpendientemente de la respuesta, vemos que hacer **este análisis de manera tan simple no es razonable**: 
+
+Indpendientemente de la respuesta, vemos que hacer **este análisis de manera tan simple no es siempre útil**: 
 seguramente podemos encontrar maneras en que la nueva muestra (4) es diferente
-a muestras históricas. Por ejemplo, ninguna de muestras tiene un "forma de montaña" tan clara. Nos preguntamos si no estamos **sobreinterpretando** variaciones que son parte normal del proceso. 
+a muestras históricas. Por ejemplo, ninguna de muestras tiene un "forma de montaña" tan clara. 
+
+Nos preguntamos si no estamos **sobreinterpretando** variaciones que son parte normal del proceso. 
 
 Podemos hacer un mejor análisis si extraemos varias muestras del comportamiento
 usual del sistema, graficamos junto a la nueva muestra, y **revolvemos** las gráficas
-para que no sepamos cuál es cuál. 
-Entonces la pregunta es:
+para que no sepamos cuál es cuál.  Entonces la pregunta es:
 
 - ¿Podemos detectar donde están los datos nuevos?
 
-Esta se llama una **prueba de lineup**, o una prueba de ronda de sospechosos (tomado de @lineup).
+Esta se llama una **prueba de lineup**, o una *prueba de ronda de sospechosos* (@lineup).
 En la siguiente gráfica, en uno de los páneles
 están los datos recientemente observados.  ¿Hay algo en los datos que distinga al patrón nuevo?
 
@@ -145,7 +150,7 @@ ggplot(prueba_tbl$lineup, aes(x = t_0, y = obs)) + geom_line() +
 ¿Qué implica que la gráfica que escogamos como "más diferente" no sean los datos nuevos? 
 ¿Qué implica que le "atinemos" a la gráfica de los datos nuevos?
 
-Ahora contrastemos con  un ejemplo donde ocurre un cambio considerable. En el siguiente caso,
+Ahora contrastemos con otro ejemplo. En el siguiente caso obtenemos:
 
 ```{r, message=FALSE, echo = FALSE}
 set.seed(912)
@@ -159,8 +164,9 @@ Aunque es imposible estar seguros de que ha ocurrido un cambio, la diferencia de
 series es muy considerable. Si identificamos los datos correctos,
 la probabilidad de que hayamos señalado la nueva serie "sobreinterpretando" 
 fluctuaciones en un proceso que sigue comportándose normalente es 0.05 - relativamente baja.
-Detectar los datos diferentes es evidencia en contra de que el sistema sigue funcionando de la misma
-manera que antes.
+**Detectar los datos diferentes es evidencia en contra de que el sistema sigue funcionando de la misma
+manera que antes.**
+
 
 **Observaciones y terminología**:
 
@@ -181,9 +187,9 @@ datos correctos cuando la hipótesis nula es cierta (el sistema no ha cambiado).
 En el caso de 20 paneles, la significancia es de 1/20 = 0.05. Cuando detectamos los datos nuevos,
 niveles de significancia más bajos implican más evidencia en contra de la nula.
 
-5. Si acertamos, y la diferencia es más notoria y fue muy fácil detectar la gráfica diferente,
-esto también sugiere más evidencia en contra de la hipótesis nula. Este nivel de dificultad de detección
-es una versión cualitativa de un valor p.
+5. Si acertamos, y la diferencia es más notoria y fue muy fácil detectar la gráfica diferente (pues
+sus diferencias son más extremas),
+esto también sugiere más evidencia en contra de la hipótesis nula.
 
 6. Finalmente, esta prueba rara vez (o nunca) **nos da seguridad completa acerca de ninguna conclusión**, aún cuando
 hiciéramos muchos páneles.
@@ -197,10 +203,6 @@ tres poblaciones distintas, por ejemplo.  Quizá la pregunta detrás de esta
 comparación es: el grupo de clientes b recibió una promoción especial. ¿Están gastando
 más? La medición que comparamos es el gasto de los clientes.
 
-Nos interesa saber qué tan distintos son los datos que produce cada condición - no solamente
-qué tan diferentes son las muestras. Hay muchos aspectos
-que podríamos cuestionar acerca de cómo son diferentes los tres sistemas. En este caso,
-nos preguntamos, por ejemplo, si las distribuciones son similares o no.
 
 ```{r, fig.width = 6, fig.height = 3, echo = FALSE}
 library(tidyverse)
@@ -212,7 +214,7 @@ paleta <- scale_colour_manual(values = c("#000000", "#E69F00", "#56B4E9", "#009E
 source("R/funciones_auxiliares.R")
 ```
 
-```{r, echo = FALSE}
+```{r, fig.width =5, fig.height = 3, echo = FALSE}
 set.seed(8)
 pob_tab <- tibble(id = 1:2000, x = rgamma(2000, 4, 1), 
     grupo = sample(c("a","b", "c"), 2000, prob = c(4,2,1), replace = T))
@@ -225,7 +227,7 @@ g_1
 
 En la muestra observamos diferencias entre los grupos. Pero notamos adicionalmente que
 hay mucha variación dentro de cada grupo. **Nos podríamos preguntar entonces si las diferencias
-que observamos se deben variación muestral, por ejemplo.** Quizá con más dinero y tiempo podríamos contrastar a todos los clientes y veríamos que sus distribuciones son prácticamente iguales.
+que observamos se deben variación muestral, por ejemplo.** 
 
 Podemos construir ahora una *hipótesis nula*, que establece que las observaciones
 provienen de una población similar:
@@ -238,8 +240,11 @@ Como en el ejemplo anterior **necesitamos construir o obtener una distribución 
 qué tan extremos o diferentes son los datos que observamos. Esa distribución de referencia debería
 estar basada en el supuesto de que los grupos producen datos de distribuciones similares.
 
-Hay muchas maneras de construir distribuciones de referencia. 
-Una manera versátil de producirlas es usando pruebas de permutaciones. 
+Si tuvieramos mediciones similares históricas de estos tres grupos, quizá podríamos extraer
+datos de referencia y comparar, como hicimos en el ejempo anterior. Pero esto es menos común en
+este tipo de ejemplos.
+
+Hay otras maneras de construir distribuciones de referencia. Una manera versátil de producirlas es usando pruebas de permutaciones. 
 
 
 ## Permutaciones y el lineup {-}
@@ -249,17 +254,17 @@ la siguiente forma (@box78, @timboot14):
 
 - Si los grupos producen
 datos bajo procesos idénticos, entonces los grupos a, b, c solo son etiquetas que no contienen información.
-- Podríamos entonces **permutar al azar** las etiquetas y observar nuevamente la gráfica
-de caja y brazos por grupos. 
-- Bajo la hipótesis nula (grupos idénticos), esta es una muestra tan verosímil como la que obtuvimos.
+- Podríamos **permutar al azar** las etiquetas y observar nuevamente la gráfica
+de caja y brazos por grupos.
+- Si la hipótesis nula es cierta (grupos idénticos), esta es una muestra tan verosímil como la que obtuvimos.
+- Así que podemos construir datos de referencia permutando las etiquetas de los grupos al azar, y observando
+la variación que ocurre.
 - Si la hipótesis nula es cercana a ser cierta, no deberíamos de poder distinguir fácilmente los 
 datos observados de los producidos con las permutaciones al azar.
 
-
-Vamos a intentar esto, por ejemplo usando una gráfica de cuantiles. Hacemos un *lineup*, o una
+Vamos a intentar esto, por ejemplo usando una gráfica de cuantiles simplificada. Hacemos un *lineup*, o una
 *rueda de sospechosos* (usamos el paquete @nullabor, ver @lineup), 
-donde 19 de los acusados son generados mediante permutaciones al azar 
-- las etiquetas de los datos observados se permutan al azar en los datos-,
+donde 19 de los acusados **son generados mediante permutaciones al azar** de la variable del grupo,
 y el culpable (los verdaderos datos) están en una posición escogida al azar. ¿Podemos identificar
 los datos verdaderos? Para evitar sesgarnos, también ocultamos la etiqueta verdadera
 
@@ -268,7 +273,7 @@ set.seed(88)
 reps <- lineup(null_permute("grupo"), muestra_tab, n = 20)
 grafica_cuantiles(reps %>%  mutate(grupo_1 = factor(digest::digest2int(grupo) %% 177)), 
                              grupo_1, x) + 
-    facet_wrap(~.sample, ncol = 5) + ylab("x")
+    facet_wrap(~.sample, ncol = 5) + ylab("x") + labs(caption = "Mediana y percentiles 10% y 90%")
 ```
 
 Y la pregunta que hacemos es **podemos distinguir nuestra muestra entre todas las 
@@ -280,16 +285,16 @@ datos observados de los datos nulos?
 En este ejemplo, es difícil indicar cuáles son los datos. Los grupos tienen distribuciones
 similares y es factible que las diferencias que observamos se deban a variación muestral.  
 
-Consideremos algunos cálculos: si los verdaderos datos son consistentes con nuestra hipótesis
-nula, entonces la probabilidad de escoger al verdadero culpable es de 1/20 = 0.05. Esta se
-llama *significancia de nuestra prueba de lineup*.
 
-- Si la persona escoge los verdaderos datos, rechazamos la hipótesis nula (equivalencia entre los
-tres bonches de datos), y decimos que los datos son *significativamente diferentes* al nivel 0.05. Esto es 
+
+- Si la persona escoge los verdaderos datos, encontramos eviencia en contra de la hipótesis nula
+(los tres grupos son equivalentes).
+En algunos contextos, se dice que los datos son *significativamente diferentes* al nivel 0.05. Esto es 
 evidencia en contra de que los datos se producen de manera homogénea, independientemente del grupo.
 
-- Si la persona escoge uno de los datos permutados, no rechazamos la hipótesis nula: no encontramos evidencia en contra de que los tres grupos producen datos con
-distintas distribuciones.
+- Si la persona escoge uno de los datos permutados, 
+no encontramos evidencia en contra de que los tres grupos producen datos con
+ distribuciones similares.
 
 ## Prueba de permutaciones {-}
 
@@ -392,7 +397,7 @@ Podemos calcular
 la respuesta como 
 
 ```{r}
-1 - abs(dist_perm(dif_obs) - dist_perm(-dif_obs))
+dist_perm(-dif_obs) + (1 - dist_perm(dif_obs))
 ```
 
 Repitimos el ejemplo para otra muestra (en este ejemplo el proceso generador
@@ -401,7 +406,7 @@ de datos es diferente para el grupo b):
 ```{r, echo = FALSE}
 set.seed(72)
 muestra_tab <- pob_tab %>% sample_n(90) %>% 
-    mutate(x = ifelse(grupo == "b", 1.7 * x + 1, x))
+    mutate(x = ifelse(grupo == "b", 1.8 * x + 1, x))
 g_1 <- ggplot(muestra_tab, aes(x = grupo, y = x)) + geom_boxplot(outlier.alpha = 0) +
     geom_jitter(alpha = 0.3) + 
     coord_flip() + ylim(c(0, 20)) + labs(subtitle = "Muestra")
@@ -416,8 +421,8 @@ Hacemos primero la prueba del *lineup*:
 
 
 ```{r}
-set.seed(90)
-reps <- lineup(null_permute("grupo"), muestra_tab, n = 12)
+set.seed(121)
+reps <- lineup(null_permute("grupo"), muestra_tab, n = 20)
 grafica_cuantiles(reps %>%  mutate(grupo_escondido = factor(digest::digest2int(grupo) %% 177)), 
                              grupo_escondido, x) + facet_wrap(~.sample) + ylab("x") +
     coord_flip() 
@@ -469,13 +474,14 @@ de cada tratamiento, necesitamos calificar la evidencia de nuestra conclusión
 (el tiempo de fusión se reduce con informaión verbal). En este caso, compararemos gráficas de cuantiles de los datos con los
 producidos por permutaciones:
 
-```{r, fig.width = 6, fig.height = 5, echo = FALSE}
+```{r, fig.width = 8, fig.height = 6, echo = FALSE}
 set.seed(113)
 fusion <- read_delim("./datos/fusion_time.txt", delim = " ", trim_ws = TRUE)
 reps <- lineup(null_permute("nv.vv"), fusion, 20)
 ggplot(reps, aes(sample = time, colour = nv.vv)) +
     geom_qq(distribution = stats::qunif, size = 0.5) +
-    facet_wrap(~.sample) + scale_y_log10()
+    facet_wrap(~.sample) + scale_y_log10() +
+    scale_x_continuous(breaks = c(0, 0.5, 1))
 ```
 
 **Ejercicio**: ¿Podemos identificar los datos? 
@@ -489,7 +495,7 @@ stat_fusion <- function(x){
     (quantile(x, 0.75) + quantile(x, 0.25))/2
 }
 # permutar
-reps <- lineup(null_permute("nv.vv"), fusion, 10000)
+reps <- lineup(null_permute("nv.vv"), fusion, 20000)
 # diferencia 
 dif <- fusion %>% group_by(nv.vv) %>% 
     summarise(est = stat_fusion(time)) %>% 
@@ -510,7 +516,7 @@ dist_perm_nv <- ecdf(cocientes_perm$cociente)
 dist_perm_nv(dif) + (1 - dist_perm_nv(1/dif))
 ```
 
-Lo que muestra evidencia considerable, aunque no muy fuerte, de que la instrucción verbal ayuda a reducir el tiempo de fusión de los estereogramas. Regresaremos a este ejemplo para discutir la discusión de estadística usada y tratamiento de los datos.
+Lo que muestra evidencia considerable, aunque no muy fuerte, de que la instrucción verbal ayuda a reducir el tiempo de fusión de los estereogramas. Regresaremos a este ejemplo para discutir la elección de estadística usada y tratamiento de los datos.
 
 ##  Separación de grupos {-}
 
@@ -539,7 +545,7 @@ y para cada individuo se miden expresiones
 de 42 genes distintos. La pregunta es: ¿Podemos separar a los grupos de avispas 
 dependiendo de sus mediciones?
 
-En este caso podemos usar análisis discriminante, que busca proyecciones de los
+En este se usó análisis discriminante para buscar proyecciones de los
 datos en dimensión baja de forma que los grupos sean lo más compactos y separados posibles.
 
 Para probar qué tan bien funciona este método, podemos hacer una prueba de permutación, aplicamos
@@ -604,18 +610,20 @@ que la separación lograda en los datos de entrenamiento probablemente se debe a
 
 ## La "crisis de replicabilidad" {-}
 
-Recientemente (aunque muchos estadísticos lo han repetido desde hace mucho tiempo), se ha reconocido
-en campos como la sicología la "crisis de replicabilidad" (ver por ejemplo @falsefindings). Varios estudios que recibieron mucha publicidad inicialmente no han podido ser replicados
+Recientemente (@falsefindings) se ha reconocido
+en campos como la sicología la "crisis de replicabilidad". Varios estudios que recibieron
+mucha publicidad inicialmente no han podido ser replicados
 posteriormente por otros investigadores. Por ejemplo:
 
 - Hacer [poses poderosas](https://www.sciencedaily.com/releases/2017/09/170911095932.htm) produce cambios fisiológicos que mejoran nuestro desempeño en ciertas tareas
 - Patrones de ovulación de las mujeres influyen en los candidatos que escogen para votar
 - Mostrar palabras relacionadas con "viejo" hacen que las personas caminen más lento (efectos de [priming](https://www.nature.com/news/nobel-laureate-challenges-psychologists-to-clean-up-their-act-1.11535)) 
 
-En todos estos casos, la evidencia de estos efectos fue respaldada finalmente (pues es requisito para
-publicación) por una prueba de hipótesis nula con un valor p menor a 0.05. La razón es que este estándar de publicación
-es seguido por varias áreas y revistas. La no-replicación va mucho más allá de la tasa de falsos positivos que
-sugeriría este método (es decir, menor a 0.05).
+En todos estos casos, el argumento de la evidencia de estos efectos fue respaldada 
+por una prueba de hipótesis nula con un valor p menor a 0.05. La razón es que ese es el estándar de publicación
+ seguido por varias áreas y revistas. La tasa de no replicabilidad parece ser mucho más alta (al menos la mitad o más
+ según algunas fuentes, como la señalada arriba) 
+ que lo sugeriría la tasa de falsos positivos (menos de 5\%) 
 
 Este problema de replicabilidad parece ser más frecuente cuando:
 
@@ -636,17 +644,22 @@ estamos buscando las comparaciones correctas. Algunas pueden ser:
 
 - Transformar los datos (tomar o no logaritmos, u otra transformación)
 - Editar datos atípicos (razonable si los equipos pueden fallar, o hay errores de captura, por ejemplo)
-- Distintas maneras de interpretar los criterios de inclusión (por ejemplo, el estudio se planeó
-para personas entre 20 y 30 años, y tenemos tres casos con 33 años. ¿Los dejamos o los usamos?)
+- Distintas maneras de interpretar los criterios de inclusión de un estudio (por ejemplo, algunos participantes
+mostraron tener gripa, o revelaron que durmieron muy poco la noche anterior, etc. ¿los dejamos o los quitamos?)
 
-Dado un juego de datos, las justificaciones de las decisiones que se toman 
+Dado un conjunto de datos, las justificaciones de las decisiones que se toman 
 en cada paso son razonables, pero con datos distintos las decisiones podrían ser diferentes. 
 Este es el **jardín de los senderos que se bifurcan**  [Gelman](http://www.stat.columbia.edu/~gelman/research/published/incrementalism_3.pdf), 
-que invalida en parte el uso valores p como criterio de evidencia contra la hipótesis nula.
+que **invalida en parte el uso valores p como criterio de evidencia contra la hipótesis nula**.
 
-Esto es exacerbado por el hecho de que existe presión fuerte sobre los investigadores
-para producir resultados publicables (p < 0.05), y justamente por el hecho
-de tomar un punto de corte fijo como necesario para publicar.
+Esto es exacerbado por:
+
+- Tamaños de muestra chicos y efectos "inestables" que se quieren medir (por ejemplo en sicología)
+- El hecho de que el criterio de publicación es obtener un
+valor p < 0.05, y la presión fuerte sobre los investigadores
+para producir resultados publicables (p < 0.05)
+- El que estudios o resultados similares que no obtuvieron valores $p$ por debajo del umbral no son 
+publicados o reportados.
 
 Ver por ejemplo el [comunicado de la ASA](https://www.amstat.org/asa/files/pdfs/P-ValueStatement.pdf).
 
@@ -705,17 +718,16 @@ los valores p pueden tener poco significado.
 El primer punto importante es reconocer que la mayor parte de nuestro trabajo
 es **exploratorio** (recordemos el proceso complicado del análisis de datos de refinamiento de preguntas). 
 En este tipo de trabajo, reportar valores p puede tener poco sentido,
-y mucho menos aceptar algo "verdadero" cuando pasa un umbral de significancia dado.
+y mucho menos tiene sentido aceptar algo "verdadero" cuando pasa un umbral de significancia dado.
 
-Nuestro interés principal al hacer análisis es expresar correctamente y de manera útil la incertidumbre (asociada a variación muestral, por ejemplo) para que el proceso de toma de decisiones sea informado. **Un** resumen de **un número** (valor $p$, o el que sea) no puede ser tomado como criterio para tomar una decisión que generalmente es compleja.
+Nuestro interés principal al hacer análisis es expresar correctamente y de manera útil la incertidumbre 
+asociada a las conclusiones o patrones que mostramos
+(asociada a variación muestral, por ejemplo) para que el proceso de toma de decisiones sea informado. **Un** resumen de **un número** (valor $p$, o el que sea) no puede ser tomado como criterio para tomar una decisión que generalmente es compleja.
+En la siguiente sección veremos cómo podemos mostrar parte de esa incertidumbre de manera más útil.
 
-En la siguiente sección nos concentraremos en una cara más útil de esta
-valuación de evidencia, cuantificando la variabilidad que nuestros resultados pueden
-tener hasta donde sea posible.
-
-Por otra parte, los estudios confirmatorios (donde se reportan valores p ) 
+Por otra parte, los estudios confirmatorios (donde se reportan valores p) 
 también tienen un lugar. En áreas como la sicología, existen ahora movimientos fuertes en 
-favor de la replicación de estudios prometedores pero donde hay sospecha
+favor de la repetición de estudios prometedores pero donde hay sospecha
 de grados de libertad del investigador. Este movimiento
 sugiere dar valor a los **estudios exploratorios** que no reportan valor p, 
 y posteriormente, si el estudio
