@@ -43,7 +43,13 @@ predicciones varían mucho).
 donde el modelo consistemente sobrepredice y subpredice. 
 - Residuales (errores individuales) de entrenamiento tienen una distribución con colas que tienden a ser largas.
 
+## Expansión de entradas (feature engineering) {-}
 
+## Regularización para modelos lineales {-}
+
+## Regularización ridge {-}
+
+## Regularización lasso {-}
 
 ## Predicción de Grasa corporal {-}
 
@@ -350,6 +356,16 @@ Hay varias maneras de construir estos intervalos. Lo más importante es:
 la muestra de prueba para este propósito.
 
 
+En el caso de modelos de regresión, una buena alternativa es utilizar **regresión bayesiana** 
+(ver por ejemplo @GelmanHill para un curso interesante). Los
+métodos de regularización como ridge o lasso caben naturalmente en este contexto (en una forma más poderosa), y 
+producir intervalos predictivos es muy natural en este contexto.
+
+En otros casos (por ejemplo, redes neuronales o métodos basados en árboles), existe avance pero no hay
+un enfoque establecido. En el siguiente ejemplo, mostramos un ejemplo de construcción de intervalos
+de predicción para un modelo de bosques aleatorios (ver por ejemlo @rfintervals).
+
+
 ## Ejemplo: precios de casas {-}
 
 Consideramos un modelo para predecir precios de casas basadas in un bosque aleatorio:
@@ -367,7 +383,7 @@ casas_t <- casas_completo %>% sample_frac(0.9)
 casas_p <- casas_completo %>% anti_join(casas_t)
 ```
 
-Ajustamos un bosque aleatorio:
+Ajustamos un bosque aleatorio y construimos intervalos predictivos usando el paquete [rfinterval](https://github.com/haozhestat/rfinterval):
 
 ```{r}
 library(rfinterval)
@@ -378,7 +394,6 @@ intervals_sc <- rfinterval(precio_miles ~ area_habitable_sup_m2 + calidad_gral +
                    params_ranger = list(mtry = 5),
                    method = "quantreg")
 sc_i <- intervals_sc$quantreg_interval
-#sc_i <- intervals_sc$oob_interval
 preds <- intervals_sc$testPred
 sc_i$precio_miles <- casas_p$precio_miles
 sc_i$area <- casas_p$area_habitable_sup_m2
