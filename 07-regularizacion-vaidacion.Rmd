@@ -1,30 +1,40 @@
-# Más de predicción
+# Refinación de modelos predictivos
+
+
 
 ## ¿Cómo mejorar un modelo predictivo? {-}
 
-Distintas acciones tienen efectos sobre distintas componentes el error. Por ejemplo, si queremos reducir varianza:
+En primer lugar, hay consideraciones que producen mejoras en general (independientemente de métodos particulares
+y casi de analistas particulares!)
+
+- Pensar con detalle in la información que hay en las covariables, y cuánta información útil contienen
+para hacer predicciones.¿ Existen variables importantes que no tenemos disponibles? ¿Es posible construir o conseguir variables 
+relacionadas con esas característias importantes?
+- Considerar cómo usar estructura em nuestros: Por ejemplo: ¿estamos usando correctamente información 
+espacial o temporal? ¿Un modelo lineal es apropiado? 
+
+Otras acciones tienen efectos sobre distintas componentes el error, y buscan corregir distintos aspectos. 
+Por ejemplo, si queremos reducir varianza:
 
 - Podemos intentar modelos más simples
 - Reducir o eliminar variables
 - Penalizar la complejidad de los modelos para obtener ajustes más simples
 - Conseguir más datos
-- Conseguir mejores variables o mediciones
 
 Si nuestro problema es sesgo, sin embargo, estas acciones pueden no ser efectivas. En este caso:
 
 - Usar modelos más complejos
 - Penalizar menos por complejidad
 - Crear variables derivadas (por ejemplo, interacciones)
-- Conseguir mejores variables o mediciones
 
-La pregunta es: ¿Cómo diagnosticamos si nuestro problema es sesgo o varianza (o ambos). 
+La pregunta es: ¿Cómo diagnosticamos si nuestro problema es sesgo o varianza (o ambos)? Algunos tips son:
 
 **Signos de que la varianza es alta (sobreajuste)**:
 
 - El error de prueba tiende a ser considerablemente más alto que el error de entrenamiento. El modelo se "pega" mucho
 a los datos de entrenamiento, y el error parece bajo. Sin embargo, cuando lo probamos con otra muestra el error se degrada.
 - El modelo cambia mucho con pequeñas perturbaciones de los datos de entrenamiento (por ejemplo, si hacemos bootstrap las 
-predicciones varían mucho)
+predicciones varían mucho).
 
 **Signos de que el sesgo es alta (subajuste)**:
 
@@ -35,159 +45,295 @@ donde el modelo consistemente sobrepredice y subpredice.
 
 
 
-
-
-## Regresión lineal {-}
-
-Un tipo de estructura muchas veces exitosa es la lineal. Si tenemos entradas $X_1,\ldots, X_p$, buscamos
-predictores que son promedios ponderados de las variables de entrada:
-
-$$f(X_1,\ldots, X_p) = \beta_0 + \beta_1 X_1 + \cdots + \beta_p X_p$$
-
-Ajustar modelo significa en primer lugar encontrar valores apropiados para los coeficientes
-$\beta_0,\beta_1, \ldots, \beta_p$. Es posible hacer esto con mínimos cuadrados. Si tenemos
-la muestra de entrenamiento $\mathcal L$, intentamos encontrar coeficientes que minimicen
-el error de entrenamiento:
-
-$$\min_{\beta_0,\beta_1,\ldots, \beta_p} \sum_{i=1}^n (y_i - f(x_i))^2$$
-
-donde $x_i = (x_i^(1), \ldots, x_i^(p)$ son las variables de entrada para cada caso de entrenamiento.
-
-Hay dos observaciones importantes qué hacer:
-
-
-- En un principio, los modelos lineales pueden parecer muy simplistas, y que su principal
-problema puede ser el **sesgo**. Sin embargo, si tomamos en cuenta
-de que podemos crear variables derivadas de las que tenemos y ponerlas como entradas, es posible modelar
-patrones considerablemente complejos. Esto lo hacemos normalmente para reducir el sesgo del modelo
-
-- Este principio de minimización parece ser un poco contrario a lo que discutimos arriba: intentamos minimizar el error de entrenamiento,
-cuando realmente quisiéramos tener error de predicción bajo. Este intento de minimizar el error de entrenamiento,
-lo cual puede producir **varianza** alta, especialmente cuando hacemos más **feature engineering**. 
-
-
-
-## Ejemplo: feature engineering {-}
-
-Queremos predecir las ventas futuras anuales $Y$ de una tienda que se va a construir
-en un lugar dado. Las variables que describen el lugar son
-$X_1 = trafico\_peatones$, $X_2=trafico\_coches$. En una aproximación simple,
-podemos suponer que la tienda va a capturar una fracción de esos tráficos que
-se van a convertir en ventas. Quisieramos predecir con una función de la forma
-$$f_\beta (peatones, coches) = \beta_0 + \beta_1\, peatones + \beta_2\, coches.$$
-Por ejemplo, después de un análisis estimamos que 
-
-- $\hat{\beta}_0 = 1000000$ (ventas base, si observamos tráficos igual a 0: es lo que va a atraer la tienda)
-- $\hat{\beta}_1 = (200)*0.02 = 4$ (capturamos 2\% del tráfico peatonal, y cada capturado gasta 200 pesos)
-- $\hat{\beta}_2 = (300)*0.01 =3$ (capturamos 1\% del tráfico de autos, y cada capturado gasta 300 pesos)
-Entonces haríamos predicciones con
-$$\hat{f}(peatones, coches) = 1000000 +  4\,peatones + 3\, coches.$$
-El modelo lineal es más flexible de lo que parece en una primera aproximación, porque
-tenemos libertad para construir las variables de entrada a partir de nuestros datos.
-Por ejemplo, si tenemos una tercera variable 
-$estacionamiento$ que vale 1 si hay un estacionamiento cerca o 0 si no lo hay, podríamos
-definir las variables
-- $X_1= peatones$
-- $X_2 = coches$
-- $X_3 = estacionamiento$
-- $X_4 = coches*estacionamiento$
-Donde la idea de agregar $X_4$ es que si hay estacionamiento entonces vamos
-a capturar una fracción adicional del trafico de coches, y la idea de $X_3$ es que 
-la tienda atraerá más nuevas visitas si hay un estacionamiento cerca. Buscamos 
-ahora modelos de la forma
-$$f_\beta(X_1,X_2,X_3,X_4) = \beta_0 + \beta_1X_1 + \beta_2 X_2 + \beta_3 X_3 +\beta_4 X_4$$
-y podríamos obtener después de nuestra análisis las estimaciones
-- $\hat{\beta}_0 = 800000$ (ventas base)
-- $\hat{\beta}_1 = 4$
-- $\hat{\beta}_2 = (300)*0.005 = 1.5$
-- $\hat{\beta}_3 = 400000$ (ingreso adicional si hay estacionamiento por nuevo tráfico)
-- $\hat{\beta}_4 = (300)*0.02 = 6$ (ingreso adicional por tráfico de coches si hay estacionamiento)
- 
- y entonces haríamos predicciones con el modelo
-$$\hat{f} (X_1,X_2,X_3,X_4) = 
-800000 + 4\, X_1 + 1.5 \,X_2 + 400000\, X_3 +6\, X_4$$
-
-
-## Regularización {-}
-
-En un principio podemos agregar más variables a un modelo, con la esperanza de reducir el sesgo potencial.
-Esto, sin embargo, puede incrementar la varianza y degradar el desempeño predictivo, especialmente
-cuando algunas variables son ruidosas y contribuyen poco.
-
-Como la **varianza** se produce porque las predicciones dependen fuertemente del conjunto de entrenamiento,
-y las predicciones a su vez dependen de los coeficientes del modelo ajustado, podemos restringir el
-proceso de ajuste para evitar la variación de los coeficientes. Dos técnicas útiles son el lasso y 
-regresión ridge.
-
-En regresión ridge, buscamos minimizar
-
-$$D(\beta) = \sum_{i=1}^n (y_i - f(x_i))^2$$
-
-Con una restricción $\sum_i \beta_i^2 < s$. En regresión lasso utilizamos 
-$\sum_i |\beta_i| < s$
-
-
-## Ejemplo: grasa corporal {-}
+## Predicción de Grasa corporal
 
 Supongamos que queremos predecir el porcentaje de grasa en el cuerpo a partir de varias
-medidas simples del cuerpo (estatura, peso, circunferencia de abdomen, cuello, rodilla, etc.). Para
-este ejemplo dividimos la muestra 50-50 en entrenamiento y prueba. Además de las entradas
-originales, introducimos variables para enriquecer el modelo lineal: por ejemplo, el IMc
-que es peso entre estatura, así como otros cocientes útiles como medida de abdomen / pecho
-o munieca / antebrazo:
+medidas simples del cuerpo (estatura, peso, circunferencia de abdomen, cuello, rodilla, etc.). 
+Este ejemplo está en @izenman.
+
+Para
+este ejemplo dividimos la muestra 40-60 en entrenamiento y prueba. Además de las entradas
+originales, introducimos algunas variables para enriquecer el modelo lineal: por ejemplo el índice
+de masa corporal y otras (logaritmo de cocientes de distintas mediciones corporales),
+y agregamos algunas variables de ruido para hacer más difícil el problema.
+
+
+```{r, message = FALSE, echo = FALSE}
+set.seed(19)
+library(tidyverse)
+library(ggthemes)
+library(glmnet)
+source("R/funciones_auxiliares.R")
+```
+
+```{r}
+preprocesar <- function(data){
+  # un ejemplo de preprocesamiento
+    data_proc <- data %>% 
+        mutate(
+          imc = 703 * peso / estatura^2,
+          muslo_rodilla = log(muslo / rodilla),
+          pecho_cuello = log(pecho / cuello),
+          abdomen_cadera = log(abdomen / cadera),
+          biceps_antebrazo = log(biceps / antebrazo),
+          muslo_rodilla = log(muslo / rodilla),
+          munieca_antebrazo = log(munieca / antebrazo),
+          x1 = rnorm(n(), 100, 20),
+          x2 = rnorm(n(), 100, 20),
+          x3 = rnorm(n(), 50, 5),
+          x4 = rnorm(n(), 50, 5),
+          x5 = rexp(n(), 1),  
+          x6 = rexp(n(), 1),  
+          x7 = rexp(n(), 1),  
+          x8 = rexp(n(), 1),  
+          x9 = rexp(n(), 1))
+    data_proc 
+}
+grasa <- read_csv("./datos/bodyfat.csv") %>% rename(munieca = muñeca) 
+grasa_proc <- grasa %>% preprocesar
+# dividir entrenamiento y prueba
+gp_ent <- grasa_proc %>% sample_frac(0.3) 
+gp_pr <-  grasa_proc %>% anti_join(gp_ent) 
+```
+
+Las medidas que estamos usando tienen correlación alta, y normalmente eso significa
+que nuestras predicciones pueden sufrir de varianza alta. Demos una mirada rápida a los **datos de entrenamiento**:
+
+```{r}
+gp_tbl <- gp_ent %>% 
+    mutate(id = 1:n()) %>% 
+    gather(variable, valor, -id) %>% 
+    group_by(variable) %>%
+    summarise(cuantiles = list(cuantil(valor, c(0,0.1, 0.5, 0.9, 1)))) %>% 
+    unnest %>% 
+    mutate(valor = round(valor, 1)) %>% 
+    spread(cuantil, valor) %>% 
+    # estas son útiles para variables positivas
+    mutate(max_mediana = round(`1`/`0.5`,1) ) %>% 
+    mutate(min_mediana = round(`0`/`0.5`,1)) %>% 
+    mutate(rango_mediana = round((`0.9`- `0.1`) / `0.5`, 2))
+gp_tbl %>% formatear_tabla()
+```
+
+
+
+
+## Grasa corporal: analista 1
+
+El primer analista decide incluir todas las variables en un modelo lineal:
+
+```{r}
+mod_mc <- lm(grasacorp ~ ., data = gp_ent)
+```
+
+Calculamos error de entrenamiento y de prueba:
+
+```{r}
+error_abs_ent <- mean(abs(predict(mod_mc) - gp_ent$grasacorp))
+error_abs_pr  <- mean(abs(predict(mod_mc, newdata = gp_pr) - gp_pr$grasacorp))
+error_abs_ent %>% round(1)
+error_abs_pr %>% round(1)
+```
+
+En términos de la media de grasacorporal:
+
+```{r}
+round(error_abs_ent / mean(gp_ent$grasacorp), 2)
+round(error_abs_pr / mean(gp_pr$grasacorp), 2)
+```
+
+El error de entrenamiento está cerca de ser aceptable para una aplicación como esta (pensar en esto¿), si se reflejara
+también como error de prueba. El error de prueba es considerablemente más alto.
+
+Esto indica que nuestra preocupación principal ahora es sobreajuste: el modelo tiene capacidad de ajustar a los
+datos que le dimos de manera razonable - pero no generaliza tan bien.
+
+Como estamos trabajando con muestras relativamente chicas, conviene calcular intervalos para el error de prueba. Esto
+lo podemos hacer de manera simple con el bootstrap. Un intervalo de 90\% para el error absoluto relativo en este caso es:
+
+```{r, echo = FALSE}
+error_relativo <- function(modelo, s = NULL){
+  if(is.null(s)){
+    preds <- predict(modelo, newdata = gp_pr)
+    }
+  else {
+    preds <- predict(modelo, newx = gp_pr %>% select(-grasacorp) %>% as.matrix, s = s)
+  }
+  media_y <- mean(gp_pr$grasacorp)
+  errores <- abs(preds - gp_pr$grasacorp)
+  n <- length(errores)
+  error_boot <- map_dbl(1:5000, function(i) { sample(errores / media_y, n, replace = T) %>% mean })
+  limites <- quantile(error_boot, c(0.05, 0.95)) 
+  errores <- c(limites[1], mean(errores) / media_y, limites[2]) %>% round(2)
+  names(errores) <- c("inferior", "error", "superior")
+  errores
+}
+error_1 <- error_relativo(mod_mc)
+error_1
+```
+
+
+## Grasa corporal: analista 2
+
+El analista 2 reconoce que hay información común en las variables que puede producir varianza. Después de 
+pensar no mucho, decide usar un método simple: simplemente va a usar la medida de peso y estatura para 
+construir su predicción. 
+
+```{r}
+mod_simple_2 <- lm(grasacorp ~  peso + estatura , data = gp_ent)
+```
+
+Calculamos error de entrenamiento y de prueba:
+
+```{r}
+error_abs_ent <- mean(abs(predict(mod_simple_2) - gp_ent$grasacorp))
+error_abs_pr  <- mean(abs(predict(mod_simple_2, newdata = gp_pr) - gp_pr$grasacorp))
+error_abs_ent %>% round(1)
+error_abs_pr %>% round(1)
+```
+
+En términos de la mediana de grasacorporal:
+
+```{r}
+round(error_abs_ent / mean(gp_ent$grasacorp), 2)
+round(error_abs_pr / mean(gp_pr$grasacorp), 2)
+```
+
+El error de entrenamiento es alto y la brecha entre entrenamiento y prueba es corta. Eso quiere
+decir que en este caso debemos estar más preocupados por el sesgo (en este caso, porque faltan variables)
+
+```{r}
+error_2 <- error_relativo(mod_simple_2)
+error_2
+```
+
+
+## Regularización: analista 3 {-}
+
+El analista 3 decide que todas las variables podrían tener sentido para abordar este problema, pero
+reconoce que puede tener un problema de varianza. Decide usar regresión regularizada (elastic net)
+con tres valores: casi ninguna regularización, regularización moderada, y muy regularizado
 
 ```{r, message = FALSE}
 set.seed(889)
-preprocesar <- function(data){
-    data_proc <- data %>% 
-        mutate(imc = peso/estatura, 
-           abdomen_pecho = abdomen / pecho, 
-           abdomen_cadera = abdomen / cadera, 
-           cadera_muslo = cadera / muslo, 
-           biceps_antebrazo = biceps / antebrazo, 
-           munieca_antebrazo = munieca / antebrazo,
-           muslo_rodilla = muslo / rodilla)
-    data_proc
-}
-grasa_corp <- read_csv("./datos/bodyfat.csv") %>% 
-    rename(munieca = muñeca) %>% 
-    preprocesar
-gp_ent <- grasa_corp %>% sample_frac(0.5)
-gp_pr <- grasa_corp %>% anti_join(gp_ent)
-mod_1 <- cv.glmnet(gp_ent %>% select(-grasacorp) %>% as.matrix, gp_ent$grasacorp, alpha = 0, 
-                   lambda = exp(seq(-10, 5, 0.25)), type ="mse")
-plot(mod_1)
+library(glmnet)
+mod_1 <- glmnet(gp_ent %>% select(-grasacorp) %>% as.matrix, gp_ent$grasacorp, alpha = 0) 
 ```
 
-Podemos calcular el error de predicción sobre la muestra de prueba. Como la muestra de prueba es
-relativamente chica, podríamos usar bootstrap para calcular el error de estimación. O en este caso,
-usar la fórmula $s/\sqrt{n}$
+Los errores de entrenamiento y prueba son (para regularización con lambda = 2, veremos más adelante
+cómo escoger este parámetro):
 
-```{r, fig.width = 3, fig.height = 2}
-s <- exp(c(-10, 1, 5))
-errores <- map(s, function(s){
-    preds_1 <- predict(mod_1, newx = gp_pr %>% select(-grasacorp) %>% as.matrix, s = s)
-    error <- abs(preds_1 - gp_pr$grasacorp) %>% mean
-    ee <- (abs(preds_1 - gp_pr$grasacorp) %>% sd) / sqrt(length(preds_1))
-    tibble(s = s, error = error, ee = ee)
-}) %>% bind_rows
-ggplot(errores, aes(x = s, y = error, ymin = error-ee, ymax=error+ee)) + geom_point() +
-    geom_linerange() + scale_x_log10() + ylab("Error absoluto")
+```{r, fig.width = 3, fig.height = 2, echo = FALSE}
+preds_reg <- predict(mod_1, newx = gp_ent %>% select(-grasacorp) %>% as.matrix, s = 2)
+errores_ent <- abs(preds_reg - gp_ent$grasacorp) 
+(mean(errores_ent) / mean(gp_ent$grasacorp)) %>% round(2)
+preds_regu_pr <- predict(mod_1, newx = gp_pr %>% select(-grasacorp) %>% as.matrix, s = 2)
+errores_pr <- abs(preds_regu_pr - gp_pr$grasacorp) 
+(mean(errores_pr) / mean(gp_pr$grasacorp)) %>% round(2)
 ```
 
-O dividir entre la media para calcular Error relativo absoluto:
+Estos son los mejores resultados que hemos obtenido hasta ahora.
+La estimación por intervalos con bootstrap del error de prueba da:
 
-```{r, fig.width = 3, fig.height = 2}
-media_prueba <- mean(gp_pr$grasacorp)
-ggplot(errores, aes(x = s, y = error/media_prueba, ymin = (error-ee) / media_prueba, 
-                    ymax= (error+ee)/media_prueba)) + geom_point() +
-    geom_linerange() + scale_x_log10() + ylab("Error relativo absoluto")
-```
-
-Con esta información, bastaría para escoger el modelo con regularización $\lambda = 1$. Sin embargo, hay más razones
-para hacerlo. Los coeficientes de los modelos:
 ```{r}
-coef(mod_1, s = s) %>% round(2)
+error_3 <- error_relativo(mod_1, s = 2)
+error_3
+```
+
+
+En resumen, los intervalos de error para los tres analistas son:
+
+```{r, echo = FALSE}
+error_tbl <- tibble(analista = c("min cuadrados", "seleccion", "regularización"), 
+       inf = c(error_1[1], error_2[1], error_3[1]),
+       error = c(error_1[2], error_2[2], error_3[2]),
+       sup = c(error_1[3], error_2[3], error_3[3]))
+error_tbl %>% knitr::kable(type = "html")
+```
+
+Con esta información, bastaría para escoger el modelo con regularización $\lambda = 2$. Sin embargo, hay más razones
+para hacerlo. 
+
+## Coeficientes
+
+Examinemos los coeficientes que obtuvimos de cada modelo
+
+```{r, echo = FALSE}
+coefs_mc <- tibble(coef_mc = coef(mod_mc), variable = names(coef(mod_mc)))
+coefs_sel <- tibble(coef_sel = coef(mod_simple_2), variable = names(coef(mod_simple_2)))
+coefs_regu <- tibble(coef_regu = coef(mod_1, s = 2) %>% as.numeric, variable = rownames(coef(mod_1, s = 2)))
+coefs_tbl <- left_join(coefs_mc, coefs_regu) %>%  left_join(coefs_sel, fill = 0)
+coefs_tbl <- coefs_tbl %>% select(variable, coef_mc, coef_regu, coef_sel) %>% mutate_if(is.numeric, ~round(.x, 2)) 
+coefs_tbl %>% knitr::kable(type = "html")
+```
+
+**Ejercicio**:  qué diferencias ves en los tamaños de los coeficientes? ¿Qué tan difícil
+crees que sea interpretar los coeficientes en cada caso?
+
+## Diagnóstico {-}
+
+Los errores de prueba que obtuvimos en los ejercicios anteriores fueron:
+
+```{r}
+error_tbl %>% select(analista, error) %>% knitr::kable(type = "html")
+```
+
+¿Por qué ocurren estas diferencias? Como *post-mortem*, Podemos hacer **análisis de residuales** para los errores
+sobre el conjunto de prueba (nota: esto también lo puedes hacer durante la construcción de modelos con la muestra
+de entrenamiento) :
+
+```{r, fig.width = 10, fig.height = 3, echo = FALSE}
+preds_mod <- gp_pr %>% select(grasacorp, imc) %>% 
+  mutate(mc = predict(mod_mc, newdata = gp_pr),
+         seleccion = predict(mod_simple_2, newdata = gp_pr),
+         regularizacion = preds_regu_pr) %>% 
+  gather(modelo, prediccion, - grasacorp, -imc)
+ggplot(preds_mod, aes(x = prediccion, y = grasacorp)) + 
+  geom_abline(colour = "red") +
+  geom_point() +
+  facet_wrap(~ modelo) 
+```
+
+Y vemos algunos problemás más graves y menos graves
+con las predicciones de mínimos cuadrados: existen varias que son negativas, y en un caso,
+la predicción está totalmente fuera de rango. Examinando los datos, corresponde a la observación:
+
+```{r, echo = FALSE}
+gp_pr[predict(mod_mc, newdata = gp_pr) < -10,] %>% select(edad, peso, estatura, imc)
+```
+
+El imc nos indica que la estatura (75 cm, la variable está en pulgadas y el peso en libras) 
+es una medición errónea, o aunque fuera correcta, 
+no quisiéramos hacer predicciones en este caso. **Nótese que este dato no apareció durante
+en el entramiento, sino en la etapa de prueba**. Sin embargo, los otros dos modelos fueron resistentes
+a este dato extremo: esto probablemente indica sobreajuste severo en el modelo sin regularizar. 
+Quitando este caso:
+
+```{r, fig.width = 10, fig.height = 3, echo = FALSE}
+ggplot(preds_mod %>% filter(imc < 50), aes(x = prediccion, y = grasacorp)) + 
+  geom_point() +
+  geom_abline(colour = "red") +
+  facet_wrap(~ modelo)
+```
+
+Y vemos que las predicciones con esta muestra de 
+prueba del modelo regularizado todavía son ligeramente mejores que las de mínimos cuadrados. En resumen:
+
+- El modelo regularizado es más parsimonioso que el de mínimos cuadrados.
+- El modelo de mínimos cuadrados sufre de sobreajuste.
+- El modelo con una selección pobre de variables tiene un desempeño malo.
+- El desempeño del modelo no regularizado fue malo, aunque identificamos que se debió a un dato erróneo. El modelo
+regularizado se desempeña ligeramente mejor cuando el no regularizado cuando quitamos este dato.
+
+En otros casos, la mejoría al usar regularización puede ser más dramática (ver @ESL para varios ejemplos)
+
+
+
+
+Los coeficientes de los modelos. Si examinamos los coeficientes de los modelos
+
+```{r, }
+coef(mod_1, s = 2) %>% as.numeric
 ```
 
 

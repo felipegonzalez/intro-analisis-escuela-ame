@@ -670,9 +670,9 @@ La solución a este problema, entonces, no tiene atajos mágicos: igual que en a
 este problema se mitiga cuando descubrimos estructura apropiada para el problema y 
 construimos esta estructura dentro de los modelos que queremos utilizar. Ejemplos son:
 
-- Modelos lineales cuando la estructura lineal es apropiada (muchos ejemplos de éxito: mediante
-*feature engineering* es posible construir una estructura lineal creible). Los modelos lineales
-son mucho más poderosos de los que en una mirada rápida
+- Modelos lineales cuando la estructura lineal es apropiada (muchos ejemplos de éxito): mediante
+*feature engineering* es posible construir una estructura lineal creible. Los modelos lineales
+son mucho más poderosos de los que en una mirada rápida puede sugerir.
 - Redes neuronales para procesamiento de señales (imágenes, sonido): los éxitos en este campo
 se deben a una combinación virtuosa entre conjuntos de datos grandes y estructuras apropiadas,
 como son unidades convolucionales que toman en cuenta la estructura espacial del problema
@@ -682,7 +682,8 @@ ejemplo: sistemas de recomendación
 recientemente hay muchos éxitos. Los métodos de reducción de dimensionalidad inspirados en 
 modelos estadísticos del lenguaje (probabilidades de ocurrencia de palabras dadas el contexto, *embeddings*) son usados de manera general, así como redes neuronales que buscan capturar y utilizar
 información secuencialmente cercana.
-
+- Métodos basados en árboles, que buscan explícitamente explotar interacciones, y promedian sobre muestras bootstrap
+para controlar varianza.
 
 ## Teoría: ¿Por qué pueden ser malas las predicciones? {-}
 
@@ -804,7 +805,7 @@ Aunque la descomposición de sesgo, varianza y error irreducible no aplica a tod
 de pérdida (por ejemplo en problemas donde la respuesta es una variable categórica), nos provee una guía
 para pensar en modelos predictivos y su desempeño.
 
-En nuestros ejemplos anteriores 
+En nuestros ejemplos anteriores:
 
 1. Suavizadores con ventana más chica son más flexibles, y aunque su sesgo tiende a ser más bajo, ese
 precio se paga en varianza más alta. Suavizadores con ventan más grande son menos flexibles, tienen menos
