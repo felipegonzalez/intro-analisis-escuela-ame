@@ -217,8 +217,9 @@ error_2
 ## Grasa corporal: regularización {-}
 
 El analista 3 decide que todas las variables podrían tener sentido para abordar este problema, pero
-reconoce que puede tener un problema de varianza. Decide usar regresión regularizada (elastic net)
-con tres valores: casi ninguna regularización, regularización moderada, y muy regularizado
+reconoce que puede tener un problema de varianza. Decide usar regresión regularizada (ridge)
+con tres valores: casi ninguna regularización, regularización moderada, y muy regularizado. Usaremos 
+el paquete *glmnet* (@glmnet).
 
 ```{r, message = FALSE}
 set.seed(889)
