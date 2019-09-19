@@ -357,13 +357,13 @@ la muestra de prueba para este propósito.
 
 
 En el caso de modelos de regresión, una buena alternativa es utilizar **regresión bayesiana** 
-(ver por ejemplo @GelmanHill para un curso interesante). Los
+(ver por ejemplo @GelmanHill para un curso interesante, y @Bishop para un enfoque más de *machine learning*). Los
 métodos de regularización como ridge o lasso caben naturalmente en este contexto (en una forma más poderosa), y 
 producir intervalos predictivos es muy natural en este contexto.
 
 En otros casos (por ejemplo, redes neuronales o métodos basados en árboles), existe avance pero no hay
 un enfoque establecido. En el siguiente ejemplo, mostramos un ejemplo de construcción de intervalos
-de predicción para un modelo de bosques aleatorios (ver por ejemlo @rfintervals).
+de predicción para un modelo de bosques aleatorios (ver por ejemlo @rfintervals, @rfintervalpkg).
 
 
 ## Ejemplo: precios de casas {-}
@@ -383,7 +383,8 @@ casas_t <- casas_completo %>% sample_frac(0.9)
 casas_p <- casas_completo %>% anti_join(casas_t)
 ```
 
-Ajustamos un bosque aleatorio y construimos intervalos predictivos usando el paquete [rfinterval](https://github.com/haozhestat/rfinterval):
+Ajustamos un bosque aleatorio y construimos intervalos predictivos usando el paquete 
+[rfinterval](https://github.com/haozhestat/rfinterval), @rfintervalpkg :
 
 ```{r}
 library(rfinterval)
