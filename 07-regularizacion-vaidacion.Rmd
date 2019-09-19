@@ -325,54 +325,10 @@ prueba del modelo regularizado todavía son ligeramente mejores que las de míni
 - El desempeño del modelo no regularizado fue malo, aunque identificamos que se debió a un dato erróneo. El modelo
 regularizado se desempeña ligeramente mejor cuando el no regularizado cuando quitamos este dato.
 
-En otros casos, la mejoría al usar regularización puede ser más dramática (ver @ESL para varios ejemplos)
+En otros casos, la mejoría al usar regularización puede ser más dramática (ver @ESL para varios ejemplos).
 
 
 
-
-Los coeficientes de los modelos. Si examinamos los coeficientes de los modelos
-
-```{r, }
-coef(mod_1, s = 2) %>% as.numeric
-```
-
-
-De modo que el modelo menos regularizado es considerablemente más complicado, en sentido
-de que tiene considerablemente mayor variación potencial cuando cambiamos las entradas.
-
-Por ejemplo, ¿qué pasa con las predicciones cuando incrementamos la medida de abdomen en 10\%?
-
-```{r}
-pred_fun <- function(object, newdata, s = 1) {
-  newdata_2 <- newdata %>% preprocesar %>% as.matrix
-  predict(object, newx = newdata_2, s = s)[, 1L, drop = TRUE]
-}
-
-calc_preds <- function(s, variable, delta, mod_1){
-    preds_1 <- pred_fun(mod_1, gp_ent %>% select(-grasacorp), s)
-    preds_2 <- pred_fun(mod_1, gp_ent %>% select(-grasacorp) %>% mutate({{ variable }} := {{ variable }} * (1 + delta)), s)
-    tibble( s = s, preds_incr = preds_2, preds = preds_1) %>% mutate(id = row_number()) %>% 
-        left_join(gp_ent %>% mutate(id = row_number()))
-}
-```
-
-
-Vemos variaciones poco creíbles de la grasa corporal para un cambio relativamente chico. El 
-modelo con la regularización correcta es más simple:
-
-```{r}
-preds_ab <- map(s[-3], ~ calc_preds(.x, estatura, 0.05, mod_1)) %>% bind_rows
-ggplot(preds_ab, aes(x = grasacorp, y = preds_incr - preds, colour = estatura )) + facet_wrap(~s) +  geom_point() +
-    xlab("Predicciones") + ylab("Cambio en prediccion") 
-```
-
-
-
-```{r}
-preds_ab <- map(s[-3], ~ calc_preds(.x, abdomen, 0.05, mod_1)) %>% bind_rows
-ggplot(preds_ab, aes(x = grasacorp, y = preds_incr - preds, colour = abdomen )) + facet_wrap(~s) +  geom_point() +
-    xlab("Predicciones") + ylab("Cambio en prediccion") 
-```
 
 ## Intervalos predictivos {-}
 
