@@ -34,7 +34,7 @@ Las razones por las que queremos hacer análisis predictivo son diferentes en ca
 
 
 
-## ¿Qué significa tener éxito en una tarea predictiva? {-}
+## ¿Qué significa tener buenos resultados? {-}
 
 En la tarea general del análisis predictivo, hablamos de lograr **predicciones precisas** como
 el criterio más importante. Este punto de vista limitado y poco vago también es parte de su fortaleza en problemas aplicados, pues el criterio de éxito es más suceptible de ser definido con precisión.
@@ -50,7 +50,7 @@ mejoras claras en métricas importantes *con respecto a lo que se hacía antes* 
 - Acercarnos a un *benchmark* humano de clasificación de textos o imágenes de manera comparable a una persona, traducir textos a niveles comparables a un humano (según páneles de jueces), etc.
 
 
-## ¿Qué se necesita para lograr buenos resultados con el enfoque predictivo? {-}
+## ¿Qué se necesita para lograr buenos resultados? {-}
 
 Más adelante hablaremos de la construcción y evaluación de modelos. Consideramos primero los ingredientes
 básicos para tener buenos resultados con el enfoque predictivo:
@@ -85,7 +85,8 @@ donde *m^2* es el área de las casas, y *calidad* es una calificación de los
 terminados de la casa. ¿Cómo mediríamos su desempeño?
 
 La respuesta más directa es: tomamos una muestra de casas que se han vendido
-recientemente y registramos su precio de venta. Comparamos el precio de venta
+recientemente y registramos su precio de venta (ventas que ocurrieron típicamente
+después de que construimos la función $f$. Comparamos el precio de venta
 observado con las predicciones del modelo.Si los datos observados son
 
 $$(\mathbf{x}^{(1)}, \mathbf{y}^{(1)}), (\mathbf{x}^{(1)}, \mathbf{y}^{(1)}), \ldots, (\mathbf{x}^{(m)}, \mathbf{y}^{(m)}),$$
@@ -109,12 +110,12 @@ Aunque podríamos usar también error absoluto u otra medida más interpretable 
 ## ¿Cómo construimos nuestro predictor $f$? {-}
 
 Hay muchas maneras de construir $f$. Por ejemplo, quizá para el ejemplo de las casas
-se usaba experiencia del área y reglas simples que un valuador podría usar.
+se usaba experiencia de valuadores de casas y reglas simples o tabuladores.
 
-En análisis predictivo, la idea es aprender de los datos *etiquetados* (donde conocemos la variable respuesta $y$) buenas reglas predictivas con
-métodos computacionales, con el objetivo específico de que el error predictivo sea bajo.
+En análisis predictivo, la idea es aprender de los datos *etiquetados* (donde conocemos la variable respuesta $y$) para construir reglas de predicción computacionales, con el objetivo específico de que el error predictivo sea bajo.
 
-Así es que emepezamos tomando unos **datos de entrenamiento**
+Así es que emepezamos tomando unos **datos de entrenamiento**, donde observamos
+datos de entrada (covariables) y la respuesta que queremos predecir
 
 $$({x}^{(1)}, {y}^{(1)}), ({x}^{(1)}, {y}^{(1)}), \ldots, ({x}^{(m)}, {y}^{(m)}),$$
 Y queremos tener un método para construír $f$ a partir de los datos
@@ -128,7 +129,7 @@ En resumen, la tarea del análisis predictivo es la siguiente: dados
 - Datos de entrenamiento $\mathcal{L}  = \{({x}^{(1)}, y^{1)}), ({x}^{(2)}, y^{2)}), \ldots, ({x}^{(n)}, y^{n)})\}$
 - Datos de prueba $\mathcal{T} =  \{(\mathbf{x}^{(1)}, \mathbf{y}^{1)}), (\mathbf{x}^{(2)}, \mathbf{y}^{2)}), \ldots, (\mathbf{x}^{(m)}, \mathbf{y}^{m)})\}$
 
-Queremos construir un $\mathcal{L} \to f $ (sólo depende de datos de entrenamiento) tal que el promedio
+Queremos construir una función $\mathcal{L} \to f$ (sólo depende de datos de entrenamiento) tal que el promedio
 de error sobre los datos de prueba:
 
 $$\hat{Err} = \frac{1}{m} \sum_{i = 1}^m ( \mathbf{y}^{(j)}- {f}(\mathbf{x}^{(j)}))^2$$
@@ -157,7 +158,7 @@ tiene acceso.
 **Ejemplo**: el concurso de Netflix (2009) siguió este patrón. De este concurso se desarrolló 
 parcialmente el área ahora floreciente de sistemas de recomendación.
 
-## Error de entrenamiento y error de prueba {-}
+## Error de entrenamiento y prueba {-}
 
 La estimación del error de predicción que mostramos arriba, que usamos para
 evaluar los modelos, es el **error de prueba**:
@@ -177,21 +178,21 @@ es una cantidad de importancia secundaria en el análisis predictivo. La cantida
 importante es el error de prueba.
 
 
-## Evaluación de predictores
+## Evaluación de predictores {-}
 
 Comenzamos mostrando algunas formas de construir predicciones en un ejemplo simple,
 y cómo los evaluaríamos. Nos interesa comenzar contestar las preguntas:
 
 - ¿Por qué son diferentes error de entrenamiento y error de prueba?
 - ¿Por qué unos métodos son mejores que otros para un problema dado?
-- ¿Por qué los errores de predicción pueden ser pobre?
+- ¿Por qué los errores de predicción pueden ser altos?
 - ¿Qué hacer cuando las predicciones del modelo son malas?
 
 Comenzamos usando datos simulados. En todos los casos, usaremos, según la tarea
 fundamental del análisis predictivo, una muestra de entrenamiento para construir las
 funciones para predecir, y otra muestra independiente de prueba para evaluarlos.
 
-## Un ejemplo simple {-}
+## Tres ejemplos de predictores {-}
 
 Para este ejemplo simulado de una sola covariable, los puntos muestran los datos de entrenamiento.
 
@@ -218,8 +219,9 @@ Usamos tres métodos distintos para construir un predictor, que dan las 3 curvas
 ¿Cuál preferirías usar para hacer predicciones?
 
 ```{r, fig.width=5, fig.asp=0.7, warning = FALSE}
-ggplot(datos_entrena, aes(x=x, y=y)) + geom_point() + 
+graf_ajustes <- ggplot(datos_entrena, aes(x=x, y=y)) + geom_point() + 
     curva_1 + curva_2 + curva_3
+graf_ajustes
 ```
 
 Calculamos los errores de entrenamiento de cada curva:
@@ -232,7 +234,7 @@ df_mods <- tibble(nombre = c('recta', 'rojo', 'gris'))
 df_mods$modelo <- list(mod_recta, mod_rojo, mod_gris)
 ```
 
-```{r}
+```{r, echo = FALSE}
 error_f <- function(df, mod){
   function(mod){
     preds <- predict(mod, newdata = df)
@@ -265,7 +267,8 @@ datos_prueba %>% head
 error_p <- error_f(datos_prueba)
 df_mods <- df_mods %>% 
   mutate(error_prueba = map_dbl(modelo, error_p))
-df_mods %>% select(-modelo) %>% knitr::kable(type = "html")
+resultados_tbl <- df_mods %>% select(-modelo) 
+resultados_tbl %>% knitr::kable(type = "html")
 ```
 
 y vemos que el modelo con mejor desempeño está dado por la curva gris, lo cual coincide con nuestra
@@ -274,27 +277,44 @@ intuición.
 ## Interpretación del experimento de simulación {-}
 
 
-¿Cómo explicamos los resultados que obtuvimos en el ejercicio anterior?
+¿Cómo explicamos los resultados que obtuvimos en el ejercicio anterior? Aquí están
+los tres ajustes:
+
+<!---
+código de  https://gist.github.com/jennybc/e9e9aba6ba18c72cec26#file-2015-03-02_plot-next-to-table-rmd
+-->
+
+<div class="twoC">
+```{r results = 'asis', echo=FALSE, message=FALSE, warning=FALSE}
+knitr::kable(resultados_tbl)
+```
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+graf_ajustes
+```
+</div>
+<div class="clearer"></div>
 
 **Curva roja: el modelo muy flexible**
 
 - Su error de prueba es no fue el mejor, sin embargo, su error de entrenamiento fue el más bajo. La **brecha** prueba - entrenamiento es grande.
 - Esto quiere decir los patrones de variación que muestra no se generalizaron a la muestra de prueba. Se **sobreajustó** a los datos de entrenamiento.
 - También podemos decir que este modelo memorizó, en lugar de aprender
-- Intuitivamente, es un método que dependen muy fuertemente de los datos. Si variamos un poco los datos de entrenamiento, las predicciones pueden cambiar mucho.
+- Intuitivamente, es un método que depende muy fuertemente de los datos. Si variamos un poco los datos de entrenamiento, las predicciones pueden cambiar mucho.
 
 **Recta: el modelo más rígido**
 
 - Su error de prueba no fue el mejor, sin embargo, su error de entrenamiento es similar al de prueba. No hay **brecha** prueba - entrenamiento
-- Esto quiere decir que no encontró patrones de variación que **sí** generalizan a la muestra de prueba. **Subajustó** los datos de entrenamiento.
-- También podemos decir que este modelo no pude aprender patrones estables
+- Esto quiere decir que los patrones que encontró generalizan a la muestra de prueba.
+- Sin embargo, comparado con el modelo gris, no encontró patrones de variación que **sí** generalizan a la muestra de prueba. **Subajustó** los datos de entrenamiento.
+- También podemos decir que este modelo no pudo aprender patrones estables.
 - Intuitimvamente, es un método que depende menos de los datos. Si variamos los datos de entrenamiento, las predicciones probablemente no cambien mucho.
 
 **Curva gris**
 
 - Su error de prueba fue el mejor. Su **brecha** entrenamiento - prueba fue intermedia entre el modelo lineal y la curva roja.
 - Esto quiere decir que algunos patrones de variación que ajustó no generalizan, así que tiene cierto grado de sobreajuste - pero menos que la curva más flexible.
-- Este modelo no pudo memorizar los datos tan bien, pero aprendió mejor
+- Este modelo no pudo memorizar los datos tan bien como la curva roja, pero aprendió mejor.
 - Intuitivamente, depende de los datos de entrenamiento de manera más razonable: ni ignora señal en los datos, pero tampoco es insensible al ruido.
 
 
@@ -308,7 +328,7 @@ En resumen, el mejor desempeño lo encontramos buscando un un balance entre:
 Podemos tener predicciones malas porque no tenemos la flexibilidad suficiente para capturar
 en nuestro predictor señales que generalizan, y también porque tenemos tanta flexibilidad que capturamos ruido o patrones que nogeneralizan en nuestro predictor
 
-## Ejemplo {-}
+## Errores por flexibilidad y por rigidez {-}
 
 Para entender la "dependencia" de los datos de entrenamiento (demasiado fuerte o demasiada baja), tendremos que ver varios conjuntos de entrenamiento y qué pasa con nuestras
 curvas gris, roja y la recta (recordemos la distribución de muestreo de un estimador, por ejemplo).
@@ -382,16 +402,15 @@ de la predicción es alta (depende muy fuertemente de los datos)
 la curva roja.
 - El error nunca podrá ser muy bajo, porque en nuestras simulaciones agregamos variación que no está asociada a la variable de entrada $x$.
 
-## Descomposición varianza-sesgo
+## Descomposición varianza-sesgo {-}
 
-Consideremos un modelo particular que genera datos para nuestro problema que es útil para entender
+Consideremos un modelo particular para ayudarnos a entender
 de dónde provienen los errores de predicción:
 
 $$y = f_0(x) + \epsilon$$
-donde por suponemos que $media(\epsilon | X) = 0$ (si no, podríamos sumar ese valor a $f$). 
-Esta variable aleatoria representa efectos
-de otras variables que no tenemos disponibles, y que afectan el resultado $Y$ que observamos. 
-La función $f_0$ es modela la dependencia "verdadera" de $Y$ de los datos de entrada $X$
+con $E(\epsilon) = 0$. Esta variable aleatoria $\epsilon$ representa efectos
+de otras variables que no tenemos disponibles, y que afectan el resultado $y$ que observamos. 
+La función $f_0$ modela la dependencia "verdadera" de $y$ de los datos de entrada $x$.
 
 Sea $f$ nuestro predictor. Escribimos el error como:
 
@@ -399,21 +418,20 @@ $$y-{f}(x) = (f_0(x)- {f}(x)) + \epsilon$$
 
 Y vemos dos razones para errores grandes:
 
-- La $\epsilon$ puede tomar valores grandes (pues no tenemos variables importantes que influyen en $y$)
-- $f(x) - \hat{f}(x) $ puede ser grande, es decir, nuestra estimación de $f_0$ es mala. A su vez,
+1. La $\epsilon$ puede tomar valores grandes (pues no tenemos variables importantes que influyen en $y$)
+2. $f(x) - f_0(x)$ puede ser grande, es decir, nuestra estimación de $f_0$ es mala. A su vez,
 hay dos razones por las que puede ocurrir esto:
-
-- $f(x)$ tiene poca variabilidad y está consistemente lejos de la verdadera $f$, independientemente de la muestra
+  - $f(x)$ tiene poca variabilidad y está consistemente lejos de la verdadera $f_0$, independientemente de la muestra
 que usemos para entrenar al modelo.
-- La variabilidad de $\hat{f}(X)$ es grande, de forma que es probabable que el valor obtenido en una
-muestra particular esté lejos del valor $f(X)$
-- Una combinación de los dos incisos anteriores.
+  - La variabilidad de $f(x)$ es grande, de forma que es probabable que el valor obtenido en una
+muestra particular esté lejos del valor $f_0(x)$
+  - Una combinación de los dos incisos anteriores.
 
 
 Una manera de cuantificar esto es mediante la descomposición varianza-sesgo. Con algunos cálculos simples,
-podemos demostrar que el error de predicción (con error cuadrático) se descompone en:
+podemos demostrar que el error de predicción (con error cuadrático) se descompone en (con $X$ fija):
 
-$$E((Y-\hat{f}(x))^2|X=x) = (E(\hat{f}(x)) - f(x))^2 + Var(\hat{f}(x)) + Var(\epsilon|X=x)$$
+$$E((Y-f(x))^2) = (E(f(x)) - f_0(x))^2 + Var(f(x)) + Var(\epsilon)$$
 
 donde el valor esperado es sobre el conjunto de entrenamiento ${\mathcal L}$ y $\epsilon$ (es decir, promediando sobre muestras de entrenamiento posibles).
 
@@ -441,9 +459,9 @@ y menos estructurados.
 ## k  vecinos más cercanos {-}
 
 Podemos empezar ahora con una manera de predecir muy simple, pero 
-que nos servirá para ilustrar los primeros principio. 
+que nos servirá para ilustrar algunos principios. 
 
-Una primera idea de un predictor simple es $f$ constante
+Una primera idea de un predictor simple es tomar $f$ constante
 igual a la media de los datos de entrenamiento:
 
 $$f(\mathbf{x}) =\frac{1}{n}\sum_{i=1}^n y_i$$
@@ -462,12 +480,13 @@ estimar es *la media condicional de la respuesta dadas los datos de entrada*, qu
 sentido pues estamos usando la pérdida cuadrática. 
 
 Este método se llama $k$-vecinos más cercanos. El valor $k$ es un parámetro de complejidad: 
+
 - Cuanto más grande sea $k$, reducimos la varianza de los promedios, pero aumentamos el riesgo sesgo al promediar datos más lejanos que pueden ser irrelevantes
 - Cuanto más chico sea $k$, disminuimos el riesgo de sesgo, pero aumentamos potencialmente la varianza de los promedios (promediamos menos casos).
 
 
 
-## k-vecinos más cercanos en caso simple {-}
+## Ejemplo k-vmc {-}
 
 En nuestro ejemplo del SAT, podríamos querer predecir la calificación promedio de los alumnos que toman
 el examen ($Y$) en función de $X$= fracción de alumnos que toman el examen. Trabajamos con una muestra de los datos.
@@ -511,7 +530,7 @@ según el porcentaje de alumnos que toma el examen?
 
 ## Ejemplo: Ozono {-}
 
-Considéremos los siguientes dátos clásicos de Radiación Solar, Temperatura, Velocidad del Viento y 
+Considéremos los siguientes datos clásicos de Radiación Solar, Temperatura, Velocidad del Viento y 
 Ozono para distintos días en Nueva York (@chambers83):
 
 ```{r}
@@ -537,9 +556,11 @@ de las variables (Radiación Solar, Velocidad del viento y Temperatura).
 usando vecinos más cercanos. Conviene estandarizar las variables (convertirlas a la misma
 escala) para que tenga más sentido calcular distancias. 
 
-En este caso, usamos 27-vecinos más cercanos:
+En este caso, usamos 27-vecinos más cercanos, y producimos 
+predicciones para varios valores de velocidad del viento, temperatura
+y radiación solar:
 
-```{r}
+```{r, message = FALSE, echo = FALSE}
 pred_grid <- expand.grid(Wind = c(5,10,15), Temp = seq(60, 90, 10), Solar.R = seq(20, 300, by = 10)) %>% 
     mutate(Wind_cat = cut(Wind, quantile(airquality$Wind, c(0, 0.33, 0.66, 1)), include.lowest = T))
 air <- air_data
@@ -560,10 +581,9 @@ ajustar_modelo <- function(air, pred_grid, k = 25){
 pred_grid_mod <- ajustar_modelo(air, pred_grid, k = 27)
 ```
 
-Y podemos producir predicciones para varios valores de velocidad del viento, temperatura
-y radiación solar:
 
-```{r}
+
+```{r, echo =FALSE}
 g_kvmc <- ggplot(air, aes(x = Solar.R, y = Ozone,  colour = Temp)) + geom_point() +
     facet_wrap(~Wind_cat) + 
     scale_colour_gradientn(colours = rainbow(2, rev = TRUE)) +
@@ -599,8 +619,9 @@ g_kvmc <- ggplot(air, aes(x = Solar.R, y = Ozone,  colour = Temp)) + geom_point(
 g_kvmc
 ```
 
-Estos dos últimos modelos se desempeñan mal con respecto al que construimos con $k=25$. Podemos
-usar una muestra de prueba para seleccionar el mejor de los modelos.
+Estos dos últimos modelos probabilemente se desempeñarán
+mal con respecto al que construimos con $k=27$ (podemos
+usar una muestra de prueba para seleccionar el mejor de los modelos).
 
 
 ## Mínimos cuadrados regularizados para regresión lineal {-}
@@ -621,35 +642,35 @@ Sin embargo, usar este modelo tiene el riesgo, como vimos arriba, de sobreajusta
 estamos **directamente intentando minimizar el error de entrenamiento**, que no es lo
 que queremos. Esto se expresa en posible varianza alta de los coeficientes y como consecuencia, varianza en las predicciones.
 
-Una solución es regularizar. Dado un parámetro $\lambda > 0 $ fijo, podemos
-minimizar, en lugar de la fórmula de arriba, 
+Una solución es regularizar. Dado un parámetro $\lambda > 0$ fijo, podemos
+minimizar, en lugar de la fórmula de arriba, su versión *penalizada*
 
 $$\min_{b_0,b_1,\ldots, b_p} \frac{1}{n}\sum_{i=1}^n (y^{(i)} - f_b(x^{(i)}))^2 + \lambda\sum_{i=1}^p b_i^2$$
 
 Las b's (coeficientes) que resuelven este problema (que es convexo y tiene un solo mínimo) se pueden calcular analíticamente
 derivando e igualando a cero. Entonces el predictor que usamos es 
 
-$${f}(x ) = \hat{b}_0 +\ {\hat{b}_1} x_1 + \cdots + \hat{b} x_p$$
-- La idea de usar $\lambda$ es que nos impida "sobreajustar" los datos, al poner una
+$${f}(x ) = \hat{b}_0 +\ {\hat{b}_1} x_1 + \cdots + \hat{b}_p x_p$$
+
+-  Queremos que $\lambda$ nos impida "sobreajustar" los datos, al poner una
 restriccion en cuanto a qué tan grandes pueden ser los coeficientes. 
 - Reduce la varianza de los coeficientes, pues la penalización impide que tomen
-valores muy positivos o negativos. Si $\lambda$ es muy grande, por ejemplo, en sus solución los coeficientes tendrán que ser muy cercanos a cero.
+valores muy positivos o negativos. Si $\lambda$ es muy grande, por ejemplo, los coeficientes tendrán que ser muy cercanos a cero.
 - Este tipo de regularización se le llama **regularización ridge**
 - Las variables de entrada deben tener la misma escala para que esta regularización tenga sentido (se pueden normalizar de alguna forma si no es el caso)
 
 Nótese que $\lambda$ es un parámetro que controla flexibilidad: $\lambda$ más chica implica mayor varianza y menos sesgo potencial, mientras que $\lambda$ muy grande implica menos varianza pero sesgo potencial alto.
 
 
-## Ejemplo: Ozono {-}
+## Ejemplo: Mínimos cuadrados {-}
 
 Ajustamos primero un modelo lineal sin regularización:
 
 ```{r, message = FALSE}
-dat_1 <- air %>% filter(!is.na(Ozone) & !is.na(Solar.R))
 modelo_formula <- as.formula(Ozone  ~  Temp + I(Temp^2) + Wind + I(Wind^2)+
               Solar.R + I(Solar.R^2) + Temp:Wind + Solar.R:Temp +
               Wind:Solar.R)
-mod_sin_reg <- lm(modelo_formula, data = dat_1)
+mod_sin_reg <- lm(modelo_formula, data = air)
 ```
 
 Y examinamos las predicciones del modelo (líneas):
@@ -657,7 +678,7 @@ Y examinamos las predicciones del modelo (líneas):
 ```{r, echo = FALSE}
 pred_grid <- expand.grid(Wind = c(5,10,15), Temp = seq(60, 90, 10), Solar.R = seq(20, 300, by = 10)) %>% 
     mutate(Wind_cat = cut(Wind, quantile(airquality$Wind, c(0, 0.33, 0.66, 1)), include.lowest = T))
-pred_grid$Ozone <- predict(mod_1, pred_grid)
+pred_grid$Ozone <- predict(mod_sin_reg, pred_grid)
 g_lineal <- ggplot(air, aes(x = Solar.R, y = Ozone,  colour = Temp)) + geom_point() +
     facet_wrap(~Wind_cat) + 
     scale_colour_gradientn(colours = rainbow(2, rev = TRUE)) +
@@ -670,21 +691,20 @@ g_lineal
 Nótese que algunos aspectos de este modelo parecen ser ruidosos: por ejemplo,
 el comportamiento de las curvas para el primer pánel (donde hay pocos datos
 de temperatura baja), el hecho de que en algunos casos parece haber 
-curvaturas decrecientes. No deberíamos poner mucho crédito en las predicciones
+curvaturas decrecientes e incluso predicciones negativas. No deberíamos poner mucho crédito en las predicciones
 de este modelo, y tiene peligro de producir predicciones desastrosas.
 
 
 ## Regularización para ejemplo de Ozono {-}
 
 Ahora usemos dos parametros de regularización y hacemos mínimos
-cuadrados regularizados. Tomamos $lambda = 3$ y  $\lambda = 13000$
+cuadrados regularizados. Tomamos $\lambda = 1$ y  $\lambda = 13000$
 
 
 ```{r, message = FALSE}
 library(glmnet)
-dat_1 <- air %>% filter(!is.na(Ozone) & !is.na(Solar.R))
-mat_ozono <- model.matrix(modelo_formula, data = dat_1)
-mod_reg <- glmnet(x = mat_ozono, y = dat_1$Ozone, alpha = 0, lambda = exp(seq(-20,20, 10)))
+mat_ozono <- model.matrix(modelo_formula, data = air)
+mod_reg <- glmnet(x = mat_ozono, y = air$Ozone, alpha = 0, lambda = exp(seq(-20,20, 10)))
 ```
 
 
@@ -699,7 +719,7 @@ g_lineal_reg_1 <- ggplot(air, aes(x = Solar.R, y = Ozone,  colour = Temp)) + geo
     facet_wrap(~Wind_cat) + 
     scale_colour_gradientn(colours = rainbow(2, rev = TRUE)) +
     geom_line(data = pred_grid, aes(y = Ozone, group = interaction(Temp, Wind_cat)), size = 1) +
-    labs(subtitle = "Lineal regularizado, lambda = 3") 
+    labs(subtitle = "Lineal regularizado, lambda = 1") 
 ```
 
 
@@ -722,8 +742,9 @@ Y comparamos las predicciones de los tres modelos:
 gridExtra::grid.arrange(g_lineal, g_lineal_reg_1, g_lineal_reg_5, ncol = 1)
 ```
 
+¿Qué modelo crees que se desempeñe mejor? ¿Cuál va a producir mejores comparaciones predictivas?
 
-## ¿Cómo seleccionar los hiperparámetros?
+## ¿Cómo seleccionar los hiperparámetros? {-}
 
 Los hiperparámetros en este caso son valores que establecemos para hacer
 el ajuste del modelo particular después. En el ejemplo de $k$ vecinos más
@@ -738,16 +759,16 @@ los dividimos en tres partes al azar,
 - Prueba (25\%)
 
 1. Ajustamos varios modelos con distintos grados de regularización (por ejemplo $\lambda$)
-2. Seleccionamos la $lambda$ que da mejor el error en la muestra de validación
+2. Seleccionamos la $\lambda$ que da mejor el error en la muestra de validación
 3. Repetimos 1-2 con otras familias de modelos (por ejemplo k-vecinos más cercanos)
-4. Probamos un número chico de modelos con la muestra de prueba, como estimaciones
+4. Probamos un número chico de modelos con la muestra de prueba para obtener estimaciones
 finales de su error de predicción.
 
 Esta división en 3 partes nos protege se "sobreajustar" cuando hacemos iteraciones
 entrenamiento-validación. Al final siempre tenemos una estimación "honesta" del 
 desempeño predictivo.
 
-## Ejemplo: selección del parámetro $\lambda$ de regularización:
+## Ejemplo: selección del parámetro $\lambda$ de regularización {-}
 
 En nuestro caso de mediciones de Ozono, si tuviéramos una muestra de validacion tomaríamos
 varias $lambda$ y ajustaríamos un modelo para cada una de ellas. Escogemos la $lambda$
@@ -755,14 +776,17 @@ que nos da el menor error de validación:
 
 ```{r, message = FALSE, fig.width =5, fig.height = 3}
 set.seed(11)
-seleccion_reg <- cv.glmnet(x = mat_ozono, y = dat_1$Ozone, alpha = 0, lambda = exp(seq(2,-4, -0.1)), nfolds = 10)
+seleccion_reg <- cv.glmnet(x = mat_ozono, y = air$Ozone, alpha = 0, lambda = exp(seq(2,-4, -0.1)), nfolds = 10)
 datos_val <- tibble(lambda = seleccion_reg$lambda, error_val = seleccion_reg$cvm)
 ggplot(datos_val, aes(x = lambda, y = error_val)) + geom_point() +
   scale_x_log10()
 ```
 
-**Obs**: en este ejemplo particular, usamos validación cruzada, que funciona
+**Observaciones**: 
+
+- En este ejemplo particular, usamos validación cruzada, que funciona
 como un sustituto de la muestra de validación (@ESL, Sección 7.10). 
+- Estas estimaciones están sujetas a error. Si la muestra de validación es relativamente chica conviene calcular intervalos (por ejemplo con bootstrap).
 
 
 ## Métodos de predicción y la maldición de la dimensionalidad {-}
@@ -844,7 +868,7 @@ En dimensiones altas, todos los conjuntos de entrenamiento factibles
 se distribuyen de manera rala en el espacio de entradas.
 
 
-## Estructura en modelos {-}
+## Estructura en análisis predictivo{-}
 
 Estas observaciones apuntan a que  métodos locales simples tenerán a funcionar mal
 en cuanto tenemos más de unas cuantas variables. ¿Qué salida puede tener este problema?
@@ -932,12 +956,12 @@ es mucho mejor que la de 1 vecino más cercano. **Ejercicio**: prueba con otras 
 
 ## ¿Cuál es la solución al problema de dimensión alta? {-}
 
-La solución a este problema, entonces, no tiene atajos: igual que en análisis exploratorio,
+Igual que en análisis exploratorio,
 este problema se mitiga cuando descubrimos estructura apropiada para el problema y 
 construimos esta estructura dentro de los modelos que queremos utilizar. Ejemplos son:
 
 - Modelos lineales cuando la estructura lineal es apropiada (muchos ejemplos de éxito): mediante
-*feature engineering* es posible construir una estructura lineal creible. Los modelos lineales
+*feature engineering* o *expansión de entradas* es posible construir una estructura lineal creible. Los modelos lineales
 son mucho más poderosos de los que en una mirada rápida puede sugerir.
 - Redes neuronales para procesamiento de señales (imágenes, sonido): los éxitos en este campo
 se deben a una combinación virtuosa entre conjuntos de datos grandes y estructuras apropiadas,
@@ -951,7 +975,7 @@ información secuencialmente cercana.
 - Métodos basados en árboles, que buscan explícitamente explotar interacciones, 
 pueden capturar relaciones no lineas y son robustos a datos atípicos en las covariables, y promedian sobre muestras bootstrap para controlar varianza.
 
-## Resumen
+## Resumen {-}
 
 Las tres componentes que discutimos entonces son:
 
@@ -1049,7 +1073,7 @@ predicciones en procesos posteriores.
 
 Hay varias maneras de construir estos intervalos. Lo más importante es:
 
-- Siempre checamoa que la cobertura *nominal* de los intervalos construidos sea cercana a la *real*. Usamos
+- Siempre checamos que la cobertura *nominal* de los intervalos construidos sea cercana a la *real*. Usamos
 la muestra de prueba para este propósito.
 
 

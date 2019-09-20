@@ -12,3 +12,7 @@ pre {
 pre code {
   white-space: inherit;
 }
+.twoC {width: 100%}
+.clearer {clear: both}
+.twoC .table {max-width: 50%; float: right}
+.twoC img {max-width: 50%; float: left}
