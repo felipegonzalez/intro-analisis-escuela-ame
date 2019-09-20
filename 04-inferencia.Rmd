@@ -615,7 +615,8 @@ en @chitim).
 Regresamos a los tiempos de fusión. Podemos hacer una prueba de permutaciones para
 la diferencia de las medias o medianas, por ejemplo. En este ejemplo usaremos
 una medida de centralidad un poco diferente, como ilustración: el promedio de los cuartiles
-superior e inferior de las dos distribuciones.
+superior e inferior de las dos distribuciones. Usaremos el cociente de estas dos cantidades
+para medir su diferencia
 
 ```{r, message = FALSE}
 stat_fusion <- function(x){
