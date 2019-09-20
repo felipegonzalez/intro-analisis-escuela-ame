@@ -244,8 +244,6 @@ Si tuvieramos mediciones similares históricas de estos tres grupos, quizá podr
 datos de referencia y comparar, como hicimos en el ejempo anterior. Pero esto es menos común en
 este tipo de ejemplos.
 
-Hay otras maneras de construir distribuciones de referencia. Una manera versátil de producirlas es usando pruebas de permutaciones. 
-
 
 ## Permutaciones y el lineup {-}
 
@@ -286,8 +284,7 @@ En este ejemplo, es difícil indicar cuáles son los datos. Los grupos tienen di
 similares y es factible que las diferencias que observamos se deban a variación muestral.  
 
 
-
-- Si la persona escoge los verdaderos datos, encontramos eviencia en contra de la hipótesis nula
+- Si la persona escoge los verdaderos datos, encontramos evidencia en contra de la hipótesis nula
 (los tres grupos son equivalentes).
 En algunos contextos, se dice que los datos son *significativamente diferentes* al nivel 0.05. Esto es 
 evidencia en contra de que los datos se producen de manera homogénea, independientemente del grupo.
@@ -296,109 +293,7 @@ evidencia en contra de que los datos se producen de manera homogénea, independi
 no encontramos evidencia en contra de que los tres grupos producen datos con
  distribuciones similares.
 
-## Prueba de permutaciones {-}
-
-Cuando nos interesa una característica particular en los datos 
-(¿las medianas  de los grupos medias? ¿Sus rangos intercuartiles son distintos?, etc.), podemos
-producir alguna *estadística de prueba numérica*, en lugar de una estadística gráfica.
-
-En nuestros ejemplos anteriores, nuestra estadística era una gráfica, y 
-buscábamos identificar si la estadística para nuestra muestra era *extrema* comparado con
-valores que la estadística toma bajo la hipótesis nula: es decir, comparado
-con la distribución de referencia.
-
-Ahora supongamos que hacemos una pregunta mucho más específica, que se refiere a un número particular:
-¿la media del grupo b  es diferente de la del grupo c? En este caso
-
-- Definimos una *estadística de prueba*, que mida las diferencias que nos interesan (por ejemplo, diferencia de medianas entre dos grupos)
-- Bajo nuestra hipótesis nula, producimos una cantidad grande (por ejemplo 10 mil o más) de muestras permutando las etiquetas de los grupos. Esta es nuestra *distribución de referencia* (ya no estamos limitados a 20 replicaciones como en las pruebas gráficas).
-- Evaluamos nuestra estadística en cada conjunto de datos nulos.
-- Observamos la distribución de estos valores: esta es nuestra distribución de referencia
-- Y la pregunta clave es: ¿el valor de la estadística en nuestra muestra es *extrema* en comparación a la distribución de referencia?
-
-Esta es una implementación:
-
-```{r, fig.width = 5, fig.height = 2.5, message = FALSE, warning = FALSE}
-# esta es la función que calcula la estadística:
-dif_medianas <- function(datos){
-    datos %>% 
-        filter(grupo != "a") %>% 
-        summarise(mediana = median(x)) %>% 
-        spread(grupo, mediana) %>% 
-        mutate(diferencia = b - c)
-}
-# Hacemos permutaciones
-set.seed(118)
-# produce 20000 permutaciones de las etiquetas de los grupos
-reps <- lineup(null_permute("grupo"), muestra_tab, n = 20000)
-# Mismo cálculo para muestra y permutaciones
-reps_mediana <- reps %>% group_by(grupo, .sample) %>% dif_medianas
-```
-
-Y graficamos nuestros resultados (con un histograma y una gráfica de cuantiles, por ejemplo). la
-estadística evaluada un cada una de nuestras muestras permutadas:
-
-```{r, fig.width = 6, fig.height = 3}
-g_1 <- ggplot(reps_mediana, aes(sample = diferencia)) + geom_qq(distribution = stats::qunif)  +
-    xlab("f") + ylab("diferencia") + labs(subtitle = "Distribución nula o de referencia")
-g_2 <- ggplot(reps_mediana, aes(x = diferencia)) + geom_histogram(binwidth = 0.3) + 
-    coord_flip() + xlab("") + labs(subtitle = " ")
-gridExtra::grid.arrange(g_1, g_2, ncol = 2) 
-```
-
-Este es el rango de fluctuación usual para nuestra estadística *bajo la hipótesis de que
-los grupos b y c provienen de la misma distribución*.
-
-Ahora calculamos el valor que obtuvimos en nuestros datos:
-
-```{r}
-dif_obs <- muestra_tab %>% group_by(grupo) %>% dif_medianas %>% pull(diferencia)
-dif_obs
-```
-
-Y vemos que no es un valor extremo en la distribución de referencia que vimos arriba: esta
-muestra no aporta evidencia en contra de que los grupos tienen distribuciones similares.
-
-Podemos graficar otra vez marcando el valor de referencia:
-
-```{r}
-# Función de distribución acumulada (inverso de función de cuantiles)
-dist_perm <- ecdf(reps_mediana$diferencia)
-# Calculamos el percentil del valor observado
-percentil_obs <- dist_perm(dif_obs %>% round(2))
-```
-
-
-```{r, fig.width = 6, fig.height = 3, echo = FALSE}
-g_1 <- ggplot(reps_mediana, aes(sample = diferencia)) + geom_qq(distribution = stats::qunif)  +
-    xlab("f") + ylab("diferencia") + labs(subtitle = "Distribución nula o de referencia") +
-    geom_hline(yintercept = dif_obs, colour = "red") +
-    annotate("text", x = 0.3, y = dif_obs + 0.2, label = "diferencia observada", colour = "red")
-g_2 <- ggplot(reps_mediana, aes(x = diferencia)) + geom_histogram(binwidth = 0.3) + 
-    coord_flip() + xlab("") + labs(subtitle = " ") +
-    geom_vline(xintercept = dif_obs, colour = "red") +
-    annotate("text", x = dif_obs, y = 2000, label = percentil_obs,vjust = -0.2, colour = "red")
-gridExtra::grid.arrange(g_1, g_2, ncol = 2) 
-```
-
-
-Y notamos que el resultado obtenido en nuestra muestra no es excepcionalmente grande. Otra vez, no hay evidencia en contra de la hipótesis nula: el resultado obtenido no es muy extremo con respecto a la variabilidad que ocurre bajo la hipótesis nula.
-
-
-### Valor p
-
-Nótese que calculamos una cantidad adicional, que es el percentil donde nuestra observación cae
-en la distribución generada por las permutación. Esta cantidad puede usarse para calcular un 
-**valor p**. Podemos calcular, por ejemplo:
-
-- **Valor p de dos colas**: Si la hipótesis nula es cierta, ¿cuál es la
-probabilidad de observar una diferencia en valor absoluto tan extrema o más extrema de lo que observamos? 
-Podemos calcular
-la respuesta como 
-
-```{r}
-dist_perm(-dif_obs) + (1 - dist_perm(dif_obs))
-```
+## Ejemplo
 
 Repitimos el ejemplo para otra muestra (en este ejemplo el proceso generador
 de datos es diferente para el grupo b):
@@ -430,41 +325,240 @@ grafica_cuantiles(reps %>%  mutate(grupo_escondido = factor(digest::digest2int(g
 
 
 Podemos distinguir más o menos claramente que está localizada en valores
-más altos y tiene mayor dispersión. 
+más altos y tiene mayor dispersión. En este caso, como en general podemos identificar los
+datos, obtenemos evidencia en contra de que los tres grupos tienen distribuciones iguales.
 
-O podríamos considerar una
-estadística de prueba numérica para ver qué tan excepcional es la diferencia entre c y b.
-En este caso, lo hacemos para la diferencia de medias, por ejemplo:
 
-```{r, fig.width = 6, fig.height = 3, echo = FALSE, message = FALSE}
-set.seed(118)
-reps <- lineup(null_permute("grupo"), muestra_tab %>% filter(grupo != "a"), n = 20000)
-dif_obs <- muestra_tab %>% group_by(grupo) %>% 
-    summarise(mediana  = mean(x)) %>% 
-    spread(grupo, mediana) %>% 
-    mutate(diferencia = b - c) %>% pull(diferencia)
-reps_mediana <- reps %>% 
-    group_by(grupo, .sample) %>% 
-    summarise(mediana  = mean(x)) %>% 
-    spread(grupo, mediana) %>% 
-    mutate(diferencia = b - c)
-dist_perm_2 <- ecdf(reps_mediana$diferencia)
-g_1 <- ggplot(reps_mediana, aes(sample = diferencia)) + geom_qq(distribution = stats::qunif) +
-    geom_hline(yintercept = dif_obs, colour = "red") +
-    annotate("text", x = 0.4, y = dif_obs + 0.2, label = "diferencia observada", colour = "red")
-g_2 <- ggplot(reps_mediana, aes(x = diferencia)) + geom_histogram(binwidth = 0.5) +
-    geom_vline(xintercept = dif_obs, colour = "red") + coord_flip()
+## Prueba de permutaciones para proporciones {-}
+
+Veremos otro ejemplo donde podemos hacer más concreta la idea de **distribución nula o
+de referencia** usando pruebas de permutaciones. Supongamos que en nuestros datos
+de tomadores de té, queremos probar la siguiente hipótesis nula:
+
+- Los tomadores de té en bolsas exclusivamente usan azúcar más a tasas simillares que
+los tomadores de té suelto (que pueden o no también tomar té en bolsita).
+
+Los datos que obtuvimos en nuestra encuesta, en conteos, son:
+```{r}
+set.seed(23)
+te_azucar <- tea %>% 
+  select(how, sugar) %>% 
+  mutate(how = ifelse(how == "tea bag", "bolsa_exclusivo", "suelto o bolsa"))
+te_azucar %>% group_by(how, sugar) %>% tally %>% 
+  spread(how, n) %>% 
+  knitr::kable(type = "html")
+```
+
+Y en proporciones tenemos que:
+
+```{r}
+prop_azucar <- te_azucar %>% group_by(how, sugar) %>% tally %>% 
+  group_by(how) %>% mutate(prop = n / sum(n), n = sum(n)) %>% 
+  filter(sugar == "sugar") %>% select(how, prop_azucar = prop, n) %>% 
+  mutate(prop_azucar = round(prop_azucar,2))
+prop_azucar
+```
+
+Pero distintas muestras podrían haber dado distintos resultados. Nos preguntamos que tan fuerte es
+la evidencia en contra de que en realidad los dos grupos de personas usan azúcar en proporciones similares,
+y la diferencia que vemos se puede atribuir a variación muestral.
+
+En este ejemplo, podemos usar una **estádistica de prueba numérica**, por ejemplo, 
+la diferencia entre las dos proporciones: $p_{bolsa_ex} - p_{suelto}$. El proceso sería entonces:
+
+- La hipótesis nula es que los dos grupos tienen distribuciones iguales, que este caso quiere decir que
+en la población, tomadores de té solo en bolsa usan azúcar a las mismas tasas que tomadores de suelto o bolsas.
+- Bajo nuestra hipótesis nula (proporciones iguales), producimos una cantidad grande (por ejemplo 10 mil o más) de muestras permutando las etiquetas de los grupos.
+- Evaluamos nuestra estadística de prueba en cada una de las muestras permutadas.
+- El conjunto de valores obtenidos nos da nuestra *distribución de referencia* (ya no estamos limitados a 20 replicaciones como en las pruebas gráficas).
+- Y la pregunta clave es: ¿el valor de la estadística en nuestra muestra es *extrema* en comparación a la distribución de referencia?
+
+
+```{r, message = FALSE}
+datos_perm <- lineup(null_permute("how"), te_azucar, n = 10000)
+calc_diferencia <- function(datos){
+  datos %>%
+    mutate(usa_azucar = as.numeric(sugar == "sugar")) %>% 
+    group_by(how) %>% 
+    summarise(prop_azucar = mean(usa_azucar)) %>% 
+    spread(how, prop_azucar) %>% 
+    mutate(diferencia_prop = bolsa_exclusivo - `suelto o bolsa`) %>% pull(diferencia_prop)
+}
+```
+
+La diferencia observada es:
+
+```{r}
+dif_obs <- calc_diferencia(te_azucar)
+dif_obs %>% round(3)
+```
+
+Ahora construimos nuestra distribución nula o de referencia:
+
+```{r}
+valores_ref <- datos_perm %>% group_by(.sample) %>% nest %>% 
+  mutate(diferencia = map_dbl(data, calc_diferencia)) 
+```
+
+Y graficamos nuestros resultados (con un histograma y una gráfica de cuantiles, por ejemplo). la
+estadística evaluada un cada una de nuestras muestras permutadas:
+
+```{r, fig.width = 6, fig.height = 3}
+g_1 <- ggplot(valores_ref, aes(sample = diferencia)) + geom_qq(distribution = stats::qunif)  +
+    xlab("f") + ylab("diferencia") + labs(subtitle = "Distribución nula o de referencia")
+g_2 <- ggplot(valores_ref, aes(x = diferencia)) + geom_histogram(binwidth = 0.04) + 
+    coord_flip() + xlab("") + labs(subtitle = " ")
 gridExtra::grid.arrange(g_1, g_2, ncol = 2) 
 ```
 
-Que tiene un valor $p$ de dos colas de
+
+Este es el rango de fluctuación usual para nuestra estadística *bajo la hipótesis de que
+los dos grupos de tomadores de té consumen té a la misma tasa.
+
+El valor que obtuvimos en nuestros datos es
+
 ```{r}
-2*(1 - dist_perm_2(dif_obs))
+dif_obs
 ```
 
-La diferencia observada es más extrema, y es muy poco probable que hayamos observado tal diferencia
-por variación muestra. Tenemos evidencia de que la mediana del grupo "b" es más alta en la población que
-"c".
+Y vemos que no es un valor extremo en la distribución de referencia que vimos arriba: esta
+muestra no aporta evidencia en contra de que los grupos tienen distribuciones similares.
+
+Podemos graficar otra vez marcando el valor de referencia:
+
+```{r}
+# Función de distribución acumulada (inverso de función de cuantiles)
+dist_perm <- ecdf(valores_ref$diferencia)
+# Calculamos el percentil del valor observado
+percentil_obs <- dist_perm(dif_obs %>% round(2))
+```
+
+```{r, fig.width = 6, fig.height = 3}
+g_1 <- ggplot(valores_ref, aes(sample = diferencia)) + geom_qq(distribution = stats::qunif)  +
+    xlab("f") + ylab("diferencia") + labs(subtitle = "Distribución nula o de referencia") +
+    geom_hline(yintercept = dif_obs, colour = "red") +
+    annotate("text", x = 0.3, y = dif_obs - 0.05, label = "diferencia observada", colour = "red")
+g_2 <- ggplot(valores_ref, aes(x = diferencia)) + geom_histogram(binwidth = 0.04) + 
+    coord_flip() + xlab("") + labs(subtitle = " ") +
+    geom_vline(xintercept = dif_obs, colour = "red") +
+    annotate("text", x = dif_obs, y = 2000, label = percentil_obs,vjust = -0.2, colour = "red")
+gridExtra::grid.arrange(g_1, g_2, ncol = 2) 
+```
+
+Y vemos que es un valor algo (pero no muy) extremo en la distribución de referencia que vimos arriba: esta
+muestra no aporta una gran cantidad de 
+evidencia en contra de que los grupos tienen distribuciones similares, que
+en este caso significa que los dos grupos usan azúcar a tasas similares.
+
+
+### Valor p
+
+Nótese que calculamos una cantidad adicional, que es el percentil donde nuestra observación cae
+en la distribución generada por las permutación. Esta cantidad puede usarse para calcular un 
+**valor p**. Podemos calcular, por ejemplo:
+
+- **Valor p de dos colas**: Si la hipótesis nula es cierta, ¿cuál es la
+**probabilidad** de observar una diferencia en valor absoluto **tan extrema o más extrema de lo que observamos**? 
+
+Podemos calcular la respuesta como :
+
+```{r}
+2 * min(dist_perm(dif_obs), (1 - dist_perm(dif_obs)))
+```
+
+Este valor p se considera como evidencia "moderada" en contra de la hipótesis nula. Valores p
+más chicos (observaciones más extremas en comparación con la referencia) aportan más evidencia
+en contra de la hipótesis de que los grupos de tomadores de té , y valores más grandes aportan menos 
+evidencia.
+
+## Tomadores de té 2
+
+Ahora hacemos una prueba de permutaciones otro par de proporciones con el mismo método. La hipótesis
+nula ahora es: 
+
+- Los tomadores de té Earl Gray usan azúcar a una tasa similar a los tomadores de té negro
+
+Los datos que obtuvimos en nuestra encuesta, en conteos, son:
+```{r, echo = FALSE}
+set.seed(23)
+te_azucar <- tea %>% 
+  select(Tea, sugar) %>% 
+  filter(Tea != "green")
+  #mutate(how = ifelse(how == "tea bag", "bolsa_exclusivo", "suelto o bolsa"))
+te_azucar %>% group_by(Tea, sugar) %>% tally %>% 
+  spread(Tea, n) %>% 
+  knitr::kable(type = "html")
+```
+
+Y en proporciones tenemos que:
+
+```{r}
+prop_azucar <- te_azucar %>% group_by(Tea, sugar) %>% tally %>% 
+  group_by(Tea) %>% mutate(prop = n / sum(n), n = sum(n)) %>% 
+  filter(sugar == "sugar") %>% select(Tea, prop_azucar = prop, n) %>% 
+  mutate(prop_azucar = round(prop_azucar,2))
+prop_azucar
+```
+
+Pero distintas muestras podrían haber dado distintos resultados. Nos preguntamos que tan fuerte es
+la evidencia en contra de que en realidad los dos grupos de personas usan azúcar en proporciones similares,
+y la diferencia que vemos se puede atribuir a variación muestral.
+
+En este ejemplo, podemos usar una **estádistica de prueba numérica**, por ejemplo, 
+la diferencia entre las dos proporciones: $p_{earl\, gray} - p_{negro}$. Seguimos el
+mismo proceso de permutaciones para construir la distribución nula o de referencia:
+
+```{r, message = FALSE}
+datos_perm <- lineup(null_permute("Tea"), te_azucar, n = 10000)
+calc_diferencia <- function(datos){
+  datos %>%
+    mutate(usa_azucar = as.numeric(sugar == "sugar")) %>% 
+    group_by(Tea) %>% 
+    summarise(prop_azucar = mean(usa_azucar)) %>% 
+    spread(Tea, prop_azucar) %>% 
+    mutate(diferencia_prop = `Earl Grey` - black) %>% pull(diferencia_prop)
+}
+```
+
+La diferencia observada es:
+
+```{r}
+dif_obs <- calc_diferencia(te_azucar)
+dif_obs %>% round(3)
+```
+
+Ahora construimos nuestra distribución nula o de referencia:
+
+```{r}
+valores_ref <- datos_perm %>% group_by(.sample) %>% nest %>% 
+  mutate(diferencia = map_dbl(data, calc_diferencia)) 
+```
+
+Podemos graficar la distribución de referencia otra vez marcando el valor observado
+
+```{r, echo = FALSE}
+# Función de distribución acumulada (inverso de función de cuantiles)
+dist_perm <- ecdf(valores_ref$diferencia)
+# Calculamos el percentil del valor observado
+percentil_obs <- dist_perm(dif_obs %>% round(2))
+```
+
+```{r, fig.width = 6, fig.height = 3}
+g_1 <- ggplot(valores_ref, aes(sample = diferencia)) + geom_qq(distribution = stats::qunif)  +
+    xlab("f") + ylab("diferencia") + labs(subtitle = "Distribución nula o de referencia") +
+    geom_hline(yintercept = dif_obs, colour = "red") +
+    annotate("text", x = 0.3, y = dif_obs - 0.05, label = "diferencia observada", colour = "red")
+g_2 <- ggplot(valores_ref, aes(x = diferencia)) + geom_histogram(binwidth = 0.04) + 
+    coord_flip() + xlab("") + labs(subtitle = " ") +
+    geom_vline(xintercept = dif_obs, colour = "red") +
+    annotate("text", x = dif_obs, y = 2000, label = percentil_obs,vjust = -0.2, colour = "red")
+gridExtra::grid.arrange(g_1, g_2, ncol = 2) 
+```
+
+En este caso, la evidencia es muy fuerte en contra de la hipótesis nula, pues el
+resultado que obtuvimos es muy extremo en relación a la distribución de referencia.
+El valor p es cercano a 0.
+
 
 ## Ejemplo: tiempos de fusión (opcional) {-}
 
@@ -484,18 +578,51 @@ ggplot(reps, aes(sample = time, colour = nv.vv)) +
     scale_x_continuous(breaks = c(0, 0.5, 1))
 ```
 
-**Ejercicio**: ¿Podemos identificar los datos? 
+**Ejercicio**: ¿Podemos identificar los datos? En general, muy frecuentemente las personas
+identifican los datos correctamente,
+lo que muestra evidencia considerable de que la instrucción verbal 
+altera los tiempos de respuesta de los partipantes, y en este caso 
+ayuda a reducir el tiempo de fusión de los estereogramas. 
 
-Otro enfoque sería probar una característica específica de las muestras. En
-este ejemplo, podríamos tomar, por ejemplo, el promedio de los dos cuantiles
-(superior e inferior). 
+## Ojo: otros tipos de hipótesis
 
-```{r}
+La pruebas de permutaciones son más útiles cuando nuestra hipótesis nula se refiere
+que la distribución de los grupos son muy similares, o la independencia entre
+observaciones y grupo. Esto también aplica cuando queremos probar por ejemplo, que
+una variable numérica Y es independiente de X.
+
+Hay algunas hipótesis que no se pueden probar con este método, como por ejemplo, las
+que se refieren a una sola muestra: ¿los datos son consistentes con que su media es igual a 5?
+
+Adicionalmente, en algunas ocasiones queremos probar aspectos más específicos
+de las diferencias: como ¿son iguales las medias o medianas de dos grupos de datos? ¿Tienen
+dispersión similar? 
+
+Las pruebas de permutaciones no están tan bien adaptadas a este problema, pues prueban
+*todos* los aspectos de las distribuciones que se comparan, aún cuando escogamos una
+estadística particular que pretende medir, por ejemplo, diferencia de medias. Eso quiere
+decir que podemos rechazar igualdad de medias, por ejemplo, cuando en realidad otra característica
+de las distribuciones es la que difiere mucho en las poblaciones
+
+En algunas referencias (ver @chitim) se argumenta que de todas formas
+las pruebas de permutaciones son relativamente robustas a esta desadaptación. Un caso
+excepcional, por ejemplo, es cuando las poblaciones que comparamos resultan tener dispersión muy
+distinta, y adicionalmente los tamaños de muestra de los grupos son muy desiguales (otra vez, ver ejemplos
+en @chitim).
+
+## Ejemplo: tiempos de fusión 2 {-}
+
+Regresamos a los tiempos de fusión. Podemos hacer una prueba de permutaciones para
+la diferencia de las medias o medianas, por ejemplo. En este ejemplo usaremos
+una medida de centralidad un poco diferente, como ilustración: el promedio de los cuartiles
+superior e inferior de las dos distribuciones.
+
+```{r, message = FALSE}
 stat_fusion <- function(x){
     (quantile(x, 0.75) + quantile(x, 0.25))/2
 }
 # permutar
-reps <- lineup(null_permute("nv.vv"), fusion, 20000)
+reps <- lineup(null_permute("nv.vv"), fusion, 10000)
 # diferencia 
 dif <- fusion %>% group_by(nv.vv) %>% 
     summarise(est = stat_fusion(time)) %>% 
@@ -513,10 +640,11 @@ Y el valor p de dos colas es
 
 ```{r}
 dist_perm_nv <- ecdf(cocientes_perm$cociente)
-dist_perm_nv(dif) + (1 - dist_perm_nv(1/dif))
+2 * min(dist_perm_nv(dif), 1- dist_perm_nv(dif))
 ```
 
-Lo que muestra evidencia considerable, aunque no muy fuerte, de que la instrucción verbal ayuda a reducir el tiempo de fusión de los estereogramas. Regresaremos a este ejemplo para discutir la elección de estadística usada y tratamiento de los datos.
+Lo que muestra evidencia considerable, aunque no muy fuerte, de que la instrucción verbal ayuda a reducir el tiempo de fusión de los estereogramas. 
+
 
 ##  Separación de grupos {-}
 
@@ -538,7 +666,7 @@ Como muestran en @cookwasps, el *lineup* es útil para juzgar si tenemos evidenc
 grupos en realidad son iguales, y usamos variación muestral para separarlos.
 
 
-### Avispas {-}
+### Avispas (opcional) {-}
 
 En el siguiente ejemplo, tenemos 4 grupos de avispas (50 individuos en total),
 y para cada individuo se miden expresiones

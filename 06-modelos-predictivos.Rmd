@@ -342,7 +342,7 @@ error_f <- function(df, mod){
 error_ent <- error_f(datos_entrena)
 df_mods <- df_mods %>% 
   mutate(error_entrena = map_dbl(modelo, error_ent))
-df_mods %>% slelect(-modelo) %>% knitr::kable(type = "html")
+df_mods %>% select(-modelo) %>% knitr::kable(type = "html")
 ```
 
 y vemos que el modelo  con menor error de entrenamiento es la curva roja que parece ser demasiado
