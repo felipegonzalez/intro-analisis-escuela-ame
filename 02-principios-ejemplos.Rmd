@@ -499,10 +499,10 @@ el efecto de el % de alumnos que toma el examen, y hacer una comparación de la 
 restante. Para hacer esto, podemos examinar primero la relación entre la fracción de
 alumnos que toma el examen del SAT y las calificaciones:
 
-```{r, fig.width =5, fig.height = 3, echo = FALSE}
+```{r, fig.width = 5, fig.height = 3, echo = FALSE}
 #sat <- sat %>% mutate(cuant = qnorm(frac / 100, 500, 100))
 ggplot(sat, aes(x = frac, y = sat, label = state)) + geom_point() +
-    geom_smooth(method = "loess", span = 0.5, method.args = list(degree = 1)) +
+    geom_smooth(method = "loess", span = 0.5, se = FALSE, method.args = list(degree = 1)) +
     annotate("text", x = 40, y = 1050, label = "Desempeño por \n encima del esperado", colour = "gray30") +
     annotate("text", x = 15, y = 900, label = "Desempeño por \n abajo del esperado", colour  = "gray30") 
 

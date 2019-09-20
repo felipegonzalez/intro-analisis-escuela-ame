@@ -1,11 +1,17 @@
 # Remuestreo: el bootstrap
 
-```{r, message = FALSE, echo = FALSE}
+```{r, message = FALSE, echo = FALSE, warning = FALSE}
 library(tidyverse)
 library(lubridate)
 library(ggthemes)
 library(knitr)
 theme_set(theme_minimal(base_size = 14))
+library(knitr)
+source("./R/funciones_auxiliares.R")
+source("R/casas_preprocesamiento.R")
+set.seed(21)
+casas_completo <- casas
+casas <- casas_completo %>% sample_frac(0.9)
 ```
 
 ## Ejemplo: estimación e intervalos de confianza {-}
@@ -81,8 +87,8 @@ forma bayesiana:
 - La interpretación frecuentista nos da maneras empíricas de probar si los intervalos de
 confianza están bien calibrados o no: es un mínimo que "intervalos del 90\%" debería satisfacer.
 
-Así que tomamos el punto de vista bayesiano, pero requerimos que nuestros intervalos cumplan las
-garantías frecuentistas.
+Así que tomamos el punto de vista bayesiano, pero buscamos que nuestros intervalos cumplan o 
+aproximen bien garantías frecuentistas (discutimos esto más adelante).
 
 ## Cómo producir intervalos para estimación {-}
 
@@ -106,10 +112,9 @@ casas_pob <- casas %>% select(id, precio_miles, nombre_zona)
 casas_pob %>% sample_n(20) %>% kable(type = "html")
 ```
 
-Y nos interesa saber, para la población, cuál es la mediana de los precios de casas
-una muestra aleatoria simple con reemplazo (la población es grande y no hay mucha diferencia entre hacerlo con o sin reemplazo) de tamaño fijo, por ejemplo $n = 50$ (por ejemplo, no tenemos acceso a los datos
-poblacionales, pero podemos diseñar una encuesta para tomar una muestra de 50 casas que fueron
-vendidas en cierto periodo).
+
+Y nos interesa saber, para la población, cuál es la mediana de los precios de casas. Suponemos que no tenemos acceso a los datos poblacionales, y decidimos diseñar una encuesta para tomar una muestra de 50 casas que fueron vendidas en cierto periodo. Suponemos una muestra aleatoria simple con reemplazo (la población es grande y no hay mucha diferencia entre hacerlo con o sin reemplazo)
+de tamaño fijo, por ejemplo $n = 50$ 
 
 Buscamos estimar la mediana poblacional con la mediana de nuestra muestra:
 
@@ -151,7 +156,7 @@ mediana_muestras <- map_dbl(1:5000, ~ casas_pob %>%
 
 Ahora examinamos la distribución de los valores que obtuvimos:
 
-```{r, fig.width = 4, fig.height = 3.5}
+```{r, fig.width = 4, fig.height = 4}
 sims_dm <- tibble(muestra = 1:length(mediana_muestras), mediana_precio = mediana_muestras)
 valor_poblacional <- median(casas$precio_miles) 
 ggplot(sims_dm, aes(sample = mediana_muestras)) + geom_qq(distribution = stats::qunif) +
@@ -165,7 +170,7 @@ poblacional**. Cuanto más concentrada esté alrededor del valor poblacional, la
 alta de que obtengamos una estimación precisa cuando tomemos una muestra particular. Podemos hacer un
 histograma también:
 
-```{r,  fig.width = 4, fig.height = 3.5,echo = FALSE, message=FALSE}
+```{r graf_1,  fig.width = 4, fig.height = 3, echo = FALSE, message=FALSE}
 g_1 <- ggplot(sims_dm, aes(x = mediana_precio)) + 
     geom_histogram(binwidth = 5) +
     geom_vline(xintercept = valor_poblacional, colour = "red")
@@ -182,9 +187,9 @@ quantile(mediana_muestras - valor_poblacional , c(0.025, 0.975)) %>% round
 con 95\% de probabilidad que el error sea menos de unas 30 unidades. ***Esta es la precisión
 de nuestro estimador.**
 
-Si usamos una muestra más grande (n = 150, por ejemplo) podemos obetner un resultado más preciso:
+Si usamos una muestra más grande (n = 150, por ejemplo) podemos obtener un resultado más preciso:
 
-```{r, echo = FALSE, message = FALSE}
+```{r, echo = FALSE, message = FALSE, fig.width = 4, fig.height=2}
 # Repetir 5000 veces
 mediana_muestras <- map_dbl(1:5000, ~ casas_pob %>% 
     sample_n(200, replace = T) %>%  # muestra de 50
@@ -205,14 +210,14 @@ Y como es de esperarse, vemos que muestras más grandes resultan en menos variab
 Una confusión inicial que es común es entre la distribución de muestreo y la distribución poblacional. 
 La poblacional muestra cómo se distribuyen los valores de la variable de interés:
 
-```{r, fig.width = 4, fig.height = 3, message = FALSE}
+```{r, fig.width = 3, fig.height = 2, message = FALSE}
 ggplot(casas_pob, aes(x = precio_miles)) + geom_histogram() +
     geom_vline(xintercept = valor_poblacional)
 ```
 
 Que es muy diferente que las distribuciones de muestreo de nuestros dos estimadores:
 
-```{r fig.width = 6, fig.height = 3, message = FALSE}
+```{r, fig.width = 4, fig.height = 2, message = FALSE}
 g_dist_muestreo
 ```
 
@@ -290,18 +295,18 @@ nivel podemos suponer que las muestras son idependientes e idénticamente distri
 Por ejemplo: en muestreo estratificado, podemos hacer bootstrap sobre cada estrato por separado. En muestreo
 complejo, podemos hacer bootstrap de unidades primarias de muestreo, etc.
 
-Requiere más cómputo que fórmulas estándar (desventaja) que en algunos casos funcionan bien (por ejemplo, intervalos $t$ para
-una media), pero tenemos flexibilidad (ventaja) para aplicar en estadísticas diferentes de manera muchas veces trivial.
+Requiere más cómputo que fórmulas estándar (desventaja), por ejemplo, intervalos $t$ para
+medias, pero tenemos flexibilidad (ventaja) para aplicar en estadísticas diferentes de manera muchas veces trivial.
 
 Es una técnica estándar en el análisis de datos que se usa en un rango grande de aplicaciones (ventaja).
 
-Finalmente, en casos donde tenemos la población total, o el supuesto de muestras aleatorias es dudoso, lo podemos
-utilizar más informalmente como un análisis de sensibilidad de nuestros resultados. Es una perturbación a los
-datos (que podemos combinar con otros tipos de perturbaciones) para juzgar qué tan fuertemente depende nuestro
+Finalmente, en casos donde tenemos la población total, o 
+el supuesto de muestras aleatorias es dudoso, lo podemos
+utilizar más informalmente como un análisis de sensibilidad de nuestros resultados. Es una perturbación a los datos (que podemos combinar con otros tipos de perturbaciones) para juzgar qué tan fuertemente depende nuestro
 análisis de los datos que tenemos a mano.
 
 
-## Cobertura nominal y cobertura real
+## Cobertura nominal y cobertura real {-}
 
 ¿Cómo sabemos que la cobertura nominal del 90\% es cercana a la realidad? Sería muy malo que los
 intervalos fueran demasiado anchos (exageramos la variabilidad) o demasiado angostos (damos la idea
@@ -321,7 +326,7 @@ en ciertos casos.
 de simulación bajo ciertos supuestos acerca de la población 
 para una estadística dada, y estimar empíricamente si la cobertura es adecuada. **
 
-### Ejemplo
+### Ejemplo {-}
 
 Construimos para nuestra población varias muestras bootstrap con sus respectivos intervalos de cuantiles.
 ¿Qué porcentaje de veces cubrimos al verdadero valor?
@@ -375,7 +380,7 @@ intervalos %>% mutate(cubre = valor_poblacional > inf & valor_poblacional < sup)
 Para este número de repeticiones, estos números son consistentes con la cobertura *nominal*
 de 90\%.
 
-## Ejemplo: estereogramas
+## Ejemplo: estereogramas {-}
 
 En este caso, queremos hacer inferencia sobre la diferencia de tiempo de reconocimiento de los grupos. 
 Como discutimos antes, preferimos hacer comparaciones multiplicativas. En este caso particular,
@@ -395,18 +400,21 @@ muestra_boot <- function(datos, grupo, medicion, fun_muestra, comparacion){
       pull(comp)
     est_boot
 }
-muestra_boot(fusion, nv.vv, time, median, VV / NV)
+muestra_boot(fusion, nv.vv, time, median, VV / NV) %>% round(2)
 ```
+
+La distribución de remuestreo es:
 
 ```{r, fig.width = 4, fig.height = 3}
 reps_boot <- map_dbl(1:2000, ~ muestra_boot(fusion, nv.vv, time, mean, VV / NV))
-qplot(1:length(reps_boot), sort(reps_boot))
+ggplot(tibble(cociente_boot = reps_boot), aes(sample = reps_boot)) +
+  geom_qq(distribution = stats::qunif) + xlab("f") + ylab("Cociente")
 ```
 
 y un intervalo de 90\% sería:
 
 ```{r}
-quantile(reps_boot, c(0.05, 0.95))
+quantile(reps_boot, c(0.05, 0.95)) %>% round(2)
 ```
 
 Y esta sería una forma de presentar nuestros resultados: hay probabilidad considerable de que el efecto
@@ -535,7 +543,7 @@ boot_perfiles <- map(1:1000, function(x){
 
 Ahora resumimos y graficamos, esta vez de manera distinta:
 
-```{r, fig.width = 5, fig.height = 3}
+```{r, fig.width = 6, fig.height = 2}
 resumen_perfiles <- boot_perfiles %>% group_by(how, price) %>% 
     summarise(perfil_media = mean(perfil), ymax = quantile(perfil, 0.9), ymin = quantile(perfil, 0.10)) 
 resumen_bolsa <- resumen_perfiles %>% ungroup %>% 
@@ -549,48 +557,10 @@ ggplot(resumen_perfiles, aes(x = price, y = perfil_media, ymax = ymax, ymin = ym
     geom_hline(yintercept = 0, colour = "gray") + ylab("Perfil") + xlab("Precio")
 ```
 
-Nótese una deficiencia clara del bootstrap: para los que compran té suelto, en la muestra no existen personas
-que desconocen de dónde provienen su té (No sabe/No contestó). Esto puede ser un hallazgo, pero produce un intervalo colapsado que no
-es razonable. 
+Nótese una deficiencia clara del bootstrap: para los que compran té suelto, 
+en la muestra no existen personas
+que desconocen de dónde provienen su té (No sabe/No contestó). 
+Esto puede ser un hallazgo, pero produce un intervalo colapsado que no es razonable. 
 
-Podemos remediar esto de varias maneras: quitando del análisis los que no sabe o no contestaron, agrupando en otra categoría,
-usando un modelo con más estructura, o regularizando agregando proporciones del tipo usando conteos modificados: por ejemplo,
-agregando un caso de cada combinación (agregaría 18 personas "falsas" a una muestra de 290 personas):
-
-```{r}
-conteos_1 <- crossing(te %>% select(how) %>% unique, te %>% select(price) %>% unique)
-boot_perfiles <- map(1:1000, function(x){
-    te_aumentado <- te %>% select(how, price) %>% bind_rows(conteos_1)
-    te_boot <- te_aumentado %>% select(how, price) %>% 
-        sample_n(nrow(te), replace = TRUE)
-    calcular_perfiles(te_boot) %>% mutate(rep = x)
-}) %>% bind_rows()
-```
-
-Ahora resumimos y graficamos, esta vez de manera distinta:
-
-```{r, fig.width = 5, fig.height = 3}
-resumen_perfiles_aum <- boot_perfiles %>% group_by(how, price) %>% 
-    summarise(perfil_media = mean(perfil), ymax = quantile(perfil, 0.9), ymin = quantile(perfil, 0.10)) 
-resumen_bolsa <- resumen_perfiles_aum %>% ungroup %>% 
-    filter(how == "tea bag") %>% select(price, perfil_bolsa = perfil_media)
-resumen_perfiles_aum <- resumen_perfiles_aum %>% left_join(resumen_bolsa) %>% 
-    ungroup %>% 
-    mutate(price = fct_reorder(price, perfil_bolsa))
-ggplot(resumen_perfiles_aum, aes(x = price, y = perfil_media, ymax = ymax, ymin = ymin)) + 
-    geom_point(colour = "red") + geom_linerange() +
-    facet_wrap(~how) + coord_flip() +
-    geom_hline(yintercept = 0, colour = "gray") + ylab("Perfil") + xlab("Precio")
-```
-
-Y vemos que estos perfiles están encogidos a la diagonal (tienen más varianza )
-
-```{r}
-p_1 <- resumen_perfiles %>% select(how, price, perfil = perfil_media) 
-p_2 <- resumen_perfiles_aum %>% select(how, price, perfil_aum = perfil_media)
-datos_g <- left_join(p_1, p_2) %>% left_join(te %>% group_by(how, price) %>% tally) %>% 
-    mutate(n = ifelse(is.na(n), 1, n+1))
-ggplot(datos_g, aes(x = perfil, y = perfil_aum, colour = log(n), size=n)) + geom_point() + geom_abline() +
-    coord_equal(ratio = 1, xlim=c(-1, 2), ylim=c(-1, 2)) +
-    xlab("Conteos") + ylab("Conteos suavizados")
-```
+Podemos remediar esto de varias maneras: quitando del análisis los que no sabe o no contestaron, agrupando en otra categoría, usando un modelo con más estructura, o regularizando agregando proporciones del tipo usando conteos modificados: por ejemplo,
+agregando un caso de cada combinación (agregaría 18 personas "falsas" a una muestra de 290 personas).

@@ -165,7 +165,7 @@ este es un método que puede ser razonable.
 En nuestro ejemplo del SAT, podríamos querer predecir la calificación promedio de los alumnos que toman
 el examen ($Y$) en función de $X$= fracción de alumnos que toman el examen. Trabajamos con una muestra de los datos.
 
-```{r, fig.width = 4, fig.height = 3}
+```{r, fig.width = 4, fig.height = 3, message = FALSE}
 set.seed(923)
 sat_completos <- read_csv("datos/sat.csv") 
 sat <- sat_completos %>% sample_frac(0.6)
@@ -342,7 +342,7 @@ error_f <- function(df, mod){
 error_ent <- error_f(datos_entrena)
 df_mods <- df_mods %>% 
   mutate(error_entrena = map_dbl(modelo, error_ent))
-df_mods
+df_mods %>% slelect(-modelo) %>% knitr::kable(type = "html")
 ```
 
 y vemos que el modelo  con menor error de entrenamiento es la curva roja que parece ser demasiado
@@ -359,14 +359,14 @@ x_0 <- sample(0:13, 2000, replace = T)
 error <- rnorm(length(x_0), 0, 500)
 y_0 <- f(x_0) + error
 datos_prueba <- tibble(x = x_0, y = y_0)
-datos_prueba
+datos_prueba %>% head
 ```
 
 ```{r}
 error_p <- error_f(datos_prueba)
 df_mods <- df_mods %>% 
   mutate(error_prueba = map_dbl(modelo, error_p))
-df_mods
+df_mods %>% select(-modelo) %>% knitr::kable(type = "html")
 ```
 
 y vemos que el modelo con mejor desempeño está dado por la curva gris, lo cual coincide con nuestra
