@@ -560,7 +560,6 @@ ggplot(resumen_perfiles, aes(x = price, y = perfil_media, ymax = ymax, ymin = ym
 Nótese una deficiencia clara del bootstrap: para los que compran té suelto, 
 en la muestra no existen personas
 que desconocen de dónde provienen su té (No sabe/No contestó). 
-Esto puede ser un hallazgo, pero produce un intervalo colapsado que no es razonable. 
+Esto produce un intervalo colapsado en 0 que no es razonable. 
 
-Podemos remediar esto de varias maneras: quitando del análisis los que no sabe o no contestaron, agrupando en otra categoría, usando un modelo con más estructura, o regularizando agregando proporciones del tipo usando conteos modificados: por ejemplo,
-agregando un caso de cada combinación (agregaría 18 personas "falsas" a una muestra de 290 personas).
+Podemos remediar esto de varias maneras: quitando del análisis los que no sabe o no contestaron, agrupando en otra categoría, usando un modelo, o regularizar usando proporciones calculadas con conteos modificados: por ejemplo, agregando un caso de cada combinación (agregaría 18 personas "falsas" a una muestra de 290 personas).
