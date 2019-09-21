@@ -61,7 +61,8 @@ En este caso particular, construiremos una **descomposición aditiva** de la ser
 ## Tendencia {-}
 
 Comenzamos por extraer la tendencia, haciendo promedios loess con vecindades relativamente grandes. Quizá preferiríamos 
-suavizar más, pero si hacemos esto en este punto empezamos a absorber parte de la componente anual:
+suavizar menos para capturar más variación lenta, 
+pero si hacemos esto en este punto empezamos a absorber parte de la componente anual:
 
 
 ```{r}
@@ -91,7 +92,7 @@ del suavizado anterior**, pero con menos
 suavizamiento. Así evitamos capturar tendencia:
 
 ```{r}
-mod_anual <- loess(res_1 ~ as.numeric(fecha), data = datos_dia, degree = 2, span = 0.007)
+mod_anual <- loess(res_1 ~ as.numeric(fecha), data = datos_dia, degree = 2, span = 0.005)
 datos_dia <- datos_dia %>% mutate(ajuste_2 = fitted(mod_anual)) %>% 
     mutate(res_2 = res_1 - ajuste_2)
 ```
@@ -111,7 +112,7 @@ loess para cada serie independiente
 ```{r}
 datos_dia <- datos_dia %>% group_by(dia_semana) %>% nest() %>% 
     mutate(ajuste_mod = 
-      map(data, ~ loess(res_2 ~ as.numeric(fecha), data = .x, span = 0.075, degree = 1))) %>% 
+      map(data, ~ loess(res_2 ~ as.numeric(fecha), data = .x, span = 0.1, degree = 1))) %>% 
     mutate(ajuste_3 =  map(ajuste_mod, fitted)) %>% 
     select(-ajuste_mod) %>% unnest() %>% 
     mutate(res_3 = res_2 - ajuste_3) %>% ungroup
@@ -144,7 +145,7 @@ ggplot(datos_dia, aes(sample = res_3)) + geom_qq(distribution = stats::qunif) +
 ## Reestimación {-}
 
 Cuando hacemos este proceso secuencial ajuste -> residual, a veces conviene iterarlo. La razón es que un una
-segunda o tercera pasada podemos hacer mejores estimaciones de cada componente, y es posible suavizar más sin
+segunda o tercera pasada podemos hacer mejores estimaciones de cada componente, y es posible suavizar menos sin 
 capturar componentes de más alta frecuencia.
 
 Así que podemos regresar a la serie
@@ -154,7 +155,8 @@ original para hacer mejores estimaciones, más suavizadas:
 # quitamos componente anual y efecto de día de la semana
 datos_dia <- datos_dia %>% mutate(n_1 = n - ajuste_2 - ajuste_3)
 # reajustamos
-mod_1 <- loess(n_1 ~ as.numeric(fecha), data = datos_dia, span = 0.02, degree = 2)
+mod_1 <- loess(n_1 ~ as.numeric(fecha), data = datos_dia, span = 0.02, degree = 2,
+               family = "symmetric")
 ```
 
 ```{r, echo = FALSE}
@@ -170,7 +172,7 @@ ggplot(datos_dia, aes(x = fecha)) +
 
 ```{r}
 mod_anual <- loess(n_2 ~ as.numeric(fecha), data = datos_dia, 
-               degree = 2,  span = 0.005, family = "symmetric")
+               degree = 2,  span = 0.01, family = "symmetric")
 datos_dia <- datos_dia %>%
     mutate(ajuste_5 = fitted(mod_anual)) %>% 
     mutate(res_5 = n_2 - ajuste_5) %>%
@@ -205,7 +207,7 @@ ggplot(datos_dia, aes(x = fecha, y = n_3, group = dia_semana)) +
 Ahora comparamos las componentes estimadas y los residuales en una misma gráfica. La suma de todas
 estas componentes da los datos originales: es una descomposición aditiva.
 
-```{r, fig.width =8, fig.height = 8, echo = FALSE}
+```{r, fig.width =7, fig.height = 7, echo = FALSE}
 media <- mean(datos_dia$n) %>% round
 datos_l <- datos_dia %>% 
     select(fecha, dia_semana, n, ajuste_4, ajuste_5, ajuste_6, res_6) %>% 
