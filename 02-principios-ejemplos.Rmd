@@ -819,6 +819,8 @@ En algunos casos, la diferencia entre hacer análisis con logaritmo o en unidade
 originales no es muy importante. Esto sucede cuando el rango de variación está dentro de un orden de magnitud. Esto es porque cuando $x$ no varía mucho, por ejemplo,
 las comparaciones aditivas $(y-x)$ y multiplicativas $(y-x)/x$ difieren en aproximadamente por un factor multiplicativo.
 
+
+
 ## Tablas de conteos {-}
 
 Para tablas de conteos o porcentajes, las comparaciones multiplicativas tienden a ser más útiles. 
@@ -918,81 +920,38 @@ son diferentes.
 este grupo particular. No siempre queremos hacer esto.
 
 
-## Ejemplo: ganado {-}
-
-Aquí presentamos otro análisis de tabla de conteos. En este caso, podemos obtener perfiles de una manera
-distinta: trabajando directamente con los logaritmos de los conteos.
-
-```{r}
-ganado <- read_csv("./datos/livestock.csv")
-ganado
-```
-
-```{r, echo = FALSE}
-ganado_2 <- ganado %>% mutate(count_miles = count / 1e6) %>%  
-  select(-count) %>% 
-  spread(livestock.type, count_miles) 
-```
-
-Veamos cómo resultaría el análisis usando logaritmos:
-```{r}
-ganado <- ganado %>% 
-  ungroup %>% 
-  mutate(media = mean(log(count))) %>% 
-  group_by(country) %>% 
-  mutate(por_pais = mean(log(count)) - media) %>% 
-  group_by(livestock.type) %>% 
-  mutate(por_tipo = mean(log(count)) - media) %>% 
-  mutate(residual = log(count) - (media + por_pais + por_tipo)) %>% 
-  mutate(ajustado = media + por_pais + por_tipo)
-ggplot(ganado, aes(x=ajustado, y=residual)) + geom_point()
-```
 
 
-Veamos cómo resultaría el análisis usando logaritmos, que no es muy bueno (ajustados y residuales tienen
-información similar):
-```{r, echo=FALSE}
-ganado_nl <- ganado %>% 
-  ungroup %>% 
-  mutate(media = mean((count))) %>% 
-  group_by(country) %>% 
-  mutate(por_pais = mean((count)) - media) %>% 
-  group_by(livestock.type) %>% 
-  mutate(por_tipo = mean((count)) - media) %>% 
-  mutate(residual = (count) - (media + por_pais + por_tipo)) %>% 
-  mutate(ajustado = media + por_pais + por_tipo)
-ggplot(ganado_nl, aes(x=ajustado, y=residual)) + geom_point()
-```
+## Comparaciones causales {-}
 
+Los principios del diseño analítico son especialmente importantes
+cuando queremos interpretar las comparaciones que hacemos de forma *causal*,
+que muchas veces son las que más nos interesan.
 
-Podemos ahora ordenar la tabla de ajustados y residuales, marcar residuales grandes, y ordenar
-con alguna categoría, como hiciemos en el ejemplo del té:
+Por ejemplo, en el estudio de estereogramas que acabamos de ver, la interpretación que
+hacemos final es causal : la descripción verbal reduce el tiempo de fusión a 2/3 en promedio comparado con no recibir la descripción verbal. Esto lo podemos hacer pues 
+este caso asignamos al azar el tratamiento de descripción verbal sobre los
+individuos del estudio. 
 
-```{r}
-marcar_g <- marcar_tabla_fun_doble(-0.4, 0.4, "red", "black")
-ganado_ancha <- 
-  ganado %>% select(livestock.type, country, residual) %>% 
-  mutate(residual = round(residual, 2)) %>% 
-  spread(livestock.type, residual) 
-orden <- princomp(ganado_ancha  %>% select(-country))$scores[,1] %>% round(2)
-#orden <- kmeans(ganado_ancha  %>% select(-country), centers = 6)$cluster
-ganado_ancha %>% 
-  mutate(orden = orden) %>% 
-  arrange(orden) %>% 
-  mutate_if(if_profile, marcar_g) %>%
-  knitr::kable(format = "html", escape = F, digits = 2) %>% 
-  kableExtra::kable_styling(bootstrap_options = c( "hover", "condensed"), full_width = FALSE)
-```
+Esta aleatorización elimina diferencias sistemáticas entre los grupos, de forma
+que llegar a la interpretación causal es simple: los dos grupos que comparamos son
+similares en promedio, las diferencias que puedan tener se debe al azar, y podemos
+usar las herramientas estadísticas de la siguiente sección para evaluar la evidencia
+de que los grupos tienen respuestas distintas. Si esa evidencia es fuerte, podemos
+adjudicarla a la única diferencia sistemática, que es si recibió la información verbal
+o no, y así concluir con una interpretación causal.
 
-Y podemos resumir:
+- Los experimentos no son la única manera (pero sí la más simple y confiable desde el 
+punto de vista analítico) de hacer **comparaciones causales**. 
+- Las comparaciones usuales que hicimos en la mayoría de los ejemplos anteriores les podemos llamar **comparaciones predictivas** (más de esto en la sesión 3).
 
-```{r}
-aov_ganado <- ganado %>% select(livestock.type, country, por_pais:residual) %>% 
-  gather(tipo, valor, por_pais:residual) %>% 
-  mutate(etiqueta = ifelse(tipo == "residual", paste(livestock.type, country), "")) %>% ungroup %>% 
-  mutate(etiqueta = ifelse(abs(valor)> 2, etiqueta, ""))
-ggplot(aov_ganado, aes(sample = valor)) + geom_qq(distribution = stats::qunif) +
-  facet_wrap(~tipo) 
+Notése que esto no quiere decir que cuando hacemos comparaciones predictivas usuales debemos dejar de  pensemos en causalidad, sino al contrario:
 
-```
+- Pensamos qué otras variables pueden estar produciendo sistemática o no sistemáticamente las diferencias o contrastes que vemos.
+- Pensamos si podemos conseguir o no información de esas variables para refinar nuestras comparaciones.
+- Pensamos cómo podemos usar la información que tenemos para hacer comparaciones más interpretables.
+- Discutimos por qué pueden ser deficientes nuestras comparaciones.
+
+Lectura adicional: el capítulo 9 de @GelmanHill tiene una introducción accesible.
+
 

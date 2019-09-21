@@ -278,7 +278,7 @@ ggplot(datos_13,
 Nótese que fue útil agregar el indicador de Semana santa por el Viernes 13 de Semana Santa
 que se ve como un atípico en el panel de los viernes 13.
 
-## Residuales: antes y después de 2006
+## Residuales: antes y después de 2006 {-}
 
 Veamos primero una agregación sobre los años de los residuales. Lo primero es observar un
 cambio que sucedió repentinamente en 2006:

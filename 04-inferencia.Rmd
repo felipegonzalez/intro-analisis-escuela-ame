@@ -293,7 +293,7 @@ evidencia en contra de que los datos se producen de manera homogénea, independi
 no encontramos evidencia en contra de que los tres grupos producen datos con
  distribuciones similares.
 
-## Ejemplo
+## Comparaciones con lineup 2 {-}
 
 Repitimos el ejemplo para otra muestra (en este ejemplo el proceso generador
 de datos es diferente para el grupo b):
@@ -471,7 +471,7 @@ más chicos (observaciones más extremas en comparación con la referencia) apor
 en contra de la hipótesis de que los grupos de tomadores de té , y valores más grandes aportan menos 
 evidencia.
 
-## Tomadores de té 2
+## Tomadores de té 2 {-}
 
 Ahora hacemos una prueba de permutaciones otro par de proporciones con el mismo método. La hipótesis
 nula ahora es: 
@@ -584,7 +584,7 @@ lo que muestra evidencia considerable de que la instrucción verbal
 altera los tiempos de respuesta de los partipantes, y en este caso 
 ayuda a reducir el tiempo de fusión de los estereogramas. 
 
-## Ojo: otros tipos de hipótesis
+## Ojo: otros tipos de hipótesis nulas {-}
 
 La pruebas de permutaciones son más útiles cuando nuestra hipótesis nula se refiere
 que la distribución de los grupos son muy similares, o la independencia entre
@@ -850,7 +850,7 @@ valor_p_fusion(fusion %>% sample_frac(0.9), stat_fusion = mean, trans = log, com
 Si existen grados de libertad - muchas veces necesarios para hacer un análisis exitoso-, entonces
 los valores p pueden tener poco significado.
 
-## Soluciones {-}
+## Alternativas o soluciones {-}
 
 El primer punto importante es reconocer que la mayor parte de nuestro trabajo
 es **exploratorio** (recordemos el proceso complicado del análisis de datos de refinamiento de preguntas). 
