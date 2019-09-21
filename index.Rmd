@@ -18,15 +18,13 @@ AME 2019: Ciencia de datos.
 Este es un curso para principiantes del análisis de datos. Busca ilustrar ideas 
 y principios importantes, y algunas ideas de herramientas útiles en el análisis usual.
 
+Las tres sesiones cubren:
 
-
-## Temas {-}
-
-1. Principios de análisis. Análisis exploratorio de datos
-2. Inferencia:Permutaciones y Remuestreo 
+1. Principios de análisis de datos. Visualización y técnicas básicas.
+2. Remuestreo para inferencia: inferencia gráfica, permutaciones y el bootstrap.
 3. Análisis predictivo
 
-## Instrucciones
+## Instrucciones {-}
 
 - ¿Dónde están las notas? En las notas sólo mostramos partes del código (las que consideramos pueden ayudar a entender mejor los conceptos)
 - ¿Dónde está el código y cómo correr el código? Repositorio y Rstudio Cloud

@@ -395,7 +395,7 @@ entender cuánto "aporta" cada escuela a cada estudiante, como medida de qué ta
 ¿Cómo se relaciona el gasto por alumno, a nivel estatal, 
 con sus resultados académicos? Hay trabajo
 considerable en definir estos términos, pero supongamos que tenemos el
-[siguiente conjunto de datos](http://jse.amstat.org/datasets/sat.txt) (@Guber2011), que son
+[siguiente conjunto de datos](http://jse.amstat.org/datasets/sat.txt) (@Guber2011, @sleuth), que son
 datos oficiales agregados por estado de Estados Unidos. Tenemos las variables
 *sat*, por ejemplo, que es la calificación promedio de los alumnos en cada estado
 (para 1997), y la variable *expend*, que es el gasto en miles de dólares
@@ -618,8 +618,8 @@ gridExtra::grid.arrange(grobs = grafs,ncol = 3)
 ## Ajuste y residuales {-}
 
 Esta técnica de análisis en la que controlamos por variables para "escarbar en los datos",
-se puede resumir como sigue. Intentamos ajustar patrones conocidos en los datos, "quitarlos de
-los datos", y examinar la variación restante:
+se puede resumir como sigue. Intentamos ajustar patrones conocidos, "quitarlos de
+los datos", y examinar la variación restante (@ClevelandVis):
 
 $$ datos = ajuste + residual $$
 
@@ -711,28 +711,13 @@ está aproximadamente centrada en cada caja. Así que la variación entre el cua
 e inferior respecto a la mediana es de 12\% aproximadamente. *Esto es aproximadamente
 cierto en cada grupo de calidad*. 
 
-- Los incrementos en precio son más o menos similares cuando la calidad aumenta en un 1 punto ( de la gráfica con unidades log, más o menos 0.25, aproximadamente 25\% de incremento en la escala original=.
-
-Podemos calcular cuantiles adicionales:
-
-```{r}
-casas_tbl <- casas_ejemplo %>% group_by(calidad_gral) %>% 
-    summarise(cuantiles = list(cuantil(log(precio_miles), c(0.1, 0.25, 0.5, 0.75, 0.9)))) %>% 
-    unnest
-g_80_p <- ggplot(casas_tbl  %>% spread(cuantil,valor), aes(x = calidad_gral, y = `0.5`)) +
-    geom_linerange(aes(ymin= `0.1`, ymax = `0.9`), colour = "gray40") +
-    geom_linerange(aes(ymin= `0.25`, ymax = `0.75`), size = 2, colour = "white") +
-    geom_point(colour = "red", size = 3) +
-    scale_y_continuous(breaks = seq(4, 6.5, by =0.25))
-g_80_p
-```
+- Los incrementos en precio son más o menos similares cuando la calidad aumenta en un 1 punto ( de la gráfica con unidades log, más o menos 0.25, aproximadamente 25\% de incremento en la escala original.
 
 Esta es una comparación superior, pues descubrimos una regularidad importante en los
 datos (principio 3). En este caso, lo logramos cambiando a una escala más apropiada para
 el problema.
 
-Podemos examinar los residuales de distintas maneras. Para describir estas gráficas
-de manera cuantitativa, por ejemplo, podemos hacer lo siguiente. Consideramos
+Ahora consideramos la desomposicion que hicimos:
 
 $$ precio (log) = mediana\_calidad + residual $$
 
@@ -743,11 +728,12 @@ cambios relativos cuando aumenta un punto de calidad en las medianas:
 medianas <- casas_ejemplo %>% group_by(calidad_gral) %>% 
     summarise(mediana = median(precio_miles)) %>% 
     arrange(desc(mediana)) %>% 
-    mutate(incremento = mediana / lead(mediana) - 1)
-medianas %>% kable(type = "html")
+    mutate(incremento_porc = (mediana / lead(mediana) - 1) %>% round(2))
+medianas %>% formatear_tabla
 ```
 
-Y como los residuales tienen distribución similar en cada grupo los agrupamos para resumir:
+Y como los residuales tienen distribución similar en cada grupo 
+es razonable  agrupamos para resumir:
 
 ```{r, echo = FALSE, message = FALSE}
 residuales <- casas_ejemplo %>% left_join(medianas) %>% 
@@ -756,7 +742,7 @@ residuales <- casas_ejemplo %>% left_join(medianas) %>%
 quantile(residuales$residual, 
          c(0, 0.10, 0.25, 0.5, 0.75, 0.9, 1)) %>% 
   round(2) %>% 
-  kable (type = "html")
+  formatear_tabla()
 ```
 
 Así que nuestro resumen podría ser
@@ -765,33 +751,51 @@ Así que nuestro resumen podría ser
 de calidad, el 50\% de las casas está a una diferencia máxima de +/- 12% del precio mediano de la categoría,
 y 80\% de las casas alrededor de +/- 27%. 
 
-Que es compacto y pone en evidencia la estructura en la relación de estas dos variables.
+Esta es una descripción compacta y que pone en evidencia la estructura en la relación de estas dos variables.
+
+### Otros tipos de resumen {-}
+
+Otros de resúmenes que se pueden hacer y son comunes son:
+
+- La media en lugar de la mediana para resumir la ubicación general de una distribución.
+- La desviación estándar en lugar del rango entre cuantiles para resumir la dispersión.
+
+La desviación estándar se calcula como sigue: si $\bar{x}$ es la media de un 
+conjunto de mediciones, su desviación estándar es 
+
+$$hat{\sigma} = \sqrt{\frac{1}{n}\sum_{i = 1}^n (x_i - \bar{x})^2}$$
+
+Está son medidas más especializadas y difíciles de interpretar: por ejemplo, funcionan mejor cuando las distribuciones que queremos describir son simétricas y no tienen colas
+muy largas o atípicos. Tienen muchas ventajas en ciertos casos, pero en
+anáisis exporatorio tendemos a usarlas menos.
+
 
 ## Ejemplo: tiempos de fusión {-}
 
 Veamos el siguiente ejemplo, que es un experimento donde se midió el tiempo
-que tardan distintas personas en fusionar un [estereograma](https://en.wikipedia.org/wiki/Autostereogram#/media/File:Stereogram_Tut_Random_Dot_Shark.png) para ver una imagen 3D.
+que tardan distintas personas en fusionar un [estereograma](https://en.wikipedia.org/wiki/Autostereogram#/media/File:Stereogram_Tut_Random_Dot_Shark.png) para ver una imagen 3D. (@ClevelandVis).
 
 Existen dos condiciones: en una se dio indicaciones de qué figura tenían que
 buscar (VV) y en otra no se dio esa indicación. ¿Las instrucciones verbales
-ayudan a fusionar más rápido el estereograma?
+ayudan a fusionar más rápido el estereograma? 
 
 ```{r, message = FALSE, echo = FALSE, fig.width =4, fig.height = 3}
 fusion <- read_delim("./datos/fusion_time.txt", delim = " ", trim_ws = TRUE)
 ggplot(fusion, aes(x = nv.vv, y = time)) + geom_boxplot() + geom_jitter()
 ```
 
+Nótese que aquí no nos procupamos, como en los ejemplos anteriores, por diferencias
+sistemáticas producidas por otros factores que los que consideramos en esta
+comparación. El hecho de que se aleatorizó el tratamiento excluye esta posibiidad en gran parte.
 
 Lo primero que observamos es que hay una variabilidad grande entre el tiempo que tardan
-en fusionar: los rangos van de menos de 5 segundos hasta 20 - 40 segundos. Esto sugiere dos
-posibilidades:
+en fusionar: los rangos van de menos de 5 segundos hasta 20 - 40 segundos. Esto sugiere que una comparación multiplicativa puede ser más apropiada para comparar. La razón es 
+que 
 
-- Hay personas que son mucho más hábiles que otras para fusionar estereogramas
-- Cada persona puede tardar una cantidad muy variable de tiempo para fusionar un estereograma
+- No pensamos que el efecto de la información verbal, por ejemplo, cambie el tiempo de fusión en un número fijo de segudos.
+- Más bien, hay personas que tienden a tardar mucho más que otras. El efecto de la instrucción verbal entonces tiene más sentido como un efecto multipicativo: quizá reduce en 20\%, o 40\%, etc el tiempo de detección. 
 
-En cualquier caso, tiene más sentido pensar en diferencias relativas: si alguien tarda 8 segundos,
-tardó el doble que alguien que tardó 4 segundos, iugal que la comparación de alguien que tarda 16 vs 8 segundos.
-
+Decidimos entonces convertir a escala multiplicativa:
 
 ```{r, message = FALSE, echo = FALSE, fig.width =4, fig.height = 3}
 fusion <- read_delim("./datos/fusion_time.txt", delim = " ", trim_ws = TRUE)
@@ -802,14 +806,15 @@ gridExtra::grid.arrange(g_1, g_2, ncol = 2)
 ```
 
 De la gráfica, vemos que la distribución VV está desplazada alrededor de 0.3 unidades (en logaritmo)
-hacia abajo. Esto implica que el tiempo bajo VV es alrededor de 66% los tiempos bajo NV. La variación
-dentro de cada grupo es considerable.
+hacia abajo, o en la escala original, alrededor de 35\% (exp(0.3)). 
+Esto implica que los tiempos bajo VV son en promedio alrededor de 66% los tiempos bajo NV. La variación dentro de cada grupo es considerable.
 
-Gráficas de cuantiles puedes ser más efetivas para 
+Gráficas de cuantiles puedes ser muy efectivas para mostrar esta descripción:
 
 ```{r, , fig.width =4, fig.height = 3}
 ggplot(fusion, aes(sample = log(time), colour = nv.vv)) + 
-  geom_qq(distribution = stats::qunif) 
+  geom_qq(distribution = stats::qunif)  + ylab("Log tiempo de fusión") +
+  xlab("f")
 ```
 
 
@@ -840,24 +845,26 @@ Nos interesa ver qué personas compran té suelto, y de qué tipo. Empezamos por
 que compran té según su empaque (en bolsita o suelto):
 
 ```{r}
-precio <- te %>% group_by(price) %>% tally() %>% mutate(prop = round(100 * n / sum(n))) %>% 
+precio <- te %>% group_by(price) %>% 
+  tally() %>% mutate(prop = round(100 * n / sum(n))) %>% 
   select(-n)
-tipo <- te %>% group_by(how) %>% tally() %>% mutate(prop = round(100 * n / sum(n)))
-tipo %>% kable(type = "html")
+tipo <- te %>% group_by(how) %>% tally() %>% 
+  mutate(`%` = round(100 * n / sum(n)))
+tipo %>% formatear_tabla
 ```
 
-La mayor parte de las personas toma té en bolsas. Sin embargo, el tipo de té que compran es
-muy distinto:
+La mayor parte de las personas toma té en bolsas. Sin embargo, el tipo de té  (en términos de precio o marca) que compran es
+muy distinto dependiendo de la presentación
 
 
 ```{r, echo = FALSE}
-tipo <- tipo %>% select(how, prop_how = prop)
+tipo <- tipo %>% select(how, prop_how = `%`)
 tabla_2 <- te %>% group_by(how, price) %>% tally() %>% group_by(how) %>% mutate(prop = round(100 * n / sum(n))) %>% 
   select(-n) 
-tabla_2 %>% spread(how, prop, fill = 0) %>% kable(type = "html")
+tabla_2 %>% spread(how, prop, fill = 0) %>% formatear_tabla()
 ```
 
-Estos datos podemos examinarlos un tiempo y llegar a conclusiones, pero no son muy efectivo en mostrar
+Estos datos podemos examinarlos un rato y llegar a conclusiones, pero no son muy efectivo en mostrar
 claramente los patrones. Tampoco es la siguiente gráfica:
 
 ```{r}
@@ -869,11 +876,16 @@ ggplot(tabla_2 %>% ungroup %>% mutate(price = fct_reorder(price, prop)),
 En lugar de eso, calcuaremos *perfiles columna*. Comparamos cada una de las columnas con la
 columna marginal (la tabla de tipo de estilo de té):
 
-```{r, echo = FALSE, message = FALSE}
-tabla <- te %>% group_by(how, price) %>% tally() %>% group_by(how) %>% 
+```{r, message = FALSE}
+tabla <- te %>% group_by(how, price) %>% tally() %>%
+  group_by(how) %>% 
   mutate(prop_price = (100 * n / sum(n))) %>% 
-  group_by(price) %>% mutate(prom_prop = mean(prop_price)) %>% 
+  group_by(price) %>% 
+  mutate(prom_prop = mean(prop_price)) %>% 
   mutate(perfil = (prop_price / prom_prop - 1) %>% round(2))  
+```
+
+```{r, echo = FALSE, message = FALSE}
 precio_prom <- tabla %>% select(price, prom_prop) %>% unique %>% 
   mutate(promedio = round(prom_prop)) %>% select(price, promedio)
 tabla_perfil <- tabla %>%   
@@ -885,14 +897,14 @@ if_profile <- function(x){
 }
 marcar <- marcar_tabla_fun(0.25, "red", "black")
 tab_out <- tabla_perfil %>% left_join(precio_prom) %>%
-  arrange(desc(promedio)) %>% 
+  arrange(desc(`tea bag`)) %>% 
   mutate_if(if_profile, marcar) %>% 
   knitr::kable(format = "html", escape = F, digits = 2) %>% 
   kableExtra::kable_styling(bootstrap_options = c( "hover", "condensed"), full_width = FALSE)
 tab_out
 ```
 
-Leemos esta tabla como sigue: por ejemplo, los compradores de té suelto compra té *upscale* (fino) a una
+Leemos esta tabla como sigue: por ejemplo, los compradores de té suelto compran té *upscale* (fino) a una
 tasa casi el doble (0.98) que el promedio. 
 
 También podemos graficar como:
@@ -930,13 +942,19 @@ cuando queremos interpretar las comparaciones que hacemos de forma *causal*,
 que muchas veces son las que más nos interesan.
 
 Por ejemplo, en el estudio de estereogramas que acabamos de ver, la interpretación que
-hacemos final es causal : la descripción verbal reduce el tiempo de fusión a 2/3 en promedio comparado con no recibir la descripción verbal. Esto lo podemos hacer pues 
+hacemos final es causal : la descripción verbal reduce el tiempo de fusión en 2/3,
+comparado con no recibir la descripción verbal. Esto lo podemos hacer pues 
 este caso asignamos al azar el tratamiento de descripción verbal sobre los
 individuos del estudio. 
 
 Esta aleatorización elimina diferencias sistemáticas entre los grupos, de forma
 que llegar a la interpretación causal es simple: los dos grupos que comparamos son
-similares en promedio, las diferencias que puedan tener se debe al azar, y podemos
+similares en promedio, las diferencias que puedan tener se deben al azar. No es
+necesario (aunque puede ayudar) "refinar" las comparaciones con otras variables
+como hicimos en los ejemplos anteriores.
+
+Sin embargo, queda variación no sistemática que también dificulta interpretar
+la comparación. En este caso, podemos
 usar las herramientas estadísticas de la siguiente sección para evaluar la evidencia
 de que los grupos tienen respuestas distintas. Si esa evidencia es fuerte, podemos
 adjudicarla a la única diferencia sistemática, que es si recibió la información verbal

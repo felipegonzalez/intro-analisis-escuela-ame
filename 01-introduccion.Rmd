@@ -28,6 +28,12 @@ algunas partes del código: la intención es leerlas un poco como seudocódigo p
 intentar aclarar algunos cálculos. El código completo está disponible para
 todos los participantes.
 
+Nuestras referencias más importantes son:
+
+- Primera sesión: @ClevelandVis , @tufte06
+- Segunda sesión: @box78m, @bootefron, @timboot14, @lineup
+- Tercera sesión: @ESL
+
 ## Tukey y análisis de datos {-}
 
 El término *análisis de datos* fue quizá 
