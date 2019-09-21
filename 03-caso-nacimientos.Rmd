@@ -223,6 +223,7 @@ ggplot(datos_l, aes(x = fecha, y = valor, colour = dia_semana)) +
 
 ```
 
+Y esto nos da muchas comparaciones buenas que explican la variación que vimos en los datos.
 Una gran parte de los residuales está entre +-/250 nacimientos por día, pero las colas tienen
 una dispersión mucho mayor:
 
@@ -233,11 +234,7 @@ quantile(datos_dia$res_6, c(00, .01,0.05, 0.10, 0.90, 0.95, 0.99, 1)) %>% round
 ¿A qué se deben estas colas tan largas?
 
 
-## Residuales {-}
-
-Examinaremos los residuales. 
-
-```{r}
+```{r, echo = FALSE}
 pascua <- ymd(as.character(timeDate::Easter(2000:2017)))
 pascua_m1 <- ymd(as.character(timeDate::Easter(2000:2017))) - days(1)
 pascua_m2 <- ymd(as.character(timeDate::Easter(2000:2017))) - days(2)
@@ -306,7 +303,7 @@ Otras características que debemos investigar:
 - Semana santa: como la fecha cambia, vemos que los residuales negativos tienden a ocurrir dispersos
 alrededor del día 100 del año. 
 
-## Más de residuales {-}
+##  Otros días especiales: más de residuales {-}
 
 Ahora promediamos residuales (es posible agregar barras para indicar dispersión a lo largo de los años) para cada 
 día del año. Podemos identificar ahora los residuales más grandes: se deben, por ejemplo, a días feriados, con 
