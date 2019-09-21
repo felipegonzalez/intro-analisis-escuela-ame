@@ -150,7 +150,8 @@ ggplot(prueba_tbl$lineup, aes(x = t_0, y = obs)) + geom_line() +
 ¿Qué implica que la gráfica que escogamos como "más diferente" no sean los datos nuevos? 
 ¿Qué implica que le "atinemos" a la gráfica de los datos nuevos?
 
-Ahora contrastemos con otro ejemplo. En el siguiente caso obtenemos:
+
+Ahora observamos al sistema en otro momento y repetimos la comparación. En el siguiente caso obtenemos:
 
 ```{r, message=FALSE, echo = FALSE}
 set.seed(912)
@@ -182,7 +183,7 @@ en contra de la hipótesis nula.**
 ¿Qué tan fuerte es la evidencia, en caso de que descubrimos los datos no nulos? 
 
 5. Cuando el número de paneles es más grande y detectamos los datos, la evidencia es más alta en contra de la nula. 
-Decimos que el *nivel de significancia de la prueba* es la probabilidad de atinarle a los
+Decimos que el *nivel de significancia de la prueba* es la probabilidad de seleccionar a los
 datos correctos cuando la hipótesis nula es cierta (el sistema no ha cambiado). 
 En el caso de 20 paneles, la significancia es de 1/20 = 0.05. Cuando detectamos los datos nuevos,
 niveles de significancia más bajos implican más evidencia en contra de la nula.
@@ -422,7 +423,7 @@ dif_obs
 ```
 
 Y vemos que no es un valor extremo en la distribución de referencia que vimos arriba: esta
-muestra no aporta evidencia en contra de que los grupos tienen distribuciones similares.
+muestra no aporta mucha evidencia en contra de que los grupos tienen distribuciones similares.
 
 Podemos graficar otra vez marcando el valor de referencia:
 
@@ -460,7 +461,7 @@ en la distribución generada por las permutación. Esta cantidad puede usarse pa
 - **Valor p de dos colas**: Si la hipótesis nula es cierta, ¿cuál es la
 **probabilidad** de observar una diferencia en valor absoluto **tan extrema o más extrema de lo que observamos**? 
 
-Podemos calcular la respuesta como :
+Considerando en este caso interpretamos *extrema* como que cae lejos de donde a mayoría de la distribución se concentra, podemos calcular la respuesta como sigue. A partir de la observación, consideramos cuál dato es menor: la probabilidad bajo lo hipótesis nula de observar una diferencia mayor de a que observamos, o la probabilidad de observar una difencia menor a la que observamos. Tomamos el mínimo y multiplicamos por dos (@timboot):
 
 ```{r}
 2 * min(dist_perm(dif_obs), (1 - dist_perm(dif_obs)))
@@ -612,6 +613,8 @@ en @chitim).
 
 ## Ejemplo: tiempos de fusión 2 {-}
 
+Podemos usar las pruebas de permutaciones para distintos de tipos de estadísticas: medianas, medias, comparar dispersión usando rangos intercuartiles o varianzas, etc.
+
 Regresamos a los tiempos de fusión. Podemos hacer una prueba de permutaciones para
 la diferencia de las medias o medianas, por ejemplo. En este ejemplo usaremos
 una medida de centralidad un poco diferente, como ilustración: el promedio de los cuartiles
@@ -623,28 +626,69 @@ stat_fusion <- function(x){
     (quantile(x, 0.75) + quantile(x, 0.25))/2
 }
 # permutar
-reps <- lineup(null_permute("nv.vv"), fusion, 10000)
+reps <- lineup(null_permute("nv.vv"), fusion, 20000)
 # diferencia 
-dif <- fusion %>% group_by(nv.vv) %>% 
+dif_obs <- fusion %>% group_by(nv.vv) %>% 
     summarise(est = stat_fusion(time)) %>% 
     spread(nv.vv, est) %>% mutate(dif = VV / NV ) %>% pull(dif)
 cocientes_perm <- reps  %>%  group_by(.sample, nv.vv) %>% 
     summarise(est = stat_fusion(time)) %>% 
     spread(nv.vv, est) %>% 
     summarise(cociente = (VV / NV))
-ggplot(cocientes_perm, aes(x = cociente)) + 
-    geom_histogram(binwidth = 0.05) +
-    geom_vline(xintercept = dif)
+dist_perm_nv <- ecdf(cocientes_perm$cociente) 
+cuantil_obs <- dist_perm_nv(dif_obs)
+```
+
+
+```{r, fig.width = 6, fig.height = 3, echo = FALSE}
+g_1 <- ggplot(cocientes_perm, aes(sample = cociente)) + 
+    geom_qq(distribution = stats::qunif)  +
+    xlab("f") + ylab("Cociente media intercuartil") + 
+    labs(subtitle = "Distribución nula o de referencia") +
+    geom_hline(yintercept = dif_obs, colour = "red") +
+    annotate("text", x = 0.3, y = dif_obs - 0.05, label = "diferencia observada", colour = "red")
+
+g_2 <- ggplot(cocientes_perm, aes(x = cociente)) + geom_histogram(binwidth = 0.04) + 
+    coord_flip() + xlab("") + labs(subtitle = " ") +
+    geom_vline(xintercept = dif_obs, colour = "red") +
+    annotate("text", x = dif_obs, y = 700, label = cuantil_obs,vjust = 0, 
+             colour = "red")
+gridExtra::grid.arrange(g_1, g_2, ncol = 2) 
 ```
 
 Y el valor p de dos colas es
 
 ```{r}
 dist_perm_nv <- ecdf(cocientes_perm$cociente)
-2 * min(dist_perm_nv(dif), 1- dist_perm_nv(dif))
+2 * min(dist_perm_nv(dif_obs), 1- dist_perm_nv(dif_obs))
 ```
 
-Lo que muestra evidencia considerable, aunque no muy fuerte, de que la instrucción verbal ayuda a reducir el tiempo de fusión de los estereogramas. 
+Lo que muestra evidencia considerable, aunque no muy fuerte, de que la instrucción verbal ayuda a reducir el tiempo de fusión de los estereogramas: la *caja* del diagrama de caja y brazos
+para el grupo VV está *encogida* por un factor menor a 1.
+
+
+## Ojo: otros tipos de hipótesis nulas {-}
+
+La pruebas de permutaciones son más útiles cuando nuestra hipótesis nula se refiere
+que la distribución de los grupos son muy similares, o la independencia entre
+observaciones y grupo. Esto también aplica cuando queremos probar por ejemplo, que
+una variable numérica Y es independiente de X.
+
+- Hay algunas hipótesis que no se pueden probar con este método, como por ejemplo, las
+que se refieren a una sola muestra: ¿los datos son consistentes con que su media es igual a 5?
+
+- Adicionalmente, en algunas ocasiones queremos probar aspectos más específicos
+de las diferencias: como ¿son iguales las medias o medianas de dos grupos de datos? ¿Tienen
+dispersión similar? 
+
+Las pruebas de permutaciones no están tan perfectamente
+adaptadas a este problema, pues prueban *todos* los aspectos de las distribuciones que se comparan, aún cuando escogamos una
+estadística particular que pretende medir, por ejemplo, diferencia de medias. Eso quiere
+decir que podemos rechazar igualdad de medias, por ejemplo, cuando en realidad otra característica de las distribuciones es la que difiere mucho en las poblaciones
+
+En algunas referencias (ver @chitim, @efron) se argumenta que de todas formas
+las pruebas de permutaciones son relativamente robustas a esta desadaptación. Un caso
+excepcional, por ejemplo, es cuando las poblaciones que comparamos resultan tener dispersión extremadamente distinta, y adicionalmente los tamaños de muestra de los grupos son muy desiguales (otra vez, ver ejemplos en @chitim).
 
 
 ##  Separación de grupos {-}
