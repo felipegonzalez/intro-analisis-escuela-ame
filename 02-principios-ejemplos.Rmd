@@ -770,12 +770,13 @@ Que es compacto y pone en evidencia la estructura en la relación de estas dos v
 ## Ejemplo: tiempos de fusión {-}
 
 Veamos el siguiente ejemplo, que es un experimento donde se midió el tiempo
-que tardan distintas personas en fusionar un estereograma para ver una imagen 3D.
+que tardan distintas personas en fusionar un [estereograma](https://en.wikipedia.org/wiki/Autostereogram#/media/File:Stereogram_Tut_Random_Dot_Shark.png) para ver una imagen 3D.
+
 Existen dos condiciones: en una se dio indicaciones de qué figura tenían que
 buscar (VV) y en otra no se dio esa indicación. ¿Las instrucciones verbales
 ayudan a fusionar más rápido el estereograma?
 
-```{r, message = FALSE, echo = FALSE}
+```{r, message = FALSE, echo = FALSE, fig.width =4, fig.height = 3}
 fusion <- read_delim("./datos/fusion_time.txt", delim = " ", trim_ws = TRUE)
 ggplot(fusion, aes(x = nv.vv, y = time)) + geom_boxplot() + geom_jitter()
 ```
@@ -792,7 +793,7 @@ En cualquier caso, tiene más sentido pensar en diferencias relativas: si alguie
 tardó el doble que alguien que tardó 4 segundos, iugal que la comparación de alguien que tarda 16 vs 8 segundos.
 
 
-```{r, message = FALSE, echo = FALSE}
+```{r, message = FALSE, echo = FALSE, fig.width =4, fig.height = 3}
 fusion <- read_delim("./datos/fusion_time.txt", delim = " ", trim_ws = TRUE)
 g_1 <- ggplot(fusion, aes(x = nv.vv, y = log(time))) + geom_boxplot() + geom_jitter() 
 g_2 <- ggplot(fusion, aes(x = nv.vv, y = time)) + geom_boxplot() + geom_jitter() +
@@ -806,7 +807,7 @@ dentro de cada grupo es considerable.
 
 Gráficas de cuantiles puedes ser más efetivas para 
 
-```{r}
+```{r, , fig.width =4, fig.height = 3}
 ggplot(fusion, aes(sample = log(time), colour = nv.vv)) + 
   geom_qq(distribution = stats::qunif) 
 ```
