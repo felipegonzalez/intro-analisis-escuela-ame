@@ -31,7 +31,7 @@ Las razones por las que queremos hacer análisis predictivo son diferentes en ca
 - El valor ocurre en el futuro o es hipotético (tiempo de venta de una casa, si una persona va caer en impago o no)
 - Puede ser más aceptable y apropiado que un algoritmo indique qué imagenes contienen caras a que personas revisen imágenes buscando caras (aún cuando el costo fuera razonable)
 
-
+En esta sección nuestra referencia principal es @ESL.
 
 
 ## ¿Qué significa tener buenos resultados? {-}
@@ -117,10 +117,10 @@ En análisis predictivo, la idea es aprender de los datos *etiquetados* (donde c
 Así es que emepezamos tomando unos **datos de entrenamiento**, donde observamos
 datos de entrada (covariables) y la respuesta que queremos predecir
 
-$$({x}^{(1)}, {y}^{(1)}), ({x}^{(1)}, {y}^{(1)}), \ldots, ({x}^{(m)}, {y}^{(m)}),$$
+$$({x}^{(1)}, {y}^{(1)}), ({x}^{(2)}, {y}^{(2)}), \ldots, ({x}^{(m)}, {y}^{(m)}),$$
 Y queremos tener un método para construír $f$ a partir de los datos
 
-$$({x}^{(1)}, {y}^{(1)}), ({x}^{(1)}, {y}^{(1)}), \ldots, ({x}^{(m)}, {y}^{(m)}) \to f$$
+$$({x}^{(1)}, {y}^{(1)}), ({x}^{(2)}, {y}^{(2)}), \ldots, ({x}^{(m)}, {y}^{(m)}) \to f$$
 
 ## La tarea del análisis predictivo {-}
 
@@ -321,7 +321,7 @@ graf_ajustes
 En resumen, el mejor desempeño lo encontramos buscando un un balance entre:
 
 - Flexibilidad y rigidez
-- Sobreajuste y sobreajuste
+- Sobreajuste y subajuste
 - Capturar ruido vs capturar señal
 - Sesgo y Varianza
 
@@ -584,12 +584,12 @@ pred_grid_mod <- ajustar_modelo(air, pred_grid, k = 27)
 
 
 ```{r, echo =FALSE}
-g_kvmc <- ggplot(air, aes(x = Solar.R, y = Ozone,  colour = Temp)) + geom_point() +
+g_kvmc_1 <- ggplot(air, aes(x = Solar.R, y = Ozone,  colour = Temp)) + geom_point() +
     facet_wrap(~Wind_cat) + 
     scale_colour_gradientn(colours = rainbow(2, rev = TRUE)) +
     geom_line(data = pred_grid_mod, aes(y = Ozone, group = interaction(Temp, Wind_cat)), size = 1) +
     labs(subtitle = "Curvas de k-vmc, para viento = 5, 10, 15")
-g_kvmc
+g_kvmc_1
 ```
 
 
@@ -619,7 +619,7 @@ g_kvmc <- ggplot(air, aes(x = Solar.R, y = Ozone,  colour = Temp)) + geom_point(
 g_kvmc
 ```
 
-Estos dos últimos modelos probabilemente se desempeñarán
+Estos dos últimos modelos probablemente se desempeñarán
 mal con respecto al que construimos con $k=27$ (podemos
 usar una muestra de prueba para seleccionar el mejor de los modelos).
 
@@ -657,7 +657,8 @@ restriccion en cuanto a qué tan grandes pueden ser los coeficientes.
 - Reduce la varianza de los coeficientes, pues la penalización impide que tomen
 valores muy positivos o negativos. Si $\lambda$ es muy grande, por ejemplo, los coeficientes tendrán que ser muy cercanos a cero.
 - Este tipo de regularización se le llama **regularización ridge**
-- Las variables de entrada deben tener la misma escala para que esta regularización tenga sentido (se pueden normalizar de alguna forma si no es el caso)
+- Las variables de entrada deben tener la misma escala para que esta regularización tenga sentido (se pueden normalizar de alguna forma si no es el caso).
+- Usualmente no penalizamos $b_0$, aunque es posible hacerlo. De esta forma el modelo con $\lambda$ muy grande da la media de las $y$'s como predicción.
 
 Nótese que $\lambda$ es un parámetro que controla flexibilidad: $\lambda$ más chica implica mayor varianza y menos sesgo potencial, mientras que $\lambda$ muy grande implica menos varianza pero sesgo potencial alto.
 
@@ -698,7 +699,8 @@ de este modelo, y tiene peligro de producir predicciones desastrosas.
 ## Regularización para ejemplo de Ozono {-}
 
 Ahora usemos dos parametros de regularización y hacemos mínimos
-cuadrados regularizados. Tomamos $\lambda = 1$ y  $\lambda = 13000$
+cuadrados regularizados. Tomamos $\lambda = 1$ y  $\lambda = 13000$. Usaremos
+el paquete @glmnet para hacer regresión ridge.
 
 
 ```{r, message = FALSE}
@@ -791,10 +793,17 @@ como un sustituto de la muestra de validación (@ESL, Sección 7.10).
 
 ## Métodos de predicción y la maldición de la dimensionalidad {-}
 
-Al menos hasta hace poco (aunque todavía es parcialmente cierto), habían una "industria" grande
-de producción de distintos métodos de predicción (Ver por ejemplo @hundred). 
+Notamos en primer lugar que en el problema de Ozono, los modelos seleccionados para k-vmc y regresión regularizada tienen predicciones simillares:
 
-Ingenuamente, podríamos preguntarnos ¿por qué tantos métodos? ¿por qué construir estas predicciones de alguna otra
+```{r, echo=FALSE, fig.width = 6, fig.height = 5}
+gridExtra::grid.arrange(g_lineal_reg_1, g_kvmc_1, ncol = 1)
+```
+
+En segundo lugar, observamos que k-vecinos más cercanos es un método intuitivo y simple
+(aunque quizá no tan computacionalmente conveniente), y que intenta estimar
+directamente la cantidad de interés: la media condicional de las $y$ dada las $x$.
+
+Entonces Ingenuamente podríamos preguntarnos ¿por qué tantos métodos? ¿por qué construir predicciones de alguna otra
 manera que $k$-vecinos más cercanos, que estima directamente la cantidad de interés?
 Y más aún: si tengo grandes cantidades de datos, este método debe funcionar muy bien, pues puedo usar promedios
 a lo largo de varias variables que incluyan muchas observaciones. 
@@ -815,7 +824,7 @@ Esto es contraintuitivo en un principio.
 Este ejemplo es tomado de @ESL. Consideremos que la salida Y es determinística $Y = e^{-8\sum_{j=1}^p x_j^2}$.
 Vamos a usar 1-vecino más cercano para hacer predicciones, con 
 una muestra de entrenamiento de 1000 casos.
-Generamos $x^{i}‘s uniformes en $[ 1,1]$, para $p = 2$, y calculamos la respuesta 
+Generamos $x^{i}$‘s uniformes en $[ 1,1]$, para $p = 2$, y calculamos la respuesta 
 $Y$ para cada caso:
 
 ```{r}

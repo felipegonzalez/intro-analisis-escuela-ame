@@ -98,7 +98,7 @@ y no paramétricos, distintos métodos bayesianos (entonces se llaman intervalos
 creíbles o de probabilidad), etc.
 
 En este curso, como ejemplo, y también por ser una técnica muy versátil, presentaremos
-el **bootstrap no paramétrico**, donde utilizaremos simulación (y poder de cómputo) para producir
+el **bootstrap no paramétrico** (ver @bootefron), donde utilizaremos simulación (y poder de cómputo) para producir
 este tipo de intervalos, bajo ciertas condiciones de extracción de la muestra que discutiremos
 más adelante.
 
