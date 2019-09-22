@@ -583,7 +583,7 @@ pred_grid_mod <- ajustar_modelo(air, pred_grid, k = 27)
 
 
 
-```{r, echo =FALSE}
+```{r, echo =FALSE, fig.width = 6, fig.height = 3}
 g_kvmc_1 <- ggplot(air, aes(x = Solar.R, y = Ozone,  colour = Temp)) + geom_point() +
     facet_wrap(~Wind_cat) + 
     scale_colour_gradientn(colours = rainbow(2, rev = TRUE)) +
@@ -597,7 +597,7 @@ g_kvmc_1
 
 Si tomamos $k$ demasiado grande, nuestro modelo presenta poca variabilidad pero sesgos claros:
 
-```{r}
+```{r, fig.width = 6, fig.height = 3}
 pred_grid_mod <- ajustar_modelo(air, pred_grid, k = 80)
 g_kvmc <- ggplot(air, aes(x = Solar.R, y = Ozone,  colour = Temp)) + geom_point() +
     facet_wrap(~Wind_cat) + 
@@ -609,7 +609,7 @@ g_kvmc
 
 Si tomamos $k$ demasiado chico, nuestro modelo presenta mucha variabilidad:
 
-```{r}
+```{r, fig.width = 6, fig.height = 3}
 pred_grid_mod <- ajustar_modelo(air, pred_grid, k = 2)
 g_kvmc <- ggplot(air, aes(x = Solar.R, y = Ozone,  colour = Temp)) + geom_point() +
     facet_wrap(~Wind_cat) + 
@@ -769,6 +769,17 @@ finales de su error de predicción.
 Esta división en 3 partes nos protege se "sobreajustar" cuando hacemos iteraciones
 entrenamiento-validación. Al final siempre tenemos una estimación "honesta" del 
 desempeño predictivo.
+
+**Observación**: en algunos casos, tenemos que ser cuidadosos con cómo separamos
+las muestras de entrenamiento y validación/prueba. Idealmente, queremos 
+que **esta separación refleje en lo posible la manera en que las predicciones van
+a ser producidas**. Por ejemplo: 
+
+- Si los datos de entrenamiento son caras repetidas
+de varias personas (por ejempo, 20 caras para cada una de 500 personas), y queremos crear un clasificador de caras, entonces tendremos cuidado de seleccionar
+dividir al azar las *personas*, no las *caras* individuales. 
+- Si queremos hacer pronósticos para cantidad de series de tiempo, tendremos cuidado en que las observaciones de validación y prueba están son posteriores a los datos de entrenamiento.
+
 
 ## Ejemplo: selección del parámetro $\lambda$ de regularización {-}
 
