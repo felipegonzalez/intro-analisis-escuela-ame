@@ -341,6 +341,12 @@ de tomadores de té, queremos probar la siguiente hipótesis nula:
 los tomadores de té suelto (que pueden o no también tomar té en bolsita).
 
 Los datos que obtuvimos en nuestra encuesta, en conteos, son:
+
+```{r, echo=FALSE, message=FALSE}
+tea <- read_csv(("datos/tea.csv"))
+te <- tea %>% select(how, price, sugar)
+```
+
 ```{r}
 te_azucar <- tea %>% select(how, sugar) %>% 
   mutate(how = ifelse(how == "tea bag", "bolsa_exclusivo", "suelto o bolsa"))
@@ -376,6 +382,7 @@ en la población, tomadores de té solo en bolsa usan azúcar a las mismas tasas
 - Evaluamos nuestra estadística de prueba en cada una de las muestras permutadas.
 - El conjunto de valores obtenidos nos da nuestra *distribución de referencia* (ya no estamos limitados a 20 replicaciones como en las pruebas gráficas).
 - Y la pregunta clave es: ¿el valor de la estadística en nuestra muestra es *extrema* en comparación a la distribución de referencia?
+
 
 
 ```{r, message = FALSE}
