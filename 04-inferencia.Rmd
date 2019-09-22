@@ -386,9 +386,7 @@ en la población, tomadores de té solo en bolsa usan azúcar a las mismas tasas
 
 
 ```{r, message = FALSE}
-# ojo: esto se puede hacer más eficientemente escribiendo código
-# que permute y calcule directamente la estadística de interés
-datos_perm <- lineup(null_permute("how"), te_azucar, n = 10000)
+# ESta función calcula la diferencia entre grupos de interés
 calc_diferencia <- function(datos){
   datos %>%
     mutate(usa_azucar = as.numeric(sugar == "sugar")) %>% 
@@ -396,6 +394,17 @@ calc_diferencia <- function(datos){
     summarise(prop_azucar = mean(usa_azucar)) %>% 
     spread(how, prop_azucar) %>% 
     mutate(diferencia_prop = bolsa_exclusivo - `suelto o bolsa`) %>% pull(diferencia_prop)
+}
+# esta función hace permutaciones y calcula la diferencia para cada una
+permutaciones_est <- function(datos, variable, calc_diferencia, n = 1000){
+  # calcular estadística para cada grupo
+  permutar <- function(variable){
+    sample(variable, length(variable))
+  }
+  tbl_perms <- tibble(.sample = seq(1, n-1, 1)) %>%
+    mutate(diferencia = map_dbl(.sample, 
+              ~ datos %>% mutate({{variable}}:= permutar({{variable}})) %>% calc_diferencia))
+  bind_rows(tbl_perms, tibble(.sample = n, diferencia = calc_diferencia(datos)))
 }
 ```
 
@@ -409,8 +418,7 @@ dif_obs %>% round(3)
 Ahora construimos nuestra distribución nula o de referencia:
 
 ```{r}
-valores_ref <- datos_perm %>% group_by(.sample) %>% nest %>% 
-  mutate(diferencia = map_dbl(data, calc_diferencia)) 
+valores_ref <- permutaciones_est(te_azucar, how, calc_diferencia, n = 10000)
 ```
 
 Y graficamos nuestros resultados (con un histograma y una gráfica de cuantiles, por ejemplo). la
@@ -428,13 +436,8 @@ gridExtra::grid.arrange(g_1, g_2, ncol = 2)
 Este es el rango de fluctuación usual para nuestra estadística *bajo la hipótesis de que
 los dos grupos de tomadores de té consumen té a la misma tasa.
 
-El valor que obtuvimos en nuestros datos es
-
-```{r}
-dif_obs
-```
-
-Y vemos que no es un valor extremo en la distribución de referencia que vimos arriba: esta
+El valor que obtuvimos en nuestros datos es `r dif_obs`,
+ que no es un valor extremo en la distribución de referencia que vimos arriba: esta
 muestra no aporta mucha evidencia en contra de que los grupos tienen distribuciones similares.
 
 Podemos graficar otra vez marcando el valor de referencia:
@@ -513,13 +516,10 @@ Pero distintas muestras podrían haber dado distintos resultados. Nos preguntamo
 la evidencia en contra de que en realidad los dos grupos de personas usan azúcar en proporciones similares,
 y la diferencia que vemos se puede atribuir a variación muestral.
 
-En este ejemplo, podemos usar una **estádistica de prueba numérica**, por ejemplo, 
-la diferencia entre las dos proporciones: $p_{earl\, gray} - p_{negro}$. Seguimos el
-mismo proceso de permutaciones para construir la distribución nula o de referencia:
+Escribimos la función que calcula diferencias para cada muestra:
 
 ```{r, message = FALSE}
-datos_perm <- lineup(null_permute("Tea"), te_azucar, n = 10000)
-calc_diferencia <- function(datos){
+calc_diferencia_2 <- function(datos){
   datos %>%
     mutate(usa_azucar = as.numeric(sugar == "sugar")) %>% 
     group_by(Tea) %>% 
@@ -532,35 +532,35 @@ calc_diferencia <- function(datos){
 La diferencia observada es:
 
 ```{r, echo = FALSE}
-dif_obs <- calc_diferencia(te_azucar)
+dif_obs <- calc_diferencia_2(te_azucar)
 dif_obs %>% round(3)
 ```
 
 Ahora construimos nuestra distribución nula o de referencia:
 
 ```{r}
-valores_ref <- datos_perm %>% group_by(.sample) %>% nest %>% 
-  mutate(diferencia = map_dbl(data, calc_diferencia)) 
+set.seed(2)
+valores_ref <- permutaciones_est(te_azucar, Tea, calc_diferencia_2, n = 10000)
 ```
 
-Podemos graficar la distribución de referencia otra vez marcando el valor observado
+Y podemos graficar la distribución de referencia otra vez marcando el valor observado
 
 ```{r, echo = FALSE}
 # Función de distribución acumulada (inverso de función de cuantiles)
 dist_perm <- ecdf(valores_ref$diferencia)
 # Calculamos el percentil del valor observado
-percentil_obs <- dist_perm(dif_obs %>% round(2))
+percentil_obs <- dist_perm(dif_obs)
 ```
 
 ```{r, fig.width = 6, fig.height = 3, echo = FALSE}
 g_1 <- ggplot(valores_ref, aes(sample = diferencia)) + geom_qq(distribution = stats::qunif)  +
     xlab("f") + ylab("diferencia") + labs(subtitle = "Distribución nula o de referencia") +
     geom_hline(yintercept = dif_obs, colour = "red") +
-    annotate("text", x = 0.3, y = dif_obs - 0.05, label = "diferencia observada", colour = "red")
+    annotate("text", x = 0.3, y = dif_obs - 0.02, label = "diferencia observada", colour = "red") 
 g_2 <- ggplot(valores_ref, aes(x = diferencia)) + geom_histogram(binwidth = 0.04) + 
-    coord_flip() + xlab("") + labs(subtitle = " ") +
+    coord_flip() + xlab("") + labs(subtitle = "") +
     geom_vline(xintercept = dif_obs, colour = "red") +
-    annotate("text", x = dif_obs, y = 2000, label = percentil_obs,vjust = -0.2, colour = "red")
+    annotate("text", x = dif_obs, y = 2000, label = percentil_obs,vjust = 1, colour = "red") 
 gridExtra::grid.arrange(g_1, g_2, ncol = 2) 
 ```
 
@@ -614,30 +614,36 @@ para medir su diferencia
 stat_fusion <- function(x){
     (quantile(x, 0.75) + quantile(x, 0.25))/2
 }
+calc_fusion <- function(stat_fusion){
+  fun <- function(datos){
+    datos %>% 
+      group_by(nv.vv) %>% 
+      summarise(est = stat_fusion(time)) %>% 
+      spread(nv.vv, est) %>% mutate(dif = VV / NV ) %>% pull(dif)
+  }
+  fun
+}
+```
+
+```{r}
+calc_cociente <- calc_fusion(stat_fusion)
+dif_obs <- calc_cociente(fusion)
 # permutar
-reps <- lineup(null_permute("nv.vv"), fusion, 20000)
-# diferencia 
-dif_obs <- fusion %>% group_by(nv.vv) %>% 
-    summarise(est = stat_fusion(time)) %>% 
-    spread(nv.vv, est) %>% mutate(dif = VV / NV ) %>% pull(dif)
-cocientes_perm <- reps  %>%  group_by(.sample, nv.vv) %>% 
-    summarise(est = stat_fusion(time)) %>% 
-    spread(nv.vv, est) %>% 
-    summarise(cociente = (VV / NV))
-dist_perm_nv <- ecdf(cocientes_perm$cociente) 
+valores_ref <- permutaciones_est(fusion, nv.vv, calc_cociente, n = 10000)
+dist_perm_nv <- ecdf(valores_ref$diferencia) 
 cuantil_obs <- dist_perm_nv(dif_obs)
 ```
 
 
 ```{r, fig.width = 6, fig.height = 3, echo = FALSE}
-g_1 <- ggplot(cocientes_perm, aes(sample = cociente)) + 
+g_1 <- ggplot(valores_ref, aes(sample = diferencia)) + 
     geom_qq(distribution = stats::qunif)  +
     xlab("f") + ylab("Cociente media intercuartil") + 
     labs(subtitle = "Distribución nula o de referencia") +
     geom_hline(yintercept = dif_obs, colour = "red") +
     annotate("text", x = 0.3, y = dif_obs - 0.05, label = "diferencia observada", colour = "red")
 
-g_2 <- ggplot(cocientes_perm, aes(x = cociente)) + geom_histogram(binwidth = 0.04) + 
+g_2 <- ggplot(valores_ref, aes(x = diferencia)) + geom_histogram(binwidth = 0.04) + 
     coord_flip() + xlab("") + labs(subtitle = " ") +
     geom_vline(xintercept = dif_obs, colour = "red") +
     annotate("text", x = dif_obs, y = 700, label = cuantil_obs,vjust = 0, 
@@ -648,7 +654,7 @@ gridExtra::grid.arrange(g_1, g_2, ncol = 2)
 Y el valor p de dos colas es
 
 ```{r}
-dist_perm_nv <- ecdf(cocientes_perm$cociente)
+dist_perm_nv <- ecdf(valores_ref$diferencia)
 2 * min(dist_perm_nv(dif_obs), 1- dist_perm_nv(dif_obs))
 ```
 
