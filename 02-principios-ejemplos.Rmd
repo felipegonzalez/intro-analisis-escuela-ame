@@ -408,7 +408,8 @@ sat <- read_csv("datos/sat.csv")
 sat_tbl <- sat %>% select(state, expend, sat) %>% 
     gather(variable, valor, expend:sat) %>% 
     group_by(variable) %>% 
-    summarise(cuantiles = list(cuantil(valor))) %>% unnest %>% 
+    summarise(cuantiles = list(cuantil(valor))) %>% 
+    unnest(cols = c(cuantiles)) %>% 
     mutate(valor = round(valor, 1)) %>% 
     spread(cuantil, valor)
 sat_tbl %>% formatear_tabla
