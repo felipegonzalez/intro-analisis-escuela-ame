@@ -110,7 +110,7 @@ Supongamos que consideramos la población de casas de nuestro ejemplo anterior
 
 ```{r}
 casas_pob <- casas %>% select(id, precio_miles, nombre_zona)
-casas_pob %>% sample_n(20) %>% kable(type = "html")
+casas_pob %>% sample_n(20) %>% formatear_tabla()
 ```
 
 
@@ -188,7 +188,7 @@ quantile(mediana_muestras - valor_poblacional , c(0.025, 0.975)) %>% round
 con 95\% de probabilidad que el error sea menos de unas 30 unidades. ***Esta es la precisión
 de nuestro estimador.**
 
-Si usamos una muestra más grande (n = 150, por ejemplo) podemos obtener un resultado más preciso:
+Si usamos una muestra más grande (n = 200, por ejemplo) podemos obtener un resultado más preciso:
 
 ```{r, echo = FALSE, message = FALSE, fig.width = 4, fig.height=2}
 # Repetir 5000 veces
@@ -211,14 +211,14 @@ Y como es de esperarse, vemos que muestras más grandes resultan en menos variab
 Una confusión inicial que es común es entre la distribución de muestreo y la distribución poblacional. 
 La poblacional muestra cómo se distribuyen los valores de la variable de interés:
 
-```{r, fig.width = 3, fig.height = 2, message = FALSE}
+```{r, fig.width = 4, fig.height = 2.5, message = FALSE}
 ggplot(casas_pob, aes(x = precio_miles)) + geom_histogram() +
     geom_vline(xintercept = valor_poblacional)
 ```
 
 Que es muy diferente que las distribuciones de muestreo de nuestros dos estimadores:
 
-```{r, fig.width = 4, fig.height = 2, message = FALSE}
+```{r, fig.width = 4, fig.height = 2.5, message = FALSE}
 g_dist_muestreo
 ```
 
@@ -454,7 +454,7 @@ suaviza_boot <- function(x, data){
     datos_grafica %>% mutate(ajustados = ajustados) %>% 
         mutate(rep = x)
 }
-set.seed(2505)
+set.seed(250)
 reps <- map(1:10, ~ suaviza_boot(.x, casas %>% filter(calidad_gral < 7))) %>% 
     bind_rows()
 ```

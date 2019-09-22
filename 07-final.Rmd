@@ -1,0 +1,13 @@
+# Comentarios finales
+
+Los temas que vimos aquí los cubrimos superficialmente, y varios 
+temas importantes en análisis de datos ni siquiera fueron mencionados. Algunos son:
+
+- Modelación estadística (incluyendo regresión, regresión multinivel) (@GelmanHill)
+- Diseño y análisis de experimentos (@box78)
+- Inferencia causal y sus métodos (@GelmanHill)
+- Estadística bayesiana (@puppies)
+- Métodos de clasificación: predicciones cuando la variable respuesta es categórica (@ESL)
+- Métodos multivariados: descomposición en valores singulares, componentes principales, etc, (@izenman)
+- Redes neuronales modernas (@deepbook), por ejemplo para procesamiento de texto
+- Más de herramientas, buenas prácticas, etc.
