@@ -3,6 +3,8 @@
 Los temas que vimos aquí los cubrimos superficialmente, y varios 
 temas importantes en análisis de datos ni siquiera fueron mencionados. Algunos son:
 
+
+- Análisis de datos faltantes, imputación múltiple (@missingrubin, @mice)
 - Modelación estadística (incluyendo regresión, regresión multinivel) (@GelmanHill)
 - Diseño y análisis de experimentos (@box78)
 - Inferencia causal y sus métodos (@GelmanHill)
