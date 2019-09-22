@@ -4,7 +4,7 @@ theme_set(theme_minimal(base_size = 14))
 paleta <- scale_colour_manual(values = c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
 
 formatear_tabla <- function(x_tbl, scroll = FALSE){
-    tabla <- knitr::kable(x_tbl) %>%
+    tabla <- knitr::kable(x_tbl, type = "html") %>%
         kableExtra::kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
                       full_width = FALSE, font_size = 15, fixed_thead = TRUE) 
     if(scroll) tabla <- tabla %>% scroll_box(width = "780px") 
