@@ -289,7 +289,7 @@ código de  https://gist.github.com/jennybc/e9e9aba6ba18c72cec26#file-2015-03-02
 knitr::kable(resultados_tbl)
 ```
 
-```{r echo = FALSE, message=FALSE, warning=FALSE}
+```{r echo = FALSE, message=FALSE, warning=FALSE, fig.width =4, fig.height = 3}
 graf_ajustes
 ```
 </div>

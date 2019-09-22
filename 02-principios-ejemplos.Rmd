@@ -266,21 +266,22 @@ Consideremos la prueba Enlace (2011) de matemáticas para primarias. Una primera
 que alguien podría hacerse es:  ¿qué escuelas son mejores, las privadas o las públicas? 
 
 ```{r, message = FALSE, echo = FALSE, include=FALSE, eval = FALSE}
-col_spec <- cols_only(X2 = col_character(), X3 = col_character(),
-                      X6 = col_character(), X24 = col_double(),
-                      X82 = col_integer(),
-                      X84 = col_character())
-enlace_1 <- read_csv("./datos/enlace/escuelas_enlace_nacional_primaria_1.csv", skip=3, 
-                     col_names = FALSE, guess_max = 100000, col_type = col_spec,
-                     locale = locale(encoding = "ISO-8859-1"))
-enlace_2 <- read_csv("./datos/enlace/escuelas_enlace_nacional_primaria_2.csv", skip=3, 
-                     col_names = FALSE, guess_max = 100000, col_type = col_spec,
-                     locale = locale(encoding = "ISO-8859-1"))
-enlace <- bind_rows(enlace_1, enlace_2)
-names(enlace) <- c("estado", "clave", "tipo", "mate_6",  "num_evaluados_total", "marginacion")
-table(enlace$tipo)
-enlace <- enlace %>% mutate(tipo = ifelse(tipo == "INDêGENA", "INDÍGENA", tipo))
-write_csv(enlace, "datos/enlace.csv")
+#col_spec <- cols_only(X2 = col_character(), X3 = col_character(),
+#                      X6 = col_character(), X24 = col_double(),
+#                      X82 = col_integer(),
+#                      X84 = col_character())
+#enlace_1 <- read_csv("./datos/enlace/escuelas_enlace_nacional_primaria_1.csv", skip=3, 
+#                     col_names = FALSE, guess_max = 100000, col_type = col_spec,
+#                     locale = locale(encoding = "ISO-8859-1"))
+#enlace_2 <- read_csv("./datos/enlace/escuelas_enlace_nacional_primaria_2.csv", skip=3, 
+#                     col_names = FALSE, guess_max = 100000, col_type = col_spec,
+#                     locale = locale(encoding = "ISO-8859-1"))
+#enlace <- bind_rows(enlace_1, enlace_2)
+#names(enlace) <- c("estado", "clave", "tipo", "mate_6",  "num_evaluados_total", "marginacion")
+#table(enlace$tipo)
+#enlace <- enlace %>% mutate(tipo = ifelse(tipo == "INDêGENA", "INDÍGENA", tipo))
+#write_csv(enlace, "datos/enlace.csv")
+enlace <- read_csv("datos/enlace.csv")
 ```
 
 Con estos datos a la mano, podemos hacer unos primeros resúmenes de los datos. El rango
@@ -301,7 +302,7 @@ enlace <- enlace %>%  filter(num_evaluados_total > 0, mate_6 > 0) %>%
 enlace_tbl <- enlace %>% group_by(tipo) %>% 
     summarise(n_escuelas = n(),
               cuantiles = list(cuantil(mate_6, c(0.05, 0.25, 0.5, 0.75, 0.95)))) %>% 
-    unnest %>% mutate(valor = round(valor)) 
+    unnest(cols = cuantiles) %>% mutate(valor = round(valor)) 
 enlace_tbl %>% spread(cuantil, valor) %>% formatear_tabla()
 ```
 
@@ -352,7 +353,7 @@ enlace_tbl_marg <- enlace %>%
     group_by(tipo, marginacion) %>% 
     summarise(n_alumnos = sum(num_evaluados_total),
               cuantiles = list(cuantil(mate_6, c(0.05, 0.25, 0.5, 0.75, 0.95)))) %>% 
-    unnest %>% mutate(valor = round(valor)) %>% 
+    unnest(cols = cuantiles) %>% mutate(valor = round(valor)) %>% 
     filter( n_alumnos > 20)
 ```
 
@@ -500,7 +501,6 @@ restante. Para hacer esto, podemos examinar primero la relación entre la fracci
 alumnos que toma el examen del SAT y las calificaciones:
 
 ```{r, fig.width = 5, fig.height = 3, echo = FALSE}
-#sat <- sat %>% mutate(cuant = qnorm(frac / 100, 500, 100))
 ggplot(sat, aes(x = frac, y = sat, label = state)) + geom_point() +
     geom_smooth(method = "loess", span = 0.5, se = FALSE, method.args = list(degree = 1)) +
     annotate("text", x = 40, y = 1050, label = "Desempeño por \n encima del esperado", colour = "gray30") +
@@ -652,8 +652,6 @@ dependiendo de la calificación de calidad:
 
 
 ```{r, echo = FALSE, message =FALSE}
-
-
 casas_ejemplo <- casas %>% filter(calidad_gral > 3) %>% 
            mutate(nombre_zona = fct_reorder(nombre_zona, calidad_gral))
 ggplot(casas_ejemplo, aes(x = factor(calidad_gral), y = precio_miles)) + 
@@ -690,14 +688,13 @@ mostramos una gráfica más apropiada para análisis, y a la derecha una que qui
 usar para presentación
 
 ```{r, fig.width = 9, fig.height = 3, echo = FALSE}
-g_1 <- ggplot(casas_ejemplo, 
-       aes(x = factor(calidad_gral), y = log(precio_miles))) +
-     geom_boxplot(outlier.alpha = 0) + 
+g_1 <- ggplot(casas_ejemplo, aes(x = factor(calidad_gral), y = log(precio_miles))) +
+    geom_boxplot(outlier.alpha = 0) + 
     geom_jitter(width =0.1, height = 0, alpha = 0.1)  + 
     scale_y_continuous(breaks = seq(3, 7, 0.5))
 g_2 <- ggplot(casas_ejemplo, 
-       aes(x = factor(calidad_gral), y = precio_miles)) +
-     geom_boxplot(outlier.alpha = 0) + 
+    aes(x = factor(calidad_gral), y = precio_miles)) +
+    geom_boxplot(outlier.alpha = 0) + 
     geom_jitter(width =0.1, height = 0, alpha = 0.1) + 
     scale_y_log10(breaks = c(50, 100, 200, 400)) 
 gridExtra::grid.arrange(g_1, g_2, ncol = 2)
@@ -739,9 +736,8 @@ es razonable  agrupamos para resumir:
 residuales <- casas_ejemplo %>% left_join(medianas) %>% 
     group_by(calidad_gral) %>% 
     mutate(residual = log(precio_miles) - log(mediana)) 
-quantile(residuales$residual, 
-         c(0, 0.10, 0.25, 0.5, 0.75, 0.9, 1)) %>% 
-  round(2) %>% 
+f <- c(0, 0.10, 0.25, 0.5, 0.75, 0.9, 1)
+quantile(residuales$residual, f) %>% round(2) %>% 
   formatear_tabla()
 ```
 
@@ -830,7 +826,7 @@ las comparaciones aditivas $(y-x)$ y multiplicativas $(y-x)/x$ difieren en aprox
 ## Tablas de conteos {-}
 
 Para tablas de conteos o porcentajes, las comparaciones multiplicativas tienden a ser más útiles. 
-Consideremos los siguientes datos de tomadores de te:
+Consideremos los siguientes datos de tomadores de te (del paquete @factominer):
 
 ```{r, echo=FALSE, message=FALSE}
 tea <- read_csv(("datos/tea.csv"))

@@ -114,7 +114,7 @@ datos_dia <- datos_dia %>% group_by(dia_semana) %>% nest() %>%
     mutate(ajuste_mod = 
       map(data, ~ loess(res_2 ~ as.numeric(fecha), data = .x, span = 0.1, degree = 1))) %>% 
     mutate(ajuste_3 =  map(ajuste_mod, fitted)) %>% 
-    select(-ajuste_mod) %>% unnest() %>% 
+    select(-ajuste_mod) %>% unnest(cols = c(data, ajuste_3)) %>% 
     mutate(res_3 = res_2 - ajuste_3) %>% ungroup
 ```
 
@@ -194,7 +194,7 @@ datos_dia <- datos_dia %>% group_by(dia_semana) %>% nest() %>%
                                           degree=1, family = "symmetric"))) %>% 
     mutate(ajuste_6 =  map(ajuste_mod, fitted)) %>% 
     select(-ajuste_mod) %>% 
-    unnest() %>% 
+    unnest(cols = c(data, ajuste_6)) %>% 
     mutate(res_6 = n_3 - ajuste_6)
 ggplot(datos_dia, aes(x = fecha, y = n_3, group = dia_semana)) + 
   geom_point(aes(y = n_3), alpha = 0.2, size = 1)  +
@@ -260,6 +260,7 @@ Podemos empezar con una curosidad: En Viernes o Martes 13, ¿nacen menos niños?
 
 ```{r, echo = FALSE, fig.width = 12, fig.height = 4}
 datos_dia <- datos_dia %>% 
+  ungroup %>% 
   mutate(dia_mes = day(datos_dia$fecha)) %>% 
   mutate(viernes_13 = ifelse(dia_mes == 13 & dia_semana == "Viernes", "Viernes 13", "Otro Día")) %>% 
   mutate(martes_13 = ifelse(dia_mes == 13 & dia_semana == "Martes", "Martes 13", "Otro Día")) %>% 

@@ -5,6 +5,8 @@
 library(tidyverse)
 library(lubridate)
 library(ggthemes)
+library(nullabor)
+source("R/funciones_auxiliares.R")
 theme_set(theme_minimal(base_size = 14))
 ```
 
@@ -107,7 +109,7 @@ muestrear_ventanas <- function(control, obs, n_ventana = 20, long = 20){
     dat_lista <- append(control_lista, list(obs))
     orden <- sample(1:n_ventana, n_ventana)
     datos_lineup <- tibble(rep = orden, datos = dat_lista) %>% 
-        unnest %>% group_by(rep) %>% mutate(t_0 = t - min(t)) %>% ungroup  
+        unnest(cols = c(datos)) %>% group_by(rep) %>% mutate(t_0 = t - min(t)) %>% ungroup  
     list(lineup = datos_lineup,
         pos = last(orden))
 }
@@ -211,15 +213,6 @@ comparación es: el grupo de clientes b recibió una promoción especial. ¿Est�
 más? La medición que comparamos es el gasto de los clientes.
 
 
-```{r, fig.width = 6, fig.height = 3, echo = FALSE}
-library(tidyverse)
-library(ggrepel)
-library(nullabor)
-library(knitr)
-theme_set(theme_minimal(base_size = 14))
-paleta <- scale_colour_manual(values = c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7"))
-source("R/funciones_auxiliares.R")
-```
 
 ```{r, fig.width =5, fig.height = 3, echo = FALSE}
 set.seed(8)
@@ -386,6 +379,8 @@ en la población, tomadores de té solo en bolsa usan azúcar a las mismas tasas
 
 
 ```{r, message = FALSE}
+# ojo: esto se puede hacer más eficientemente escribiendo código
+# que permute y calcule directamente la estadística de interés
 datos_perm <- lineup(null_permute("how"), te_azucar, n = 10000)
 calc_diferencia <- function(datos){
   datos %>%
@@ -712,6 +707,7 @@ Para probar qué tan bien funciona este método, podemos hacer una prueba de per
 LDA y observamos los resultados. 
 
 ```{r, echo = FALSE}
+# código del paquete nullabor
 data(wasps)
 
 wasp.lda <- MASS::lda(Group~., data=wasps[,-1])
@@ -744,7 +740,7 @@ Otro enfoque sería separar los datos en una muestra de entrenamiento y una de p
 en la última sesión). Aplicamos el procedimiento a la muestra de entrenamiento y luego vemos qué pasa
 con los datos de prueba:
 
-```{r}
+```{r, message = FALSE, warning = FALSE}
 set.seed(8)
 wasps_1 <- wasps %>% mutate(u = runif(nrow(wasps), 0, 1))
 wasps_entrena <- wasps_1 %>% filter(u <= 0.8)
@@ -846,8 +842,8 @@ media_cuartiles <- function(x){
     (quantile(x, 0.75) + quantile(x, 0.25))/2
 }
 valor_p_fusion <- function(fusion, stat_fusion = stat_fusion, 
-          trans = identity, comp = VV / NV){
-    reps <- lineup(null_permute("nv.vv"), pos = 1, fusion, n = 20000)
+          trans = identity, comp = VV / NV, reps = NULL, n = 10000){
+    reps <- lineup(null_permute("nv.vv"), pos = 1, fusion, n = n)
     dif <- fusion %>% group_by(nv.vv) %>% 
         summarise(valor_est = {{ stat_fusion }}(time)) %>% 
         spread(nv.vv, valor_est) %>% mutate(dif = {{ comp }} ) %>% pull(dif)
@@ -863,17 +859,18 @@ valor_p_fusion <- function(fusion, stat_fusion = stat_fusion,
 
 
 ```{r}
-set.seed(772)
-valor_p_fusion(fusion %>% sample_frac(0.9), 
-               stat_fusion = mean, trans = identity, comp = VV - NV)
-valor_p_fusion(fusion %>% sample_frac(0.9), 
-               stat_fusion = median, trans = identity, comp = log(VV / NV))
-valor_p_fusion(fusion %>% sample_frac(0.9), 
-               stat_fusion = media_cuartiles, trans = identity, 
-               comp = log(VV / NV))
-valor_p_fusion(fusion %>% sample_frac(0.9), 
-               stat_fusion = median, trans = log, comp = VV - NV)
-valor_p_fusion(fusion %>% sample_frac(0.9), stat_fusion = mean, trans = log, comp = VV - NV)
+set.seed(7272)
+# nota: usar n=10000 o más, esto solo es para demostración:
+valor_p_fusion(fusion %>% sample_frac(0.95), 
+               stat_fusion = mean, trans = identity, comp = VV - NV, n = 4000)
+valor_p_fusion(fusion %>% sample_frac(0.95), 
+               stat_fusion = median, trans = identity, comp = log(VV / NV), n = 4000)
+valor_p_fusion(fusion %>% sample_frac(0.95), 
+               stat_fusion = media_cuartiles, trans = identity, comp = log(VV / NV), n = 4000)
+valor_p_fusion(fusion %>% sample_frac(0.95), 
+               stat_fusion = median, trans = log, comp = VV - NV, n = 4000)
+valor_p_fusion(fusion %>% sample_frac(0.95), 
+               stat_fusion = mean, trans = log, comp = VV - NV, n = 4000)
 
 ```
 
