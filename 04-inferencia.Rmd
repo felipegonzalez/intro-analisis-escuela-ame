@@ -457,7 +457,7 @@ evidencia en contra de que los grupos tienen distribuciones similares, que
 en este caso significa que los dos grupos usan azúcar a tasas similares.
 
 
-### Valor p
+### Valor p {-}
 
 Nótese que calculamos una cantidad adicional, que es el percentil donde nuestra observación cae
 en la distribución generada por las permutación. Esta cantidad puede usarse para calcular un 

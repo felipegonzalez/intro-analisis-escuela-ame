@@ -543,7 +543,7 @@ Nótese que esto nos muestra que nuestra pregunta original tiene una respuesta
 simple pero poco útil. con este análisis podemos pensar en mejores preguntas, pero todas
 son mucho más difíciles de contestar!
 
-### Ejercicio: suavizadores
+### Ejercicio: suavizadores {-}
 
 Puedes practicar y entender cómo funcionan los suavidaores con **esta app**, cuya idea
 es tomada de [este libro](https://rafalab.github.io/dsbook/smoothing.html#local-weighted-regression-loess). El suavizamiento
