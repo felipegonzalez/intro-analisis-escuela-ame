@@ -289,24 +289,6 @@ limites_ic
 Presentaríamos nuestro resultado como sigue: nuestra estimación puntual de la mediana es
 `r median(muestra$precio_miles)`, con un intervalo de confianza del 90\% de (`r limites_ic[1]`, `r limites_ic[2]`)
 
-## Ventajas y desventajas del bootstrap {-}
-
-El bootstrap es una técnica versátil generalmente fácil de implementar (ventaja) - especialmente cuando a algún
-nivel podemos suponer que las muestras son idependientes e idénticamente distribuidas (desventaja).
-
-Por ejemplo: en muestreo estratificado, podemos hacer bootstrap sobre cada estrato por separado. En muestreo
-complejo, podemos hacer bootstrap de unidades primarias de muestreo, etc.
-
-Requiere más cómputo que fórmulas estándar (desventaja), por ejemplo, intervalos $t$ para
-medias, pero tenemos flexibilidad (ventaja) para aplicar en estadísticas diferentes de manera muchas veces trivial.
-
-Es una técnica estándar en el análisis de datos que se usa en un rango grande de aplicaciones (ventaja).
-
-Finalmente, en casos donde tenemos la población total, o 
-el supuesto de muestras aleatorias es dudoso, lo podemos
-utilizar más informalmente como un análisis de sensibilidad de nuestros resultados. Es una perturbación a los datos (que podemos combinar con otros tipos de perturbaciones) para juzgar qué tan fuertemente depende nuestro
-análisis de los datos que tenemos a mano.
-
 
 ## Cobertura nominal y cobertura real {-}
 
@@ -424,6 +406,47 @@ quantile(reps_boot, c(0.05, 0.95)) %>% round(2)
 Y esta sería una forma de presentar nuestros resultados: hay probabilidad considerable de que el efecto
 de este tratamiento sea marginal (una reducción de 10\%), aunque lo más probables es que tenga un efecto
 consdierable (reducción alrededor de 60\% del tiempo de fusión).
+
+
+## Sesgo
+
+Algunos estimadores comunes (por ejemplo, cociente de dos cantidades aleatorias) pueden
+sufrir de **sesgo* grande, especialmente en el caso de muestras chicas.  Para muchos estimadores,
+y muestras no muy chicas, esté sesgo tiende a ser poco importante y no es neceario hacer correcciones.
+
+Podemos evaluar el sesgo
+comparando la media de nuestras replicaciones bootstrap con el valor muestral que obtuvimos (para estadísticas funcionales, ver @timboot14).
+Si el tamaño del sesgo es chico comparado con la dispersión de la distribución bootsrap (por ejemplo, menos de 20\% de la desviación estándar, @bootefron), una regla de dedo es que no es muy importante
+hacer correcciones.
+
+En caso de que esta cantidad sea relativamente grande en relación a la dispersión de la distribución
+bootstrap, hay variantes los intervalos bootstrap de percentiles que 
+mejoran esta situación  (@bootefron).
+
+
+## Ventajas y desventajas del bootstrap {-}
+
+- El bootstrap es una técnica versátil generalmente fácil de implementar (ventaja) - especialmente cuando a algún
+nivel podemos suponer que las muestras son idependientes e idénticamente distribuidas (desventaja).
+
+Por ejemplo: en muestreo estratificado, podemos hacer bootstrap sobre cada estrato por separado. En muestreo
+complejo, podemos hacer bootstrap de unidades primarias de muestreo, etc.
+
+- Requiere más cómputo que fórmulas estándar (desventaja), pero tenemos flexibilidad (ventaja) para aplicar en estadísticas diferentes de manera muchas veces trivial (ventaja).
+
+- Es una técnica estándar en el análisis de datos que se usa en un rango grande de aplicaciones (ventaja).
+
+- En el caso de muestras chicas y ciertas distribuciones poblacionales, los intervalos **bootstrap de percentiles** que vimos aquí pueden ser un poco angostos y no cumplir la cobertura nominal por ejemplo, si la muestra es de tamaño < 40. la cobertura puede ser de 90\% en lugar de 95\% en algunos casos (población normal, o de 80\% en lugar de 95\%), ver @timboot14). Hay mejores opciones en estos casos (por ejempo, intervalos bootstrap-t, que se calculan fácilmente también). 
+
+(@timboot. Existen alternativas
+
+- Finalmente, en casos donde tenemos la población total, o 
+el supuesto de muestras aleatorias es dudoso, lo podemos
+utilizar más informalmente como un análisis de sensibilidad de nuestros resultados. Es una perturbación a los datos (que podemos combinar con otros tipos de perturbaciones) para juzgar qué tan fuertemente depende nuestro
+análisis de los datos que tenemos a mano.
+
+
+
 
 ## Bootstrap y estimadores complejos: suavizadores {-}
 
