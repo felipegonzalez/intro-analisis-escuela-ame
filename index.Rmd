@@ -24,8 +24,9 @@ Las tres sesiones cubren:
 2. Remuestreo para inferencia: inferencia gráfica, permutaciones y el bootstrap.
 3. Análisis predictivo
 
-## Instrucciones {-}
+### Instrucciones {-}
 
-- ¿Dónde están las notas? En las notas sólo mostramos partes del código (las que consideramos pueden ayudar a entender mejor los conceptos)
-- ¿Dónde está el código y cómo correr el código? Repositorio y Rstudio Cloud
-- Qué actividades haremos: ejemplo de aplicación. Probar que funciona
+1. Las notas con todos los ejemplos ejecutados están en [esta liga](https://app.netlify.com/sites/quirky-boyd-c764df/overview).
+2. El código completo está en [este repositorio](https://github.com/felipegonzalez/intro-analisis-escuela-ame). En las notas sólo mostramos partes del código (las que consideramos pueden ayudar a entender mejor los conceptos)
+3. También en el repositorio habrá una liga a un proyecto de RStudio Cloud. En esta ambiente puedes correr los ejemplos sin preocuparte por instalar paquetes, versiones de paquetes, etc.
+4. Pueden seguir las notas solamente, o seguir las notas y ver más del código, o ver las notas, el código, y hacer experimentos con el código.
