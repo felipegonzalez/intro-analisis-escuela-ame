@@ -785,7 +785,6 @@ mucha publicidad inicialmente no han podido ser replicados
 posteriormente por otros investigadores. Por ejemplo:
 
 - Hacer [poses poderosas](https://www.sciencedaily.com/releases/2017/09/170911095932.htm) produce cambios fisiológicos que mejoran nuestro desempeño en ciertas tareas
-- Patrones de ovulación de las mujeres influyen en los candidatos que escogen para votar
 - Mostrar palabras relacionadas con "viejo" hacen que las personas caminen más lento (efectos de [priming](https://www.nature.com/news/nobel-laureate-challenges-psychologists-to-clean-up-their-act-1.11535)) 
 
 En todos estos casos, el argumento de la evidencia de estos efectos fue respaldada 
@@ -805,7 +804,7 @@ se están investigando "fenómenos no estudiados antes")
 
 ## El jardín de los senderos que se bifurcan {-}
 
-Aunque haya varios ejemplos de manipulaciones conscientes --e incluso, en menos casos,
+Aunque haya algunos ejemplos de manipulaciones conscientes --e incluso, en menos casos,
 malintencionadas-- para obtener resultados publicables o significativos
 ([p-hacking](https://en.wikipedia.org/wiki/Data_dredging)), 
  como vimos en ejemplos anteriores, hay varias decisiones, todas razonables, que podemos tomar cuando 
@@ -850,41 +849,46 @@ unas 12 combinaciones distintas para hacer el análisis (multiplicadas por crite
 de "aceptación de datos en la muestra", que simulamos tomando una submuestra al azar):
 
 
+
 ```{r}
-media_cuartiles <- function(x){
-    (quantile(x, 0.75) + quantile(x, 0.25))/2
+calc_fusion <- function(stat_fusion, trans, comparacion){
+  fun <- function(datos){
+    datos %>% 
+      group_by(nv.vv) %>% 
+      summarise(est = stat_fusion({{ trans }}(time))) %>% 
+      spread(nv.vv, est) %>% mutate(dif = {{ comparacion }}) %>% pull(dif)
+  }
+  fun
 }
-valor_p_fusion <- function(fusion, stat_fusion = stat_fusion, 
-          trans = identity, comp = VV / NV, reps = NULL, n = 10000){
-    reps <- lineup(null_permute("nv.vv"), pos = 1, fusion, n = n)
-    dif <- fusion %>% group_by(nv.vv) %>% 
-        summarise(valor_est = {{ stat_fusion }}(time)) %>% 
-        spread(nv.vv, valor_est) %>% mutate(dif = {{ comp }} ) %>% pull(dif)
-    cocientes_perm <- reps  %>%  group_by(.sample, nv.vv) %>% 
-        summarise(valor_est = {{ stat_fusion }} (time)) %>% 
-        spread(nv.vv, valor_est) %>% 
-        summarise(diferencia = ({{ comp }}))
-    dist_perm <- ecdf(cocientes_perm$diferencia)
-    2 * min(dist_perm(dif), (1 - dist_perm(-dif)))
+valor_p <- function(datos, variable, calc_diferencia, n = 1000){
+  # calcular estadística para cada grupo
+  permutar <- function(variable){
+    sample(variable, length(variable))
+  }
+  tbl_perms <- tibble(.sample = seq(1, n-1, 1)) %>%
+    mutate(diferencia = map_dbl(.sample, 
+              ~ datos %>% mutate({{variable}} := permutar({{variable}})) %>% calc_diferencia))
+  perms <- bind_rows(tbl_perms, tibble(.sample = n, diferencia = calc_diferencia(datos)))
+  perms_ecdf <- ecdf(perms$diferencia)
+  dif <- calc_diferencia(datos)
+  2 * min(perms_ecdf(dif), 1- perms_ecdf(dif))
 }
 ```
 
-
-
 ```{r}
 set.seed(7272)
+media_cuartiles <- function(x){
+    (quantile(x, 0.75) + quantile(x, 0.25))/2
+}
 # nota: usar n=10000 o más, esto solo es para demostración:
-valor_p_fusion(fusion %>% sample_frac(0.95), 
-               stat_fusion = mean, trans = identity, comp = VV - NV, n = 4000)
-valor_p_fusion(fusion %>% sample_frac(0.95), 
-               stat_fusion = median, trans = identity, comp = log(VV / NV), n = 4000)
-valor_p_fusion(fusion %>% sample_frac(0.95), 
-               stat_fusion = media_cuartiles, trans = identity, comp = log(VV / NV), n = 4000)
-valor_p_fusion(fusion %>% sample_frac(0.95), 
-               stat_fusion = median, trans = log, comp = VV - NV, n = 4000)
-valor_p_fusion(fusion %>% sample_frac(0.95), 
-               stat_fusion = mean, trans = log, comp = VV - NV, n = 4000)
-
+calc_dif <- calc_fusion(mean, identity, VV - NV)
+valor_p(fusion %>% sample_frac(0.95), nv.vv, calc_dif, n = 10000)
+calc_dif <- calc_fusion(mean, log, VV - NV)
+valor_p(fusion %>% sample_frac(0.95), nv.vv, calc_dif, n = 10000)
+calc_dif <- calc_fusion(median, identity, VV / NV)
+valor_p(fusion %>% sample_frac(0.95), nv.vv, calc_dif, n = 10000)
+calc_dif <- calc_fusion(media_cuartiles, identity, VV / NV)
+valor_p(fusion %>% sample_frac(0.95), nv.vv, calc_dif, n = 10000)
 ```
 
 Si existen grados de libertad - muchas veces necesarios para hacer un análisis exitoso-, entonces
