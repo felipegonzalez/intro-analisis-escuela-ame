@@ -16,8 +16,9 @@ casas <- casas_completo %>% sample_frac(0.9)
 
 ## Ejemplo: estimación e intervalos de confianza {-}
 
-Regresamos a nuestro ejemplo anterior donde medimos 3 grupos, y nos preguntábamos
-acerca de la diferencia de sus medianas. En lugar de hacer pruebas de permutaciones (con gráficas o numéricas), podríamos considerar qué tan precisa es cada una de nuestras estimaciones. 
+Regresamos a nuestro ejemplo anterior donde muestreamos 3 grupos, y nos preguntábamos
+acerca de la diferencia de sus medianas. En lugar de hacer pruebas de permutaciones (con gráficas o numéricas), podríamos considerar qué tan precisa es cada una de nuestras estimacione
+para las medianas de los grupos, por ejemplo.
 
 Nuestros resultados podríamos presentarlos como sigue:
 
@@ -97,7 +98,7 @@ en nuestras estimaciones: métodos basados en distribuciones estándar, métodos
 y no paramétricos, distintos métodos bayesianos (entonces se llaman intervalos
 creíbles o de probabilidad), etc.
 
-En este curso, como ejemplo, y también por ser una técnica muy versátil, presentaremos
+En este curso, como ejemplo, y también por ser una técnica versátil, presentaremos
 el **bootstrap no paramétrico** (ver @bootefron), donde utilizaremos simulación (y poder de cómputo) para producir
 este tipo de intervalos, bajo ciertas condiciones de extracción de la muestra que discutiremos
 más adelante.
@@ -249,24 +250,25 @@ muestra <- sample_n(casas_pob, 150, replace = T)
 
 Esta muestra nos da nuestro estimador de la distribución poblacional:
 
-```{r}
+```{r,  fig.width =5, fig.height = 3}
 bind_rows(muestra %>% mutate(tipo = "muestra"),
     casas_pob %>% mutate(tipo = "población")) %>% 
-ggplot(aes(sample = precio_miles, colour = tipo, group = tipo), alpha = 0.1) + 
-    geom_qq(distribution = stats::qunif) + scale_color_colorblind()
+ggplot(aes(sample = precio_miles, colour = tipo, group = tipo)) + 
+    geom_qq(distribution = stats::qunif, alpha = 0.5, size = 0.5) + 
+    scale_color_colorblind()
 ```
 
 Y vemos que la aproximación es razonable. Usamos nuestra muestra para estimar
 la población.
 
 Para evaluar ahora la variabilidad de nuestro estimador, podemos extraer un número
-grande de muestras con reemplazo de tamaño 50 **de la muestra** - estamos en el mundo
+grande de muestras con reemplazo de tamaño 150 **de la muestra** - estamos en el mundo
 Bootstrap! 
 
 ```{r}
-mediana_muestras <- map_dbl(1:5000, ~ muestra %>%  #muestreamos de la muestra, no de la población
-    sample_n(150, replace = T) %>%  # muestra de 50
-    summarise(mediana_precio = fun_muestra(precio_miles)) %>% pull(mediana_precio)) # calcular mediana de la muestra
+mediana_muestras <- map_dbl(1:5000, ~ muestra %>%  
+    sample_n(150, replace = T) %>%
+    summarise(mediana_precio = fun_muestra(precio_miles)) %>% pull(mediana_precio)) 
 ```
 
 Y nuestra estimación de la distribución de muestreo es entonces:
@@ -308,8 +310,10 @@ análisis de los datos que tenemos a mano.
 
 ## Cobertura nominal y cobertura real {-}
 
-¿Cómo sabemos que la cobertura nominal del 90\% es cercana a la realidad? Sería muy malo que los
-intervalos fueran demasiado anchos (exageramos la variabilidad) o demasiado angostos (damos la idea
+¿Cómo sabemos que la cobertura nominal del 90\% es cercana a la realidad? Sería
+muy malo que los
+intervalos fueran demasiado anchos (exageramos la variabilidad) o 
+demasiado angostos (damos la idea
 de que nuestra estimación es más precisa de lo que realmente es). Que esto se cumpla depende de:
 
 - Cuál es la estadística de interés

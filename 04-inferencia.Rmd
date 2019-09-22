@@ -31,9 +31,7 @@ saber si una comparación se ve de cierta manera debida a fluctuaciones debidas 
 La incertidumbre del segundo caso es más fácil de cuantificar bajo ciertas condiciones: 
 
 - Cuando tenemos cuantificaciones históricas de la variabilidad natural de un proceso,
-- Cuando introducimos patrones de aleatorización conocidos y cuantificables en la selección de la muestra o aplicación de tratamientos,
-por ejemplo.
-
+- Cuando introducimos patrones de aleatorización conocidos y cuantificables en la selección de la muestra o aplicación de tratamientos o intervenciones, por ejemplo.
 
 
 ## Pruebas de hipótesis {-}
