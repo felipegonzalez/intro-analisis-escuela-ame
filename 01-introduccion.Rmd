@@ -31,7 +31,7 @@ todos los participantes.
 Nuestras referencias más importantes son:
 
 - Primera sesión: @ClevelandVis , @tufte06
-- Segunda sesión: @box78m, @bootefron, @timboot14, @lineup
+- Segunda sesión: @box78, @bootefron, @timboot14, @lineup
 - Tercera sesión: @ESL
 
 ## Tukey y análisis de datos {-}
