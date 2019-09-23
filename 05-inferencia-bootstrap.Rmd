@@ -61,10 +61,7 @@ Este análisis comunica correctamente que tenemos incertidumbre alta acerca de n
 estimaciones (especialmente grupos b y c), y que no tenemos mucha evidencia de que el 
 grupo b tenga una mediana poblacional considerablemente más alta que a o c.
 
-**No es necesario dar un sí o no** es mayor o menor, 
-o tomar una decisión en este momento: la decisión asociada
-a estas estimaciones es algo más complicado que tenemos que hacer con los expertos y/o 
-interesados en el tema. Este análisis informa esa decisión.
+
 
 ## Interpretación de intervalos de confianza {-}
 
@@ -82,13 +79,14 @@ forma bayesiana:
 
 - Con alta probabilidad, creemos que el valor poblacional está dentro del intervalo creíble.
 
-**La técnica que veremos a continuación se puede interpretar de las dos maneras**. 
+**La técnica que veremos a continuación (bootstrap) se puede interpretar de las dos maneras**. 
 
 - La interpretación bayesiana es más natural
 - La interpretación frecuentista nos da maneras empíricas de probar si los intervalos de
 confianza están bien calibrados o no: es un mínimo que "intervalos del 90\%" debería satisfacer.
 
-Así que tomamos el punto de vista bayesiano, pero buscamos que nuestros intervalos cumplan o 
+Así que tomamos el punto de vista bayesiano en la intepretación, pero 
+buscamos que nuestros intervalos cumplan o 
 aproximen bien garantías frecuentistas (discutimos esto más adelante).
 
 ## Cómo producir intervalos para estimación {-}
@@ -181,11 +179,11 @@ g_1
 Los cuantiles que cubren a un 95\% de las muestras son:
 
 ```{r cuantiles_error}
-quantile(mediana_muestras - valor_poblacional , c(0.025, 0.975)) %>% round
+quantile(mediana_muestras - valor_poblacional , c(0.025, 0.975)) %>% round(1)
 ```
 
 - Esto quiere decir que si estimamos con una muestra el valor poblacional, esperamos
-con 95\% de probabilidad que el error sea menos de unas 30 unidades. ***Esta es la precisión
+con 95\% de probabilidad que el error sea menos de unas 20 unidades. ***Esta es la precisión
 de nuestro estimador.**
 
 Si usamos una muestra más grande (n = 200, por ejemplo) podemos obtener un resultado más preciso:
@@ -233,6 +231,9 @@ podemos hacer lo siguiente:
 la distribución de muestreo de nuestro estimador, y así entender su variabilidad.
 2. Pero no tenemos la distribución poblacional
 3. **Sin embargo, podemos estimar la distribución poblacional con nuestros valores muestrales**
+
+**Mundo bootstrap**
+
 4. Si usamos la estimación del inciso anterior, entonces usando 1 podríamos tomar muestras
 de nuestros datos muestrales, como si fueran de la población, y usando el mismo tamaño de muestra.
 El muestreo lo hacemos con reemplazo, como la muestra original.
@@ -244,7 +245,7 @@ estimación con **la muestra original**.
 Veamos que sucede para un ejemplo concreto. Primero extraemos nuestra muestra:
 
 ```{r}
-set.seed(12)
+set.seed(212)
 muestra <- sample_n(casas_pob, 150, replace = T)
 ```
 
@@ -254,7 +255,7 @@ Esta muestra nos da nuestro estimador de la distribución poblacional:
 bind_rows(muestra %>% mutate(tipo = "muestra"),
     casas_pob %>% mutate(tipo = "población")) %>% 
 ggplot(aes(sample = precio_miles, colour = tipo, group = tipo)) + 
-    geom_qq(distribution = stats::qunif, alpha = 0.5, size = 0.5) + 
+    geom_qq(distribution = stats::qunif, alpha = 0.7, size = 0.5) + 
     scale_color_colorblind()
 ```
 
@@ -411,12 +412,14 @@ consdierable (reducción alrededor de 60\% del tiempo de fusión).
 ## Sesgo
 
 Algunos estimadores comunes (por ejemplo, cociente de dos cantidades aleatorias) pueden
-sufrir de **sesgo* grande, especialmente en el caso de muestras chicas.  Para muchos estimadores,
-y muestras no muy chicas, esté sesgo tiende a ser poco importante y no es neceario hacer correcciones.
+sufrir de **sesgo* grande, especialmente en el caso de muestras chicas.  Esto afecta
+la cobertura, pues es posible que nuestros intervalos no tengan "cobertura simétrica", por ejemplo.
+Para muchos estimadores,
+y muestras no muy chicas, esté sesgo tiende a ser poco importante y no es necesario hacer correcciones.
 
 Podemos evaluar el sesgo
 comparando la media de nuestras replicaciones bootstrap con el valor muestral que obtuvimos (para estadísticas funcionales, ver @timboot14).
-Si el tamaño del sesgo es chico comparado con la dispersión de la distribución bootsrap (por ejemplo, menos de 20\% de la desviación estándar, @bootefron), una regla de dedo es que no es muy importante
+Si el tamaño del sesgo es chico comparado con la dispersión de la distribución bootstrap (por ejemplo, menos de 20\% de la desviación estándar, @bootefron), no es muy importante
 hacer correcciones.
 
 En caso de que esta cantidad sea relativamente grande en relación a la dispersión de la distribución
@@ -436,9 +439,7 @@ complejo, podemos hacer bootstrap de unidades primarias de muestreo, etc.
 
 - Es una técnica estándar en el análisis de datos que se usa en un rango grande de aplicaciones (ventaja).
 
-- En el caso de muestras chicas y ciertas distribuciones poblacionales, los intervalos **bootstrap de percentiles** que vimos aquí pueden ser un poco angostos y no cumplir la cobertura nominal por ejemplo, si la muestra es de tamaño < 40. la cobertura puede ser de 90\% en lugar de 95\% en algunos casos (población normal, o de 80\% en lugar de 95\%), ver @timboot14). Hay mejores opciones en estos casos (por ejempo, intervalos bootstrap-t, que se calculan fácilmente también). 
-
-(@timboot. Existen alternativas
+- En el caso de *muestras chicas* y ciertas distribuciones poblacionales, los intervalos **bootstrap de percentiles** que vimos aquí pueden ser un poco angostos y no cumplir la cobertura nominal por ejemplo, si la muestra es de tamaño < 40. la cobertura puede ser de 90\% en lugar de 95\% en algunos casos (población normal, o de 80\% en lugar de 95\% en una poblacion exponencial), ver @timboot14). Hay mejores opciones en estos casos (por ejempo, intervalos bootstrap-t, que se calculan fácilmente también). 
 
 - Finalmente, en casos donde tenemos la población total, o 
 el supuesto de muestras aleatorias es dudoso, lo podemos
