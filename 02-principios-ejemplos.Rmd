@@ -760,7 +760,7 @@ Otros de resúmenes que se pueden hacer y son comunes son:
 La desviación estándar se calcula como sigue: si $\bar{x}$ es la media de un 
 conjunto de mediciones, su desviación estándar es 
 
-$$hat{\sigma} = \sqrt{\frac{1}{n}\sum_{i = 1}^n (x_i - \bar{x})^2}$$
+$$\hat{\sigma} = \sqrt{\frac{1}{n}\sum_{i = 1}^n (x_i - \bar{x})^2}$$
 
 Está son medidas más especializadas y difíciles de interpretar: por ejemplo, funcionan mejor cuando las distribuciones que queremos describir son simétricas y no tienen colas
 muy largas o atípicos. Tienen muchas ventajas en ciertos casos, pero en
