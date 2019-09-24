@@ -245,7 +245,7 @@ estimación con **la muestra original**.
 Veamos que sucede para un ejemplo concreto. Primero extraemos nuestra muestra:
 
 ```{r}
-set.seed(212)
+set.seed(2112)
 muestra <- sample_n(casas_pob, 150, replace = T)
 ```
 
@@ -298,9 +298,10 @@ En nuestro ejemplo, podemos ver varias muestras (por ejemplo 20) de tamaño 100,
 vemos cómo se ve la aproximación a la distribución de la población:
 
 ```{r, echo = FALSE, message = FALSE}
+set.seed(911)
 muestras <- map(1:20, function(x) {
-    muestra <- sample_n(casas_pob, 100, replace = T) %>% 
-        mutate(rep = x, tipo = "muestras_boot")}) %>% bind_rows
+    muestra <- sample_n(casas_pob, 150, replace = T) %>% 
+        mutate(rep = x, tipo = "muestras")}) %>% bind_rows
 dat <- casas_pob %>% mutate(tipo = "población", rep = 1)
 datos <- bind_rows(dat, muestras)
 
@@ -312,6 +313,34 @@ geom_qq(data = dat, aes(sample = precio_miles), colour = "red", size = 1,
   
 ```
 
+Podemos calcular las distribuciones de remuestreo para cada muestra bootstrap,
+y compararlas con la distribución de muestreo real.
+
+```{r, echo = FALSE}
+rep_boot <- function(x, n){
+  sample(x, n, replace = T) %>% median
+}
+aprox_dist_muestreo <- function(datos, n){
+  datos %>% select(precio_miles, tipo, rep) %>% 
+  group_by(rep) %>% nest() %>% 
+  mutate(precio_miles = map(data, function(df){
+    map_dbl(1:5000, ~ rep_boot(df$precio_miles, n))
+  })) %>% select(rep, precio_miles) %>% 
+  unnest(cols = c(precio_miles))
+}
+dist_boot <- aprox_dist_muestreo(datos %>% filter(tipo == "muestras"), n = 150)
+dist_muestreo <- aprox_dist_muestreo(datos %>% filter(tipo == "población"), n = 150)
+```
+
+
+```{r, echo = FALSE}
+ggplot(dist_boot, aes(sample = precio_miles, group = interaction(rep))) + 
+    geom_qq(distribution = stats::qunif, size = 0.1, alpha = 0.02) + 
+geom_qq(data = dist_muestreo, aes(sample = precio_miles), colour = "red",
+        distribution = stats::qunif, alpha = 0.02) +
+  ylim(c(120, 220)) +
+  labs(subtitle = "Estimaciones de distribución \n de muestreo (mediana)")
+```
 
 ## Cobertura nominal y cobertura real {-}
 
