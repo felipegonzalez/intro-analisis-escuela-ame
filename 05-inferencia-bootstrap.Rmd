@@ -292,7 +292,7 @@ Presentaríamos nuestro resultado como sigue: nuestra estimación puntual de la 
 `r median(muestra$precio_miles)`, con un intervalo de confianza del 90\% de (`r limites_ic[1]`, `r limites_ic[2]`)
 
 
-## Experimento de simulación
+## Experimento de simulación {-}
 
 En nuestro ejemplo, podemos ver varias muestras (por ejemplo 20) de tamaño 100, y
 vemos cómo se ve la aproximación a la distribución de la población:
