@@ -33,6 +33,7 @@ saber si una comparación se ve de cierta manera debida a fluctuaciones debidas 
 La incertidumbre del segundo caso es más fácil de cuantificar bajo ciertas condiciones: 
 
 - Cuando tenemos cuantificaciones históricas de la variabilidad natural de un proceso,
+- Cuando usamos supuestos razonables soportados por teoría,
 - Cuando introducimos patrones de aleatorización conocidos y cuantificables en la selección de la muestra o aplicación de tratamientos o intervenciones, por ejemplo.
 
 
@@ -203,8 +204,8 @@ hiciéramos muchos páneles.
 Ahora intentamos un ejemplo más típico.
 
 Supongamos tenemos *muestras* para tres grupos  a, b y c, que quiere decir
-que dentro de cada grupo, e proceso e selección de los elementos se hace
-de manera simétrica (por ejemplocada elemento tiene a misma probabiidad de ser seleccionado,
+que dentro de cada grupo, el proceso e selección de los elementos se hace
+de manera al azar y de manera simétrica (por ejemplo cada elemento tiene a misma probabiidad de ser seleccionado,
 y las extracciones se hacen de manera independiente.)
 
 Queremos comparar las distribuciones de los datos obtenidos para cada grupo. 

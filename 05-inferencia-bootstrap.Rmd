@@ -81,7 +81,7 @@ forma bayesiana:
 
 **La técnica que veremos a continuación (bootstrap) se puede interpretar de las dos maneras**. 
 
-- La interpretación bayesiana es más natural
+- La interpretación bayesiana puede ser más natural
 - La interpretación frecuentista nos da maneras empíricas de probar si los intervalos de
 confianza están bien calibrados o no: es un mínimo que "intervalos del 90\%" debería satisfacer.
 
@@ -255,11 +255,12 @@ Esta muestra nos da nuestro estimador de la distribución poblacional:
 bind_rows(muestra %>% mutate(tipo = "muestra"),
     casas_pob %>% mutate(tipo = "población")) %>% 
 ggplot(aes(sample = precio_miles, colour = tipo, group = tipo)) + 
-    geom_qq(distribution = stats::qunif, alpha = 0.7, size = 0.5) + 
+    geom_qq(distribution = stats::qunif, alpha = 0.7, size = 2) + 
     scale_color_colorblind()
 ```
 
-Y vemos que la aproximación es razonable. Usamos nuestra muestra para estimar
+Y vemos que la aproximación es razonable, especialmente en las partes centrales de la 
+distribución. Usamos nuestra muestra para estimar
 la población.
 
 Para evaluar ahora la variabilidad de nuestro estimador, podemos extraer un número
@@ -289,6 +290,27 @@ limites_ic
 
 Presentaríamos nuestro resultado como sigue: nuestra estimación puntual de la mediana es
 `r median(muestra$precio_miles)`, con un intervalo de confianza del 90\% de (`r limites_ic[1]`, `r limites_ic[2]`)
+
+
+## Experimento de simulación
+
+En nuestro ejemplo, podemos ver varias muestras (por ejemplo 20) de tamaño 100, y
+vemos cómo se ve la aproximación a la distribución de la población:
+
+```{r, echo = FALSE, message = FALSE}
+muestras <- map(1:20, function(x) {
+    muestra <- sample_n(casas_pob, 100, replace = T) %>% 
+        mutate(rep = x, tipo = "muestras_boot")}) %>% bind_rows
+dat <- casas_pob %>% mutate(tipo = "población", rep = 1)
+datos <- bind_rows(dat, muestras)
+
+ggplot(datos, aes(sample = precio_miles, group = interaction(tipo, rep))) + 
+    geom_qq(distribution = stats::qunif, alpha = 0.7, size = 0.5, geom = "line") + 
+geom_qq(data = dat, aes(sample = precio_miles), colour = "red", size = 1,
+        distribution = stats::qunif, geom="point") +
+  scale_y_log10(breaks = c(50, 100, 200, 400, 800)) 
+  
+```
 
 
 ## Cobertura nominal y cobertura real {-}
@@ -409,24 +431,6 @@ de este tratamiento sea marginal (una reducción de 10\%), aunque lo más probab
 consdierable (reducción alrededor de 60\% del tiempo de fusión).
 
 
-## Sesgo
-
-Algunos estimadores comunes (por ejemplo, cociente de dos cantidades aleatorias) pueden
-sufrir de **sesgo* grande, especialmente en el caso de muestras chicas.  Esto afecta
-la cobertura, pues es posible que nuestros intervalos no tengan "cobertura simétrica", por ejemplo.
-Para muchos estimadores,
-y muestras no muy chicas, esté sesgo tiende a ser poco importante y no es necesario hacer correcciones.
-
-Podemos evaluar el sesgo
-comparando la media de nuestras replicaciones bootstrap con el valor muestral que obtuvimos (para estadísticas funcionales, ver @timboot14).
-Si el tamaño del sesgo es chico comparado con la dispersión de la distribución bootstrap (por ejemplo, menos de 20\% de la desviación estándar, @bootefron), no es muy importante
-hacer correcciones.
-
-En caso de que esta cantidad sea relativamente grande en relación a la dispersión de la distribución
-bootstrap, hay variantes los intervalos bootstrap de percentiles que 
-mejoran esta situación  (@bootefron).
-
-
 ## Ventajas y desventajas del bootstrap {-}
 
 - El bootstrap es una técnica versátil generalmente fácil de implementar (ventaja) - especialmente cuando a algún
@@ -446,6 +450,21 @@ el supuesto de muestras aleatorias es dudoso, lo podemos
 utilizar más informalmente como un análisis de sensibilidad de nuestros resultados. Es una perturbación a los datos (que podemos combinar con otros tipos de perturbaciones) para juzgar qué tan fuertemente depende nuestro
 análisis de los datos que tenemos a mano.
 
+## Sesgo {-}
+
+Algunos estimadores comunes (por ejemplo, cociente de dos cantidades aleatorias) pueden
+sufrir de **sesgo* grande, especialmente en el caso de muestras chicas.  Esto afecta
+la cobertura, pues es posible que nuestros intervalos no tengan "cobertura simétrica", por ejemplo. Para muchos estimadores,
+y muestras no muy chicas, esté sesgo tiende a ser poco importante y no es necesario hacer correcciones.
+
+Podemos evaluar el sesgo
+comparando la media de nuestras replicaciones bootstrap con el valor muestral que obtuvimos (para estadísticas funcionales, ver @timboot14).
+Si el tamaño del sesgo es chico comparado con la dispersión de la distribución bootstrap (por ejemplo, menos de 20\% de la desviación estándar, @bootefron), no es muy importante
+hacer correcciones.
+
+En caso de que esta cantidad sea relativamente grande en relación a la dispersión de la distribución
+bootstrap, hay variantes los intervalos bootstrap de percentiles que 
+mejoran esta situación  (@bootefron).
 
 
 
@@ -454,15 +473,17 @@ análisis de los datos que tenemos a mano.
 El bootstrap es una técnica versátil. Por ejemplo, podemos usarlo para juzgar
 la variabilidad de un suavizador:
 
-```{r, fig.width = 10, fig.height = 4, message = FALSE}
+```{r, fig.width = 5, fig.height = 3, message = FALSE}
 graf_casas <- function(data){
-    ggplot(casas %>% filter(calidad_gral < 7), 
+    ggplot(data %>% filter(calidad_gral < 7), 
         aes(x = area_habitable_sup_m2)) + 
-        geom_point(aes(y = precio_m2_miles), alpha = 0.5) +
-        geom_smooth(aes(y = precio_m2_miles), method = "loess", span = 0.4, 
+        geom_point(aes(y = precio_m2_miles), alpha = 0.75) +
+        geom_smooth(aes(y = precio_m2_miles), method = "loess", span = 0.7, 
                 se = FALSE, method.args = list(degree = 1, family = "symmetric"))     
 }
-graf_casas(casas)
+set.seed(250)
+casas_muestra <- sample_frac(casas, 0.2)
+graf_casas(casas_muestra)
 ```
 
 Podemos hacer bootstrap para juzgar la estabilidad del suavizador:
@@ -472,32 +493,31 @@ suaviza_boot <- function(x, data){
     # remuestreo
     muestra_boot <- sample_n(data, nrow(data), replace = T)
     ajuste <- loess(precio_m2_miles ~ area_habitable_sup_m2, data = muestra_boot, 
-                    degree = 1, span = 0.4, family = "symmetric")
+                    degree = 1, span = 0.5, family = "symmetric")
     datos_grafica <- tibble(area_habitable_sup_m2 = seq(25, 250, 5))
     ajustados <- predict(ajuste, newdata = datos_grafica)
     datos_grafica %>% mutate(ajustados = ajustados) %>% 
         mutate(rep = x)
 }
-set.seed(250)
-reps <- map(1:10, ~ suaviza_boot(.x, casas %>% filter(calidad_gral < 7))) %>% 
+reps <- map(1:10, ~ suaviza_boot(.x, casas_muestra %>% filter(calidad_gral < 7))) %>% 
     bind_rows()
 ```
 
 ```{r, message = FALSE, warning = FALSE}
 # ojo: la rutina loess no tienen soporte para extrapolación
-graf_casas(casas) + 
+graf_casas(casas_muestra) + 
     geom_line(data = reps, aes(y = ajustados, group = rep), alpha = 1, colour = "red") 
 ```
 
 Donde vemos que algunas cambios de pendiente del suavizador original no son muy interpretables (por ejemplo,
-para áreas chicas). Podemos hacer más iteraciones para calcular bandas de confianza:
+para áreas chicas) y alta variabilidad en general en los extremos. Podemos hacer más iteraciones para calcular bandas de confianza:
 
 ```{r, message = FALSE, warning = FALSE}
-reps <- map(1:200, ~ suaviza_boot(.x, casas %>% filter(calidad_gral < 7))) %>% 
+reps <- map(1:200, ~ suaviza_boot(.x, casas_muestra %>% filter(calidad_gral < 7))) %>% 
     bind_rows()
 # ojo: la rutina loess no tienen soporte para extrapolación
-graf_casas(casas) + 
-    geom_line(data = reps, aes(y = ajustados, group = rep), alpha = 0.1, colour = "red") 
+graf_casas(casas_muestra) + 
+    geom_line(data = reps, aes(y = ajustados, group = rep), alpha = 0.2, colour = "red") 
 ```
 
 ## Bootstrap y estimadores complejos: tablas de perfiles {-}
