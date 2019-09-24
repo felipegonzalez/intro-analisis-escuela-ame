@@ -5,4 +5,5 @@ Notas y material para el taller de Intro al Análisis de Datos (Escuela AME 2019
 
 ---
 
-- [Bajar notas en zip](https://github.com/felipegonzalez/intro-analisis-escuela-ame/raw/master/intro-ad-1.zip) . Abrir el archivo index.html
+- [Bajar notas en zip, día 1](https://github.com/felipegonzalez/intro-analisis-escuela-ame/raw/master/intro-ad-1.zip) . Abrir el archivo index.html
+- [Bajar notas en zip, día 2](https://github.com/felipegonzalez/intro-analisis-escuela-ame/raw/master/intro-ad-2.zip)
