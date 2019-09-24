@@ -493,7 +493,7 @@ suaviza_boot <- function(x, data){
     # remuestreo
     muestra_boot <- sample_n(data, nrow(data), replace = T)
     ajuste <- loess(precio_m2_miles ~ area_habitable_sup_m2, data = muestra_boot, 
-                    degree = 1, span = 0.5, family = "symmetric")
+                    degree = 1, span = 0.7, family = "symmetric")
     datos_grafica <- tibble(area_habitable_sup_m2 = seq(25, 250, 5))
     ajustados <- predict(ajuste, newdata = datos_grafica)
     datos_grafica %>% mutate(ajustados = ajustados) %>% 
