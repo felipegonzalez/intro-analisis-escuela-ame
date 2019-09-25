@@ -3,4 +3,3 @@ delete_merged_file: true
 language:
   ui:
     chapter_name: "Sección "
-rmd_files: ["index.Rmd", "01-introduccion.Rmd", "02-principios-ejemplos.Rmd", "99-referencias.Rmd"]
