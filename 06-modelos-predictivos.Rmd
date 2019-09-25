@@ -407,19 +407,20 @@ la curva roja.
 Consideremos un modelo particular para ayudarnos a entender
 de dónde provienen los errores de predicción:
 
-$$y = f_0(x) + \epsilon$$
-con $E(\epsilon) = 0$. Esta variable aleatoria $\epsilon$ representa efectos
+$$Y = f_0(X) + \epsilon$$
+con $E(\epsilon) = 0$ y $\epsilon$ es indepdendiente de $X$. Esta variable aleatoria $\epsilon$ representa efectos
 de otras variables que no tenemos disponibles, y que afectan el resultado $y$ que observamos. 
-La función $f_0$ modela la dependencia "verdadera" de $y$ de los datos de entrada $x$.
+La función $f_0$ representa la información sistemática que $X$ tiene acerca  de $Y$ de los datos de entrada $x$.
 
-Sea $f$ nuestro predictor. Escribimos el error como:
+Sea $f$ nuestro predictor. Ahora supongamos que queremos predecir
+en una $x$ fija particular. Escribimos el error como:
 
 $$y-{f}(x) = (f_0(x)- {f}(x)) + \epsilon$$
 
 Y vemos dos razones para errores grandes:
 
-1. La $\epsilon$ puede tomar valores grandes (pues no tenemos variables importantes que influyen en $y$)
-2. $f(x) - f_0(x)$ puede ser grande, es decir, nuestra estimación de $f_0$ es mala. A su vez,
+1. La $\epsilon$ puede tomar valores grandes o muy negativos (pues no tenemos variables importantes que influyen en $y$)
+2. $f(x)$ y $f_0(x)$ pueden estar muy separadas, es decir, nuestra estimación de $f_0$ es mala. A su vez,
 hay dos razones por las que puede ocurrir esto:
   - $f(x)$ tiene poca variabilidad y está consistemente lejos de la verdadera $f_0$, independientemente de la muestra
 que usemos para entrenar al modelo.
@@ -431,7 +432,7 @@ muestra particular esté lejos del valor $f_0(x)$
 Una manera de cuantificar esto es mediante la descomposición varianza-sesgo. Con algunos cálculos simples,
 podemos demostrar que el error de predicción (con error cuadrático) se descompone en (con $X$ fija):
 
-$$E((Y-f(x))^2) = (E(f(x)) - f_0(x))^2 + Var(f(x)) + Var(\epsilon)$$
+$$E((Y-f(x))^2) = \left[ E(f(x)) - f_0(x) \right]^2 + Var(f(x)) + Var(\epsilon)$$
 
 donde el valor esperado es sobre el conjunto de entrenamiento ${\mathcal L}$ y $\epsilon$ (es decir, promediando sobre muestras de entrenamiento posibles).
 

@@ -3,13 +3,31 @@
 Los temas que vimos aquí los cubrimos superficialmente, y varios 
 temas importantes en análisis de datos ni siquiera fueron mencionados. Algunos son:
 
+Temas importantes y comunes:
 
+- "Arreo" de datos
 - Análisis de datos faltantes, imputación múltiple (@missingrubin, @mice)
+- Análisis reproducible, más de herramientas, buenas prácticas de mantenimiento de código
+- Métodos multivariados: descomposición en valores singulares, componentes principales, etc, (@izenman)
 - Modelación estadística (incluyendo regresión, regresión multinivel) (@GelmanHill)
+- Estadística bayesiana (@puppies)
+
+Experimentos, inferencia causal:
+
 - Diseño y análisis de experimentos (@box78)
 - Inferencia causal y sus métodos (@GelmanHill)
-- Estadística bayesiana (@puppies)
+
+En algunos casos, para algunos pueden ser útiles:
+
+- Métodos para datos grandes
+- Herramientas para datos grandes, recursos computacionales en la nube
+
+Para análisis predictivo, en general:
+
+- *Feature engineering* ([Kuhn y Johnson](http://www.feat.engineering/))
 - Métodos de clasificación: predicciones cuando la variable respuesta es categórica (@ESL)
-- Métodos multivariados: descomposición en valores singulares, componentes principales, etc, (@izenman)
-- Redes neuronales modernas (@deepbook), por ejemplo para procesamiento de texto
-- Más de herramientas, buenas prácticas, etc.
+- Métodos para predecir basados en conjuntos o ensembles de árboles: boosting, bosques aleatorios.
+
+Para análisis predictivo en algunas áreas:
+
+- Redes neuronales modernas (@deepbook), por ejemplo para procesamiento de texto o imágenes.
