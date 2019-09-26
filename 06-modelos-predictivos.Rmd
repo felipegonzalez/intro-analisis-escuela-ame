@@ -117,10 +117,10 @@ En análisis predictivo, la idea es aprender de los datos *etiquetados* (donde c
 Así es que emepezamos tomando unos **datos de entrenamiento**, donde observamos
 datos de entrada (covariables) y la respuesta que queremos predecir
 
-$$({x}^{(1)}, {y}^{(1)}), ({x}^{(2)}, {y}^{(2)}), \ldots, ({x}^{(m)}, {y}^{(m)}),$$
+$$({x}^{(1)}, {y}^{(1)}), ({x}^{(2)}, {y}^{(2)}), \ldots, ({x}^{(n)}, {y}^{(n)}),$$
 Y queremos tener un método para construír $f$ a partir de los datos
 
-$$({x}^{(1)}, {y}^{(1)}), ({x}^{(2)}, {y}^{(2)}), \ldots, ({x}^{(m)}, {y}^{(m)}) \to f$$
+$$({x}^{(1)}, {y}^{(1)}), ({x}^{(2)}, {y}^{(2)}), \ldots, ({x}^{(n)}, {y}^{(n)}) \to f$$
 
 ## La tarea del análisis predictivo {-}
 
