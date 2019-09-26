@@ -323,7 +323,7 @@ set.seed(121)
 reps <- lineup(null_permute("grupo"), muestra_tab, n = 20)
 grafica_cuantiles(reps %>%  mutate(grupo_escondido = factor(digest::digest2int(grupo) %% 177)), 
                              grupo_escondido, x) + facet_wrap(~.sample) + ylab("x") +
-    coord_flip() 
+    coord_flip() + geom_point(aes(colour = grupo_escondido))
 ```
 
 
