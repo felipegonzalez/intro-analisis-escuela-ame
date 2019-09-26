@@ -274,7 +274,7 @@ reps <- lineup(null_permute("grupo"), muestra_tab, n = 20)
 reps_mezcla <- reps %>%  mutate(grupo_1 = factor(digest::digest2int(grupo) %% 177))
 grafica_cuantiles(reps_mezcla, grupo_1, x) + 
     facet_wrap(~.sample, ncol = 5) + ylab("x") + 
-    labs(caption = "Mediana y percentiles 10% y 90%")
+    labs(caption = "Mediana y percentiles 10% y 90%")+ geom_point(aes(colour = grupo_escondido))
 ```
 
 Y la pregunta que hacemos es **podemos distinguir nuestra muestra entre todas las 
